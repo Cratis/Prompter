@@ -56,6 +56,7 @@ var webBuilder = WebApplication.CreateBuilder(args);
 
 webBuilder.AddPrompter();
 webBuilder.Services.AddSingleton<ReindexGate>();
+webBuilder.Services.AddHostedService<RetentionPurge>();
 webBuilder.Services
     .AddDiscordGateway(options =>
     {
