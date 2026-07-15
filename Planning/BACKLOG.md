@@ -109,7 +109,11 @@ not to promise live in the parking lot.
 - **P-21** Deploy: join the existing UpCloud UKS cluster per D-11 — Prompter workload + in-cluster
   Postgres/pgvector + ingress route + `deploy-production.yml` modeled on Studio's (`Studio/Deployment/` is
   the reference). Resolve Q-5 (Pulumi code in Studio's stack vs. this repo) first.
-- **P-22** Retention purge job — schedule `IInteractionLog.PurgeExpired()` daily (RetentionDays default 90).
+- **P-22** ~~Retention purge job~~ **Done 2026-07-15** (code): `RetentionPurge : BackgroundService` sweeps on
+  a 1-minute initial delay then daily (`PeriodicTimer`), calling `IInteractionLog.PurgeExpired` (deletes
+  interactions older than `RetentionDays`, default 90, on the existing `occurred_at` column), logging the count
+  and swallowing failures so the loop never dies. Registered in bot mode only. Cadence + resilience
+  spec-covered (6 facts); the `DELETE` cutoff was live-verified against a throwaway Postgres.
 - **P-23** Privacy notice: pinned Discord message + docs page naming the bot, what it stores (hashed user IDs,
   questions/answers, 90 days), and the LLM subprocessor. See D-8.
 - **P-24** Register Prompter in the `Documentation` repo: `PRODUCTS[]` entry in `web/scripts/sync-content.mjs`
