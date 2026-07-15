@@ -89,8 +89,13 @@ not to promise live in the parking lot.
 
 ## M5 — Operations
 
-- **P-20** Re-index webhook: small HTTP endpoint (shared-secret protected) triggered by the Documentation
-  repo's `build-docs` `repository_dispatch` chain, calling `IIndexer.Run()`.
+- **P-20** ~~Re-index webhook~~ **Done 2026-07-15** (code): bot mode is now a Kestrel `WebApplication`
+  co-hosting the NetCord gateway + `GET /healthz` (DB `SELECT 1` + gateway `Ready`) and `POST /reindex`
+  (`X-Reindex-Secret` compared with `CryptographicOperations.FixedTimeEquals`; 401 / 202-background-run /
+  409-already-running; empty configured secret ⇒ refuse). `index`/`ask` stay console. `ReindexSecret` added to
+  options; Dockerfile → `aspnet` base + `EXPOSE 8080`; also added `GatewayIntents.Guilds` so forum
+  thread-create (P-13) events arrive. Pure `ReindexAuth`/`ReindexGate` spec-covered (10 facts); endpoints
+  runtime-smoke-tested. **Wiring the Documentation build to call `/reindex` (+ ingress + k8s secret) is M5.3.**
 - **P-21** Deploy: join the existing UpCloud UKS cluster per D-11 — Prompter workload + in-cluster
   Postgres/pgvector + ingress route + `deploy-production.yml` modeled on Studio's (`Studio/Deployment/` is
   the reference). Resolve Q-5 (Pulumi code in Studio's stack vs. this repo) first.

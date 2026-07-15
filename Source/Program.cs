@@ -59,7 +59,7 @@ webBuilder.Services
     .AddDiscordGateway(options =>
     {
         options.Token = webBuilder.Configuration[ConfigurationPath.Combine(configSection, "Discord", "Token")];
-        options.Intents = GatewayIntents.GuildMessages | GatewayIntents.MessageContent;
+        options.Intents = GatewayIntents.Guilds | GatewayIntents.GuildMessages | GatewayIntents.MessageContent;
     })
     .AddGatewayHandlers(typeof(Program).Assembly)
     .AddApplicationCommands();
