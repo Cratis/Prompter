@@ -72,7 +72,13 @@ not to promise live in the parking lot.
   sources on the last), hard-splits oversized paragraphs, falls back to `Format` for short answers; `Mentions`
   sends each chunk in order. 23 facts, incl. code-fence safety (a fenced block is atomic; an oversized block
   hard-splits with balanced re-opened fences and its language hint preserved).
-- **P-16** 👍/👎 feedback reactions on bot answers, recorded onto the interaction row.
+- **P-16** ~~👍/👎 feedback~~ **Done 2026-07-15** (code): switched from reactions to **buttons** (per
+  `DISCORD_BEST_PRACTICES.md` — buttons carry the interaction + user id, no pre-add API calls, never fail
+  silently). `v1_1_0.sql` adds `answer_message_id` + `feedback`; `IInteractionLog.Record` returns the row id,
+  with `SetAnswerMessage`/`RecordFeedback`. 👍/👎 buttons attach to answers across `/ask`, mentions, and forum
+  replies; a `Feedback` component-interaction handler parses the custom id (`fb:<verdict>:<id>`) and writes the
+  verdict, acking ephemerally. Pure `FeedbackButton`/`FeedbackVerdicts` spec-covered (19 facts).
+  **Live click-flips-the-row check is the M3.7 done-when.**
 - **P-17a** Register the Discord application, enable the Message Content intent, generate the invite URL with
   minimal permissions (Send Messages, Create Public Threads, Embed Links) — team action.
 
