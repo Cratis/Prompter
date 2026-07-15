@@ -3,6 +3,43 @@
 Resume state for anyone (human or agent) continuing work in a fresh session. Newest entry first — append,
 don't rewrite history.
 
+## 2026-07-15 — Doc retarget cleanup + M2.1 (`ask --verbose`) code-complete
+
+**State:** Release build **zero warnings**, **113 specs green** (up from 88). Two commits added on `main`:
+`5b043cc` (doc retarget — already on `origin/main` as an ancestor of the team's `f6d88f6`) and `ad43e54`
+(M2.1 feature — **the one commit not yet pushed**; see "Push decision" below).
+
+**What shipped:**
+
+- **Deployment-doc cleanup (D-11 propagation)** — the review findings from `d193dfe` are cleared:
+  `IMPLEMENTATION_PLAN.md` M5.3, `V1_PLAN.md` (M5 row + the old "one box / ≤€15/mo" line), and
+  `RESEARCH.md`'s Hetzner run-cost now all point at the shared UpCloud UKS cluster; the DECISIONS.md reorder
+  (D-11 after D-10) + marginal-cost note landed via the team's `c41f7de`/`f6d88f6`. Verified `no-svg1` is a
+  real UpCloud Norway zone (Stavanger/Rennesøy), so the D-8 "data stays in Norway" claim holds.
+- **M2.1 `ask --verbose` (P-10)** — new pure `Cli` layer: `AskArguments` (position-independent `--verbose`/
+  `-v` parse) and `AskOutput` (renders the retrieved passages — score/page/heading, best first — before the
+  answer, and returns exit code 1 on a refusal). `Answer` now carries the `Passages` it was grounded in
+  (`Answer.Refusal` takes them too); this also feeds M4 groundedness scoring later. 9 new spec files
+  (`for_AskArguments`, `for_AskOutput`) cover parse, render, pluralization, the empty-passages branch, and
+  locale-stable (`InvariantCulture`) score formatting.
+
+**Still blocked on keys (unchanged):** the live done-whens for M1 (full index run) **and** M2.1 (the
+`--verbose` run against the real corpus) both need a **Voyage** key; M2.1's answer path also needs an
+**Anthropic** key. Note `Passages.Search` embeds the query *first*, so even a keyless empty-corpus `ask`
+cannot reach the refusal path — there is no keyless live smoke test.
+
+**Push decision (awaiting the user):** `ad43e54` (M2.1) is committed locally but **not pushed** — the repo
+is now public and pushing to `main` is externally visible, so it was left for the user to confirm (push
+direct to `main`, or open a PR — mind that Publish triggers on merge and needs Docker Hub secrets first).
+
+**Next actions, in order:**
+
+1. Decide/push `ad43e54` (above).
+2. When keys land: `docker compose up -d` → `dotnet run -- index` (closes M1.1+M1.4/M1), then
+   `dotnet run -- ask "How do I append an event in Chronicle?" --verbose` (closes M2.1's live done-when).
+3. **M2.2** threshold calibration (P-07): run ~20 in-scope + ~5 out-of-scope probes, set `Answering:MinScore`,
+   record findings in `IMPLEMENTATION_PLAN.md` under a Calibration note.
+
 ## 2026-07-15 — Public on GitHub: Cratis/Prompter created and pushed
 
 **State:** D-12 ruled **public** by the team; `https://github.com/Cratis/Prompter` created (public, MIT) and
