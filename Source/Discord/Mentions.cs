@@ -48,6 +48,9 @@ public class Mentions(
         logger.AnsweringMention(message.Author.Id);
 
         var answer = await answers.For(new(question), UserHash.For(message.Author.Id), "discord-mention");
-        await rest.SendMessageAsync(message.ChannelId, DiscordAnswers.Format(answer));
+        foreach (var chunk in DiscordAnswers.Split(answer))
+        {
+            await rest.SendMessageAsync(message.ChannelId, chunk);
+        }
     }
 }
