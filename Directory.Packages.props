@@ -1,0 +1,43 @@
+<?xml version="1.0" encoding="utf-8" ?>
+<Project xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
+    <PropertyGroup>
+        <ManagePackageVersionsCentrally>true</ManagePackageVersionsCentrally>
+    </PropertyGroup>
+    <ItemGroup>
+        <!-- Cratis -->
+        <PackageVersion Include="Cratis.Fundamentals" Version="7.16.6" />
+
+        <!-- Discord -->
+        <PackageVersion Include="NetCord" Version="1.0.0-beta.11" />
+        <PackageVersion Include="NetCord.Hosting" Version="1.0.0-beta.11" />
+        <PackageVersion Include="NetCord.Hosting.Services" Version="1.0.0-beta.11" />
+        <PackageVersion Include="NetCord.Services" Version="1.0.0-beta.11" />
+
+        <!-- AI -->
+        <PackageVersion Include="Anthropic" Version="12.35.1" />
+        <PackageVersion Include="Microsoft.Extensions.AI" Version="10.8.0" />
+
+        <!-- Hosting -->
+        <PackageVersion Include="Microsoft.Extensions.Hosting" Version="10.0.10" />
+        <PackageVersion Include="Microsoft.Extensions.Http" Version="10.0.10" />
+
+        <!-- Storage -->
+        <PackageVersion Include="Npgsql" Version="10.0.3" />
+        <PackageVersion Include="Pgvector" Version="0.3.2" />
+
+        <!-- Analysis -->
+        <PackageVersion Include="Microsoft.CodeAnalysis.CSharp.CodeStyle" Version="5.6.0" />
+        <PackageVersion Include="Microsoft.CodeAnalysis.NetAnalyzers" Version="10.0.302" />
+        <PackageVersion Include="StyleCop.Analyzers" Version="1.2.0-beta.556" NoWarn="NU5104" />
+        <PackageVersion Include="Roslynator.Analyzers" Version="4.15.0" />
+        <PackageVersion Include="Meziantou.Analyzer" Version="3.0.123" />
+
+        <!-- Testing -->
+        <PackageVersion Include="Cratis.Specifications" Version="4.0.0" />
+        <PackageVersion Include="Cratis.Specifications.XUnit" Version="4.0.0" />
+        <PackageVersion Include="NSubstitute" Version="6.0.0" />
+        <PackageVersion Include="xunit" Version="2.9.3" />
+        <PackageVersion Include="xunit.runner.visualstudio" Version="3.1.5" />
+        <PackageVersion Include="Microsoft.NET.Test.Sdk" Version="18.8.1" />
+    </ItemGroup>
+</Project>

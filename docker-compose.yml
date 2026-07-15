@@ -1,0 +1,14 @@
+volumes:
+  prompter-data:
+
+services:
+  postgres:
+    image: pgvector/pgvector:pg17
+    environment:
+      - POSTGRES_DB=prompter
+      - POSTGRES_USER=prompter
+      - POSTGRES_PASSWORD=prompter
+    ports:
+      - 5432:5432
+    volumes:
+      - prompter-data:/var/lib/postgresql/data
