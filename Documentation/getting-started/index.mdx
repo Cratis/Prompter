@@ -1,0 +1,75 @@
+---
+title: Your first answer
+description: Ask Prompter your first question on the Cratis Discord and learn every way to summon it.
+---
+
+import { Steps, Tabs, TabItem } from '@astrojs/starlight/components';
+import Recap from '@components/Recap.astro';
+import YouWillLearn from '@components/YouWillLearn.astro';
+
+<YouWillLearn>
+
+- ask Prompter a question and get a cited answer back
+- verify an answer through its sources
+- all four ways to summon the bot
+- how your 👍/👎 makes the docs better
+
+</YouWillLearn>
+
+All you need is to be a member of the [Cratis Discord](https://discord.gg/kt4AMpV8WV).
+
+<Steps>
+
+1. **Ask by mentioning.** In any channel Prompter can read, mention it with your question in the same
+   message:
+
+   ```text
+   @Prompter how do I append an event in Chronicle?
+   ```
+
+2. **Read the answer - and its receipts.** Prompter replies to your message with an answer and a `Sources:`
+   line linking the documentation pages it used. Open a source link: the answer should be recognizable from
+   the page. That link is your verification path - answers without sources don't exist.
+
+3. **React.** Every answer carries 👍 and 👎. React honestly - verdicts feed the quality measurements and
+   tell the docs team where documentation is missing. If an answer looks wrong, react 👎 and say so in the
+   channel; a human picks it up.
+
+</Steps>
+
+## All the ways to summon it
+
+<Tabs>
+  <TabItem label="@mention">
+    Works in any channel the bot can read - question and mention in the same message. Prompter replies
+    in-thread, right where you asked.
+
+    ```text
+    @Prompter what's the difference between a projection and a reducer?
+    ```
+  </TabItem>
+  <TabItem label="/ask">
+    The slash command, for a clean one-off question anywhere. Prompter acknowledges immediately and follows
+    up with the answer in the channel.
+  </TabItem>
+  <TabItem label="Ask channel">
+    In the dedicated ask channel, every message is treated as a question - no mention needed. Just type.
+  </TabItem>
+  <TabItem label="Help forum">
+    Post in the help forum as you normally would. Prompter answers first, automatically, so you get an
+    immediate starting point - and a human follows up in the same thread.
+  </TabItem>
+</Tabs>
+
+:::note[When it says "I don't know"]
+That's by design. Prompter only answers from the documentation - if it can't find grounding, it says so
+instead of guessing, and your question goes to the community.
+:::
+
+<Recap>
+
+You asked, got a cited answer, verified it at the source, and reacted. That's the whole loop - the rest is
+understanding *why* it behaves this way: [Grounded answers](/prompter/concepts/grounded-answers/) explains
+the citations, the refusals, and how the knowledge stays current.
+
+</Recap>

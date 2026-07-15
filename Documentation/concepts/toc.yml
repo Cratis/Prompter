@@ -1,5 +1,5 @@
 - name: Overview
-  href: index.md
+  href: index.mdx
 - name: Why Prompter
   href: why-prompter.md
 - name: Architecture

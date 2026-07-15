@@ -1,0 +1,25 @@
+---
+title: Concepts
+description: Understand how Prompter thinks - why it exists, how it works, and why you can trust what it says.
+---
+
+import { CardGrid } from '@astrojs/starlight/components';
+import SimpleCard from '@components/SimpleCard.astro';
+
+These pages explain Prompter rather than instruct - read them to understand why the bot behaves the way it
+does.
+
+<CardGrid>
+  <SimpleCard title="Why Prompter" icon="open-book" link="/prompter/concepts/why-prompter/">
+    The problem it solves, and when not to rely on it.
+  </SimpleCard>
+  <SimpleCard title="Architecture" icon="puzzle" link="/prompter/concepts/architecture/">
+    How ingestion, retrieval, and answering fit together.
+  </SimpleCard>
+  <SimpleCard title="Grounded answers" icon="approve-check" link="/prompter/concepts/grounded-answers/">
+    Why answers carry citations, why refusals are a feature, and how the knowledge stays current.
+  </SimpleCard>
+  <SimpleCard title="Privacy" icon="seti:lock" link="/prompter/concepts/privacy/">
+    Exactly what Prompter stores, for how long, and your rights.
+  </SimpleCard>
+</CardGrid>

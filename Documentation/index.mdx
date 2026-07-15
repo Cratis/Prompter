@@ -1,0 +1,66 @@
+---
+title: Prompter
+description: The Cratis community's documentation assistant on Discord - grounded answers with citations, straight from the docs, right where you ask.
+---
+
+import { CardGrid } from '@astrojs/starlight/components';
+import SimpleCard from '@components/SimpleCard.astro';
+import TopicHero from '@components/TopicHero.astro';
+
+<TopicHero icon="discord" eyebrow="Prompter" title="The line you forgot, whispered from offstage">
+In theater, the prompter sits just offstage with the script and feeds the line to anyone who blanks mid-scene.
+Here, the script is the Cratis documentation and the stage is the community Discord - ask, and Prompter
+answers **with citations**, or says honestly that the docs don't cover it. [Ask your first question →](/prompter/getting-started/)
+</TopicHero>
+
+```text
+you · #help
+  How do I define a command in Arc?
+
+🎭 Prompter · replies to you
+  In Arc a command is a record marked [Command]; its Handle() method
+  returns the event(s) that happened...
+
+  Sources: cratis.io/arc/commands
+```
+
+Without Prompter, a question waits for a human in the right timezone who happens to know the answer - even
+when that answer sits in the documentation the whole time. With Prompter, the documentation answers first, in
+seconds, with links - and humans spend their energy on the questions that genuinely need them.
+
+## Find your way in
+
+<CardGrid>
+  <SimpleCard title="Getting started" icon="rocket" link="/prompter/getting-started/">
+    Ask your first question and learn every way to summon the bot.
+  </SimpleCard>
+  <SimpleCard title="Why Prompter" icon="open-book" link="/prompter/concepts/why-prompter/">
+    The problem it solves - and when a human is still the right answer.
+  </SimpleCard>
+  <SimpleCard title="Grounded answers" icon="approve-check" link="/prompter/concepts/grounded-answers/">
+    Why every answer carries citations and why refusals are a feature.
+  </SimpleCard>
+  <SimpleCard title="Privacy" icon="seti:lock" link="/prompter/concepts/privacy/">
+    Exactly what it stores about you, for how long, and your rights.
+  </SimpleCard>
+  <SimpleCard title="Run it locally" icon="laptop" link="/prompter/guides/running-locally/">
+    Bring the whole pipeline up on your own machine in minutes.
+  </SimpleCard>
+  <SimpleCard title="Reference" icon="list-format" link="/prompter/reference/">
+    Every setting, the run modes, and quick answers about the bot.
+  </SimpleCard>
+</CardGrid>
+
+## What it doesn't do
+
+It never answers from general knowledge, never interjects uninvited, and never pretends: when the
+documentation doesn't cover a question, it says so and hands you back to the community - and that miss is
+logged as a signal for documentation worth writing.
+
+:::tip[Honesty is the feature]
+A confidently wrong code snippet costs you more than an honest "ask a human." Prompter is deliberately
+constrained to the documentation - that constraint is what makes its answers worth trusting.
+:::
+
+Prompter is [open source under the MIT license](https://github.com/Cratis/Prompter) - built with C#/.NET,
+Claude, and Postgres, readable end to end, including exactly what it stores about you.
