@@ -92,7 +92,21 @@ public class Indexer(
 
         await Flush();
 
-        var removed = await chunks.RemoveAllExcept(seen, cancellationToken);
+        // A crawl that discovered no chunks is almost certainly a broken source (an empty sitemap, a changed
+        // markdown-mirror convention, or every page fetch failing and being swallowed) rather than a docs site
+        // that genuinely has no pages. Removing "everything not seen" would then delete the whole corpus and
+        // silently take the bot dark, so leave the existing corpus intact and surface a warning instead.
+        int removed;
+        if (seen.Count == 0)
+        {
+            logger.SkippedRemovalForEmptyCrawl();
+            removed = 0;
+        }
+        else
+        {
+            removed = await chunks.RemoveAllExcept(seen, cancellationToken);
+        }
+
         var run = new IndexRun(pages, embedded, unchanged, removed, Stopwatch.GetElapsedTime(start));
         logger.IndexRunCompleted(run.Pages, run.Embedded, run.Unchanged, run.Removed, run.Duration);
 
