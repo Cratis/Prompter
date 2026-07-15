@@ -29,7 +29,9 @@ public static class DiscordAnswers
     public static string Format(Answer answer)
     {
         var content = BuildContent(answer);
-        return content.Length <= MaxMessageLength ? content : $"{content[..(MaxMessageLength - 1)]}{Ellipsis}";
+        return content.Length <= MaxMessageLength
+            ? content
+            : $"{content[..SafeCutLength(content, 0, MaxMessageLength - 1)]}{Ellipsis}";
     }
 
     /// <summary>
@@ -158,9 +160,11 @@ public static class DiscordAnswers
 
     static IEnumerable<string> HardSplitText(string text)
     {
-        for (var start = 0; start < text.Length; start += MaxMessageLength)
+        for (var start = 0; start < text.Length;)
         {
-            yield return text.Substring(start, Math.Min(MaxMessageLength, text.Length - start));
+            var take = SafeCutLength(text, start, MaxMessageLength);
+            yield return text.Substring(start, take);
+            start += take;
         }
     }
 
@@ -215,9 +219,11 @@ public static class DiscordAnswers
             yield break;
         }
 
-        for (var start = 0; start < line.Length; start += budget)
+        for (var start = 0; start < line.Length;)
         {
-            yield return line.Substring(start, Math.Min(budget, line.Length - start));
+            var take = SafeCutLength(line, start, budget);
+            yield return line.Substring(start, take);
+            start += take;
         }
     }
 
@@ -294,6 +300,28 @@ public static class DiscordAnswers
             return Ellipsis;
         }
 
-        return text.Length + Ellipsis.Length <= room ? $"{text}{Ellipsis}" : $"{text[..(room - Ellipsis.Length)]}{Ellipsis}";
+        return text.Length + Ellipsis.Length <= room
+            ? $"{text}{Ellipsis}"
+            : $"{text[..SafeCutLength(text, 0, room - Ellipsis.Length)]}{Ellipsis}";
+    }
+
+    /// <summary>
+    /// Computes how many UTF-16 code units to take from <paramref name="text"/> starting at
+    /// <paramref name="start"/>, capped to <paramref name="max"/>, without ever splitting a surrogate pair.
+    /// </summary>
+    /// <param name="text">The string being cut.</param>
+    /// <param name="start">The index to start the cut from.</param>
+    /// <param name="max">The most code units the cut may take.</param>
+    /// <returns>The safe length - <paramref name="max"/> code units, or one fewer when that boundary would
+    /// land between a high and low surrogate and orphan a lone surrogate that renders as a replacement char.</returns>
+    static int SafeCutLength(string text, int start, int max)
+    {
+        var take = Math.Min(max, text.Length - start);
+        if (take <= 1 || start + take >= text.Length)
+        {
+            return take;
+        }
+
+        return char.IsHighSurrogate(text[start + take - 1]) ? take - 1 : take;
     }
 }
