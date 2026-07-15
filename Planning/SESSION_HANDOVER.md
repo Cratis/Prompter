@@ -3,6 +3,21 @@
 Resume state for anyone (human or agent) continuing work in a fresh session. Newest entry first — append,
 don't rewrite history.
 
+## 2026-07-15 — Documentation restructured to the Cratis product shape + staging ladder
+
+**State:** `Documentation/` now follows the product-docs conventions: Getting started / Guides / Concepts /
+Reference buckets with per-folder `toc.yml` + `index.md`, a front-door index (one-sentence definition,
+without/with framing), `why-prompter.md`, `grounded-answers.md`, `privacy.md` (doubles as the P-23 privacy
+notice target), `running-locally.md`, `configuration.md`, `faq.md`. Org-standard `.markdownlint.json` added
+(the missing piece that made `verify-markdown.sh` fail on defaults); markdownlint 0 errors, all internal
+links/toc hrefs verified, external links return 200. `DEPLOYMENT.md` gained the **staging ladder** (Stage 0
+laptop → optional Stage 1 simple UpCloud VM → Stage 2 D-11 cluster) — the bot dials out, so the laptop is a
+legitimate try-out stage. **Secrets finding:** `DOCKER_USERNAME`/`DOCKER_PASSWORD`/`PAT_DOCUMENTATION` are
+**org-level** (Chronicle.Mcp/cli have no repo secrets yet their workflows pass) — P-26 likely needs no new
+secrets, at most an org admin confirming visibility includes Prompter; a live `documentation.yml` dispatch
+test is queued. Note: `main` is several commits ahead of `origin/main` (incl. M2.1) — push pending the
+user's go-ahead.
+
 ## 2026-07-15 — Doc retarget cleanup + M2.1 (`ask --verbose`) code-complete
 
 **State:** Release build **zero warnings**, **113 specs green** (up from 88). Two commits added on `main`:
