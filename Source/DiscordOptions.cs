@@ -17,4 +17,9 @@ public class DiscordOptions
     /// Gets or sets the identifier of the help forum channel that gets automatic replies to new threads.
     /// </summary>
     public ulong? HelpForumChannelId { get; set; }
+
+    /// <summary>
+    /// Gets or sets the per-user rate-limiting options.
+    /// </summary>
+    public RateLimitOptions RateLimit { get; set; } = new();
 }

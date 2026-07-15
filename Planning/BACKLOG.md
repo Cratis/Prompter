@@ -48,7 +48,11 @@ not to promise live in the parking lot.
 - **P-12** Verify `GatewayClient.Id` correctly identifies the bot for mention detection (scaffold assumption),
   and handle role-mentions (`<@&…>`) and the nickname mention form (`<@!…>`).
 - **P-13** Forum auto-reply: handler for new threads in `Discord:HelpForumChannelId`, answering as first reply.
-- **P-14** Per-user rate limiting (e.g. 5 questions / 10 min) — protects LLM spend and the community's patience.
+- **P-14** ~~Per-user rate limiting (e.g. 5 questions / 10 min)~~ **Done 2026-07-15** (logic): `RateLimiter`
+  is a pure per-user token bucket (`TryConsume(userHash, now)`), config `Discord:RateLimit` (`MaxQuestions`
+  5 / `WindowMinutes` 10), spec-covered (within-limit, exceed, window refill, partial refill, per-user
+  isolation). **Wiring into the gateway handler + the friendly refusal message is M3 integration** (needs the
+  NetCord-verified message path).
 - **P-15** Split answers over 2000 chars into a thread instead of truncating with an ellipsis.
 - **P-16** 👍/👎 feedback reactions on bot answers, recorded onto the interaction row.
 - **P-17a** Register the Discord application, enable the Message Content intent, generate the invite URL with
