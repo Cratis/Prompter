@@ -1,0 +1,27 @@
+{
+  "_comment": [
+    "Committed answer-quality floor for the Prompter eval CI gate (P-19, .github/workflows/eval.yml).",
+    "",
+    "PLACEHOLDER THRESHOLDS. These were seeded WITHOUT a real run because the harness needs Voyage +",
+    "Anthropic keys and a live pgvector corpus that are not available at authoring time. Regenerate them",
+    "from a real run once the secrets exist, and commit the observed scores as the floor:",
+    "  1. docker compose up -d && dotnet run --project Source -- index",
+    "  2. dotnet run --project Eval",
+    "  3. open the newest Eval/results/report-*.json and copy summary.citationHitRate,",
+    "     summary.refusalAccuracy and summary.meanGroundedness into 'metrics' below (round down a touch),",
+    "     then commit. See Eval/README.md ('The CI gate') for the full procedure.",
+    "",
+    "The keys under 'metrics' MUST match the summary keys the harness emits (Eval/EvalReport.cs, ToJson()):",
+    "  citationHitRate  — in-scope citation-hit rate, a fraction in [0, 1]",
+    "  refusalAccuracy  — out-of-scope refusal accuracy, a fraction in [0, 1]",
+    "  meanGroundedness — mean groundedness of in-scope answers, on a 1-5 scale",
+    "'tolerance' is subtracted from each floor before comparison, absorbing small run-to-run noise; a metric",
+    "fails the gate only when observed < floor - tolerance."
+  ],
+  "tolerance": 0.02,
+  "metrics": {
+    "citationHitRate": 0.80,
+    "refusalAccuracy": 0.90,
+    "meanGroundedness": 4.0
+  }
+}

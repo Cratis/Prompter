@@ -5,7 +5,8 @@ questions phrased the way real Cratis community members ask in Discord, each gro
 out-of-scope block, deliberately *not* grounded in — the published docs at <https://cratis.io>.
 
 The harness that consumes it is **P-18** (`Prompter.Eval.csproj`, this folder); the CI gate that enforces
-it (**P-19**, `.github/workflows/eval.yml`) still lands later in milestone M4.
+it (**P-19**, `.github/workflows/eval.yml`) runs the harness on demand and fails the build when scores
+regress below the committed floor in `baseline.json` — see [The CI gate](#the-ci-gate) below.
 
 ## Running the harness
 
@@ -33,6 +34,49 @@ dotnet run --project Eval
 
 It writes a timestamped markdown + JSON report (per-question rows plus aggregate scores) to
 `Eval/results/`, which is git-ignored. Optional flags: `--golden <path>` and `--out <dir>`.
+
+## The CI gate
+
+`.github/workflows/eval.yml` (**P-19**) turns the harness into a regression gate. Because a run costs Voyage
++ Anthropic calls and a full index of cratis.io, it is **not** on every PR — it runs only on
+`workflow_dispatch` or when a pull request carries the **`eval`** label (add the label to have a PR scored;
+an unlabeled PR never spends API budget). The job stands up a `pgvector/pgvector:pg17` service container
+matching `docker-compose.yml`, indexes the corpus, runs the harness, uploads the report as a workflow
+artifact, and then enforces the baseline.
+
+It needs two repository secrets (Settings → Secrets and variables → Actions), mapped onto the config the app
+binds:
+
+| Secret | Bound to | Used for |
+|---|---|---|
+| `VOYAGE_API_KEY` | `Cratis__Prompter__Voyage__ApiKey` | retrieval embeddings (index + eval) |
+| `ANTHROPIC_API_KEY` | `Cratis__Prompter__Anthropic__ApiKey` | the answer and the groundedness judge |
+
+`Eval/check-baseline.py` compares the newest `Eval/results/report-*.json` against `Eval/baseline.json`. For
+each metric in the baseline it reads the report's `summary.<metric>` and fails the job if any value is below
+`floor - tolerance`. The tracked metrics — and their keys — are exactly what `EvalReport.ToJson()` emits:
+
+| Baseline metric | Report field | Scale |
+|---|---|---|
+| `citationHitRate` | `summary.citationHitRate` | fraction 0–1 |
+| `refusalAccuracy` | `summary.refusalAccuracy` | fraction 0–1 |
+| `meanGroundedness` | `summary.meanGroundedness` | mean 1–5 |
+
+**The committed `baseline.json` currently holds placeholder floors.** They were seeded without a real run
+(the harness needs live keys and a corpus). Regenerate them from an actual run once the secrets exist, and
+commit the observed scores as the real floor:
+
+```bash
+docker compose up -d
+dotnet run --project Source -- index         # populate the pgvector corpus
+dotnet run --project Eval                     # writes Eval/results/report-<stamp>.json
+```
+
+Open the newest `Eval/results/report-*.json`, copy `summary.citationHitRate`, `summary.refusalAccuracy`, and
+`summary.meanGroundedness` into the `metrics` block of `Eval/baseline.json` (round down a touch so normal
+run-to-run noise doesn't trip the gate — `tolerance` also absorbs a little), and commit. The gate is proven
+the way the plan's "done when" describes it: a deliberately broken prompt drops a metric below its floor and
+fails the workflow; the good prompt stays above it and passes.
 
 ## What's in the set
 

@@ -1,0 +1,92 @@
+name: Eval
+
+# Answer-quality gate (backlog P-19). Running the harness costs Voyage + Anthropic API calls and a full
+# index of cratis.io, so this workflow is deliberately NOT on every PR. It runs only when:
+#   * triggered by hand (workflow_dispatch), or
+#   * a pull request carries the `eval` label (add the label to a PR to have it scored).
+# The `pull_request` trigger fires on `labeled` (so adding the label kicks off a run) and on `synchronize`
+# / `reopened` (so an already-labeled PR is re-scored on each push). The job-level `if` guards every
+# pull_request event on the `eval` label, so an ordinary unlabeled PR triggers nothing but a skipped job.
+#
+# Required repository secrets (Settings -> Secrets and variables -> Actions):
+#   * VOYAGE_API_KEY      — Voyage AI key, used for retrieval embeddings during indexing and the eval.
+#   * ANTHROPIC_API_KEY   — Anthropic key, used for the answer and the groundedness judge.
+# They are mapped onto the env-var forms the app binds (Cratis__Prompter__Voyage__ApiKey /
+# Cratis__Prompter__Anthropic__ApiKey — see the config table in README.md).
+
+env:
+  DOTNET_VERSION: "10.0.x"
+  # Where the harness writes its report and where the baseline check reads it from — kept in one place so
+  # the two stay in sync.
+  RESULTS_DIR: "Eval/results"
+
+on:
+  workflow_dispatch:
+  pull_request:
+    types: [labeled, synchronize, reopened]
+    branches:
+      - "main"
+
+# Eval runs are expensive; never let a labeled PR pile up overlapping runs.
+concurrency:
+  group: eval-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  eval:
+    # workflow_dispatch always runs; pull_request events run only while the PR carries the `eval` label,
+    # so unlabeled PRs never spend API budget here.
+    if: >-
+      github.event_name == 'workflow_dispatch' ||
+      contains(github.event.pull_request.labels.*.name, 'eval')
+    runs-on: ubuntu-latest
+
+    # Postgres + pgvector, matching docker-compose.yml (pgvector/pgvector:pg17, db/user/pass all `prompter`).
+    services:
+      postgres:
+        image: pgvector/pgvector:pg17
+        env:
+          POSTGRES_DB: prompter
+          POSTGRES_USER: prompter
+          POSTGRES_PASSWORD: prompter
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U prompter -d prompter"
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+
+    env:
+      # Points at the service container mapped onto the runner's localhost (matches the app default).
+      Cratis__Prompter__ConnectionString: "Host=localhost;Port=5432;Database=prompter;Username=prompter;Password=prompter"
+      Cratis__Prompter__Voyage__ApiKey: ${{ secrets.VOYAGE_API_KEY }}
+      Cratis__Prompter__Anthropic__ApiKey: ${{ secrets.ANTHROPIC_API_KEY }}
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Setup .NET
+        uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: ${{ env.DOTNET_VERSION }}
+
+      - name: Build
+        run: dotnet build --configuration Release
+
+      - name: Index the corpus
+        run: dotnet run --project Source --configuration Release --no-build -- index
+
+      - name: Run the eval harness
+        run: dotnet run --project Eval --configuration Release --no-build -- --out "${{ env.RESULTS_DIR }}"
+
+      - name: Upload the eval report
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: eval-report
+          path: ${{ env.RESULTS_DIR }}
+          if-no-files-found: warn
+
+      - name: Enforce the answer-quality baseline
+        run: python3 Eval/check-baseline.py --report "${{ env.RESULTS_DIR }}" --baseline Eval/baseline.json
