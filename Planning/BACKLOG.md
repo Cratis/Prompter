@@ -23,8 +23,12 @@ not to promise live in the parking lot.
 - **P-03** ~~Make the ingestion exclusion list configurable~~ **Done 2026-07-15**: `IngestionOptions.
   ExcludedPathSegments` (defaults `client-snippets`, `api-reference`) consumed by `DocsSite`; `ParsePageUrls`
   takes the list as a parameter; custom + default exclusions spec-covered.
-- **P-04** Decide the schema-migration story once the schema changes for the first time (plain SQL file today;
-  candidates: versioned SQL files à la Ada's `Database` project).
+- **P-04** ~~Decide the schema-migration story~~ **Done 2026-07-15**: versioned SQL migrations (Ada-style).
+  `Storage/Migrations/v1_0_0.sql` (the former `Schema.sql`) + a `schema_migrations` tracking table; `EnsureSchema`
+  discovers embedded migrations, orders by parsed `MigrationVersion`, and applies only pending ones, each in a
+  `BEGIN…COMMIT` with its version-record insert (no partial-record risk). Pure `MigrationVersion`/`MigrationPlan`
+  logic spec-covered; live-verified against Postgres (fresh build + idempotent re-run + a `v1_1_0` applied on top).
+  Unblocks P-16 (add `answer_message_id` as `v1_1_0.sql`, zero code changes).
 - **P-05** `prompter index` run in CI on a schedule as a fallback for the webhook (M5).
 
 ## M2 — Retrieval + Answering
@@ -42,18 +46,28 @@ not to promise live in the parking lot.
 
 ## M3 — Discord
 
-- **P-11** Deferred responses for `/ask` — answering takes longer than Discord's 3-second interaction window;
-  respond with a deferred callback, then follow up. (The scaffold returns the answer directly, which will time
-  out on slow answers.)
+- **P-11** ~~Deferred responses for `/ask`~~ **Done 2026-07-15** (code): `/ask` now sends
+  `InteractionCallback.DeferredMessage()` via `SendResponseAsync` (the native "thinking…"), computes the answer,
+  then delivers it with `SendFollowupMessageAsync`; return type changed to `Task` so NetCord doesn't
+  double-respond. NetCord beta.11 API confirmed against the shipped assembly + netcord.dev. **Live "thinking…
+  → answer" runtime check is the M3.1 done-when (needs a test server + keys).**
 - **P-12** Verify `GatewayClient.Id` correctly identifies the bot for mention detection (scaffold assumption),
   and handle role-mentions (`<@&…>`) and the nickname mention form (`<@!…>`).
-- **P-13** Forum auto-reply: handler for new threads in `Discord:HelpForumChannelId`, answering as first reply.
+- **P-13** ~~Forum auto-reply~~ **Done 2026-07-15** (code): `HelpForum` implements NetCord's
+  `IGuildThreadCreateGatewayHandler` — on a newly-created thread whose `ParentId` matches
+  `Discord:HelpForumChannelId`, it reads the starter message, answers as the first reply, then posts the standing
+  "A human will follow up…" line (two sends so the 2000-char guarantee holds). Pure `ShouldAnswer` guard
+  spec-covered (5 facts); auto-registered by assembly scan. **Live forum-post check is the M3.4 done-when.**
 - **P-14** ~~Per-user rate limiting (e.g. 5 questions / 10 min)~~ **Done 2026-07-15** (logic): `RateLimiter`
   is a pure per-user token bucket (`TryConsume(userHash, now)`), config `Discord:RateLimit` (`MaxQuestions`
   5 / `WindowMinutes` 10), spec-covered (within-limit, exceed, window refill, partial refill, per-user
   isolation). **Wiring into the gateway handler + the friendly refusal message is M3 integration** (needs the
   NetCord-verified message path).
-- **P-15** Split answers over 2000 chars into a thread instead of truncating with an ellipsis.
+- **P-15** ~~Split answers over 2000 chars instead of truncating~~ **Done 2026-07-15** (code): pure
+  `DiscordAnswers.Split(Answer) : IReadOnlyList<string>` packs paragraphs greedily into ≤2000-char chunks (max 3,
+  sources on the last), hard-splits oversized paragraphs, falls back to `Format` for short answers; `Mentions`
+  sends each chunk in order. 15 facts. Follow-up refinement queued from `DISCORD_BEST_PRACTICES.md`: avoid
+  splitting inside a fenced code block.
 - **P-16** 👍/👎 feedback reactions on bot answers, recorded onto the interaction row.
 - **P-17a** Register the Discord application, enable the Message Content intent, generate the invite URL with
   minimal permissions (Send Messages, Create Public Threads, Embed Links) — team action.
