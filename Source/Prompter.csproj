@@ -1,0 +1,24 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <PropertyGroup>
+    <OutputType>Exe</OutputType>
+    <RootNamespace>Cratis.Prompter</RootNamespace>
+    <AssemblyName>Cratis.Prompter</AssemblyName>
+  </PropertyGroup>
+  <ItemGroup>
+    <PackageReference Include="Anthropic" />
+    <PackageReference Include="Cratis.Fundamentals" />
+    <PackageReference Include="Microsoft.Extensions.AI" />
+    <PackageReference Include="Microsoft.Extensions.Hosting" />
+    <PackageReference Include="Microsoft.Extensions.Http" />
+    <PackageReference Include="NetCord" />
+    <PackageReference Include="NetCord.Hosting" />
+    <PackageReference Include="NetCord.Hosting.Services" />
+    <PackageReference Include="NetCord.Services" />
+    <PackageReference Include="Npgsql" />
+    <PackageReference Include="Pgvector" />
+  </ItemGroup>
+  <ItemGroup>
+    <EmbeddedResource Include="Storage/Schema.sql" />
+    <None Update="appsettings.json" CopyToOutputDirectory="PreserveNewest" />
+  </ItemGroup>
+</Project>
