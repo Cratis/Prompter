@@ -16,9 +16,13 @@ RUN dotnet publish Source/Prompter.csproj --configuration ${CONFIGURATION} -p:Ve
 ####################################
 # Runtime image
 ####################################
-FROM mcr.microsoft.com/dotnet/runtime:10.0-bookworm-slim
+# Bot mode hosts Kestrel (health probe + re-index webhook), so the runtime needs the ASP.NET Core
+# shared framework. EXPOSE 8080 is Kestrel's default container port for the /healthz and /reindex routes.
+FROM mcr.microsoft.com/dotnet/aspnet:10.0-bookworm-slim
 
 WORKDIR /app
 COPY --from=build /app/publish .
+
+EXPOSE 8080
 
 ENTRYPOINT ["dotnet", "Cratis.Prompter.dll"]

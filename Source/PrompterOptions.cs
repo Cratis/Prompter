@@ -24,6 +24,12 @@ public class PrompterOptions
     public int RetentionDays { get; set; } = 90;
 
     /// <summary>
+    /// Gets or sets the shared secret that authorizes <c>POST /reindex</c> calls. When empty, the endpoint
+    /// refuses every request rather than allowing an unauthenticated re-index.
+    /// </summary>
+    public string ReindexSecret { get; set; } = string.Empty;
+
+    /// <summary>
     /// Gets or sets the ingestion specific options.
     /// </summary>
     public IngestionOptions Ingestion { get; set; } = new();

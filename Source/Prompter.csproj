@@ -5,11 +5,13 @@
     <AssemblyName>Cratis.Prompter</AssemblyName>
   </PropertyGroup>
   <ItemGroup>
+    <!-- Bot mode hosts Kestrel (health probe + re-index webhook) alongside the Discord gateway. -->
+    <FrameworkReference Include="Microsoft.AspNetCore.App" />
+  </ItemGroup>
+  <ItemGroup>
     <PackageReference Include="Anthropic" />
     <PackageReference Include="Cratis.Fundamentals" />
     <PackageReference Include="Microsoft.Extensions.AI" />
-    <PackageReference Include="Microsoft.Extensions.Hosting" />
-    <PackageReference Include="Microsoft.Extensions.Http" />
     <PackageReference Include="NetCord" />
     <PackageReference Include="NetCord.Hosting" />
     <PackageReference Include="NetCord.Hosting.Services" />

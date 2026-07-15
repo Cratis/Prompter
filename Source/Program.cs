@@ -1,110 +1,40 @@
 // Copyright (c) Cratis. All rights reserved.
 // Licensed under the MIT license. See LICENSE file in the project root for full license information.
 
-using Anthropic;
-using Cratis.Prompter;
 using Cratis.Prompter.Answering;
 using Cratis.Prompter.Cli;
-using Cratis.Prompter.Embeddings;
+using Cratis.Prompter.Hosting;
 using Cratis.Prompter.Ingestion;
-using Cratis.Prompter.Retrieval;
+using Cratis.Prompter.Operations;
 using Cratis.Prompter.Storage;
-using Microsoft.Extensions.AI;
+using Microsoft.AspNetCore.Builder;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
-using Microsoft.Extensions.Logging;
-using Microsoft.Extensions.Options;
 using NetCord.Gateway;
 using NetCord.Hosting.Gateway;
 using NetCord.Hosting.Services;
 using NetCord.Hosting.Services.ApplicationCommands;
-using Npgsql;
-
-var builder = Host.CreateApplicationBuilder(args);
-
-var configSection = ConfigurationPath.Combine("Cratis", "Prompter");
-
-builder.Services
-    .AddOptions<PrompterOptions>()
-    .BindConfiguration(configSection);
-
-builder.Configuration
-    .AddJsonFile("appsettings.json", optional: true, reloadOnChange: true)
-    .AddEnvironmentVariables();
-
-builder.Services.AddSingleton(sp =>
-{
-    var options = sp.GetRequiredService<IOptions<PrompterOptions>>().Value;
-    var dataSourceBuilder = new NpgsqlDataSourceBuilder(options.ConnectionString);
-    dataSourceBuilder.UseVector();
-
-    return dataSourceBuilder.Build();
-});
-
-builder.Services.AddHttpClient<IDocsSite, DocsSite>((sp, client) =>
-{
-    var options = sp.GetRequiredService<IOptions<PrompterOptions>>().Value;
-    client.BaseAddress = new Uri(options.DocsSiteUrl.TrimEnd('/') + "/");
-});
-
-builder.Services.AddHttpClient<VoyageEmbeddings>((sp, client) =>
-{
-    var options = sp.GetRequiredService<IOptions<PrompterOptions>>().Value;
-    client.BaseAddress = new Uri(options.Voyage.Url);
-    client.DefaultRequestHeaders.Authorization = new("Bearer", options.Voyage.ApiKey);
-});
-
-builder.Services.AddSingleton<IEmbeddingGenerator<string, Embedding<float>>>(sp =>
-    new ResilientEmbeddingGenerator(
-        sp.GetRequiredService<VoyageEmbeddings>(),
-        sp.GetRequiredService<IOptions<PrompterOptions>>(),
-        sp.GetRequiredService<ILogger<ResilientEmbeddingGenerator>>()));
-
-builder.Services.AddSingleton<IChatClient>(sp =>
-{
-    var options = sp.GetRequiredService<IOptions<PrompterOptions>>().Value;
-    var client = options.Anthropic.ApiKey.Length > 0
-        ? new AnthropicClient { ApiKey = options.Anthropic.ApiKey }
-        : new AnthropicClient();
-
-    return client.AsIChatClient(options.Anthropic.Model);
-});
-
-builder.Services.AddSingleton<IChunks, Chunks>();
-builder.Services.AddSingleton<IInteractionLog, InteractionLog>();
-builder.Services.AddSingleton<IPassages, Passages>();
-builder.Services.AddSingleton<IAnswers, Answers>();
-builder.Services.AddSingleton<IIndexer, Indexer>();
 
 var mode = args.FirstOrDefault() ?? "bot";
 
-if (mode == "bot")
+if (mode == "index" || mode == "ask")
 {
-    builder.Services
-        .AddDiscordGateway(options =>
-        {
-            options.Token = builder.Configuration[ConfigurationPath.Combine(configSection, "Discord", "Token")];
-            options.Intents = GatewayIntents.GuildMessages | GatewayIntents.MessageContent;
-        })
-        .AddGatewayHandlers(typeof(Program).Assembly)
-        .AddApplicationCommands();
-}
+    var builder = Host.CreateApplicationBuilder(args);
+    builder.AddPrompter();
 
-var host = builder.Build();
+    var host = builder.Build();
+    await host.Services.GetRequiredService<IChunks>().EnsureSchema();
 
-await host.Services.GetRequiredService<IChunks>().EnsureSchema();
-
-switch (mode)
-{
-    case "index":
+    if (mode == "index")
+    {
         var run = await host.Services.GetRequiredService<IIndexer>().Run();
         Console.WriteLine(
             $"Indexed {run.Pages} pages in {run.Duration:mm\\:ss}: " +
             $"{run.Embedded} embedded, {run.Unchanged} unchanged, {run.Removed} removed.");
-        break;
-
-    case "ask":
+    }
+    else
+    {
         var ask = AskArguments.Parse(args.Skip(1));
         var answer = await host.Services.GetRequiredService<IAnswers>().For(new(ask.Question), "cli", "cli");
         foreach (var line in AskOutput.Lines(answer, ask.Verbose))
@@ -113,10 +43,32 @@ switch (mode)
         }
 
         Environment.ExitCode = AskOutput.ExitCode(answer);
-        break;
+    }
 
-    default:
-        host.AddModules(typeof(Program).Assembly);
-        await host.RunAsync();
-        break;
+    return;
 }
+
+// Bot mode runs as a web application: Kestrel co-hosts the Discord gateway client (a background hosted
+// service dialing out to Discord) with the operational HTTP endpoints (health probe + re-index webhook).
+var configSection = ConfigurationPath.Combine("Cratis", "Prompter");
+var webBuilder = WebApplication.CreateBuilder(args);
+
+webBuilder.AddPrompter();
+webBuilder.Services.AddSingleton<ReindexGate>();
+webBuilder.Services
+    .AddDiscordGateway(options =>
+    {
+        options.Token = webBuilder.Configuration[ConfigurationPath.Combine(configSection, "Discord", "Token")];
+        options.Intents = GatewayIntents.GuildMessages | GatewayIntents.MessageContent;
+    })
+    .AddGatewayHandlers(typeof(Program).Assembly)
+    .AddApplicationCommands();
+
+var app = webBuilder.Build();
+
+await app.Services.GetRequiredService<IChunks>().EnsureSchema();
+
+app.AddModules(typeof(Program).Assembly);
+app.MapPrompterEndpoints();
+
+await app.RunAsync();
