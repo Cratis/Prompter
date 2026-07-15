@@ -4,7 +4,7 @@
         <IsTestProject>true</IsTestProject>
         <GenerateDocumentationFile>false</GenerateDocumentationFile>
         <RootNamespace>Cratis.Prompter.Specs</RootNamespace>
-        <NoWarn>$(NoWarn);IDE0051;SA1134;SA0001;RCS1213;EnableGenerateDocumentationFile</NoWarn>
+        <NoWarn>$(NoWarn);IDE0051;SA1134;SA0001;RCS1213;CA1001;EnableGenerateDocumentationFile</NoWarn>
     </PropertyGroup>
     <ItemGroup>
         <PackageReference Include="Cratis.Specifications" />
@@ -16,5 +16,9 @@
     </ItemGroup>
     <ItemGroup>
         <ProjectReference Include="..\Source\Prompter.csproj" />
+    </ItemGroup>
+    <ItemGroup>
+        <EmbeddedResource Include="Fixtures\landing-page.md" LogicalName="landing-page.md" />
+        <EmbeddedResource Include="Fixtures\arc.md" LogicalName="arc.md" />
     </ItemGroup>
 </Project>

@@ -22,7 +22,7 @@ public static class MarkdownChunker
     /// <returns>The chunks for the page.</returns>
     public static IEnumerable<Chunk> Chunk(PageUrl page, string markdown, int maxChunkLength = DefaultMaxChunkLength)
     {
-        var content = StripFrontmatter(markdown);
+        var content = StripMdxComponents(StripFrontmatter(markdown));
         var lines = content.Split('\n');
         var title = lines.FirstOrDefault(line => line.StartsWith("# ", StringComparison.Ordinal))?[2..].Trim()
             ?? PageTitleFrom(page);
@@ -77,6 +77,145 @@ public static class MarkdownChunker
         return afterMarker < 0 ? string.Empty : markdown[(afterMarker + 1)..];
     }
 
+    /// <summary>
+    /// Removes the MDX noise that survives in the markdown mirrors - module imports, JSX expression comments
+    /// (<c>{/* ... */}</c>) and block-level component tags (<c>&lt;CardGrid&gt;</c>, <c>&lt;TopicHero …&gt;</c>,
+    /// self-closing <c>&lt;SimpleCard … /&gt;</c>, including multi-line forms) - while keeping the prose
+    /// children of paired component tags (e.g. hero text). Everything inside fenced code blocks is left
+    /// untouched. Component tags are recognized as elements whose name starts with an uppercase letter, the
+    /// MDX convention, so lowercase HTML and inline generics such as <c>List&lt;T&gt;</c> are left alone.
+    /// </summary>
+    /// <param name="content">The markdown content to clean.</param>
+    /// <returns>The markdown with MDX noise removed.</returns>
+    static string StripMdxComponents(string content)
+    {
+        var lines = content.Split('\n');
+        var result = new StringBuilder();
+        var inCodeFence = false;
+        var inComment = false;
+        var inTag = false;
+
+        foreach (var raw in lines)
+        {
+            var line = raw;
+
+            if (inCodeFence)
+            {
+                result.Append(line).Append('\n');
+                if (line.TrimStart().StartsWith("```", StringComparison.Ordinal))
+                {
+                    inCodeFence = false;
+                }
+
+                continue;
+            }
+
+            if (inComment)
+            {
+                var close = line.IndexOf("*/}", StringComparison.Ordinal);
+                if (close < 0)
+                {
+                    continue;
+                }
+
+                line = line[(close + 3)..];
+                inComment = false;
+            }
+
+            if (inTag)
+            {
+                var close = line.IndexOf('>', StringComparison.Ordinal);
+                if (close < 0)
+                {
+                    continue;
+                }
+
+                line = line[(close + 1)..];
+                inTag = false;
+            }
+
+            if (line.TrimStart().StartsWith("```", StringComparison.Ordinal))
+            {
+                result.Append(line).Append('\n');
+                inCodeFence = true;
+                continue;
+            }
+
+            line = RemoveInlineComments(line, ref inComment);
+
+            var trimmed = line.TrimStart();
+            if (trimmed.StartsWith("import ", StringComparison.Ordinal) && trimmed.Contains(" from ", StringComparison.Ordinal))
+            {
+                continue;
+            }
+
+            if (IsComponentTagStart(trimmed))
+            {
+                var close = line.IndexOf('>', StringComparison.Ordinal);
+                if (close < 0)
+                {
+                    inTag = true;
+                    continue;
+                }
+
+                line = line[(close + 1)..];
+            }
+
+            if (line.Trim().Length == 0)
+            {
+                result.Append('\n');
+                continue;
+            }
+
+            result.Append(line.TrimEnd()).Append('\n');
+        }
+
+        return result.ToString();
+    }
+
+    /// <summary>
+    /// Removes every complete <c>{/* ... */}</c> comment on the line; a comment left open sets
+    /// <paramref name="inComment"/> and truncates the line at its start.
+    /// </summary>
+    /// <param name="line">The line to clean.</param>
+    /// <param name="inComment">Set to <see langword="true"/> when the line opens a comment that stays open.</param>
+    /// <returns>The line with complete inline comments removed.</returns>
+    static string RemoveInlineComments(string line, ref bool inComment)
+    {
+        int open;
+        while ((open = line.IndexOf("{/*", StringComparison.Ordinal)) >= 0)
+        {
+            var close = line.IndexOf("*/}", open + 3, StringComparison.Ordinal);
+            if (close < 0)
+            {
+                inComment = true;
+                return line[..open];
+            }
+
+            line = line[..open] + line[(close + 3)..];
+        }
+
+        return line;
+    }
+
+    /// <summary>
+    /// Determines whether the trimmed line begins a JSX/MDX component tag - an opening, closing or
+    /// self-closing tag whose element name starts with an uppercase letter.
+    /// </summary>
+    /// <param name="trimmed">The line with leading whitespace already removed.</param>
+    /// <returns><see langword="true"/> when the line begins a component tag; otherwise <see langword="false"/>.</returns>
+    static bool IsComponentTagStart(string trimmed)
+    {
+        if (trimmed.Length < 2 || trimmed[0] != '<')
+        {
+            return false;
+        }
+
+        var index = trimmed[1] == '/' ? 2 : 1;
+
+        return index < trimmed.Length && char.IsAsciiLetterUpper(trimmed[index]);
+    }
+
     static List<(string HeadingPath, string Content)> SplitIntoSections(string[] lines, string title)
     {
         var sections = new List<(string HeadingPath, string Content)>();
@@ -120,11 +259,6 @@ public static class MarkdownChunker
             }
 
             if (!inCodeFence && line.StartsWith("# ", StringComparison.Ordinal))
-            {
-                continue;
-            }
-
-            if (!inCodeFence && line.StartsWith("import ", StringComparison.Ordinal) && line.Contains(" from ", StringComparison.Ordinal))
             {
                 continue;
             }
