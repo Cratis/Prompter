@@ -3,6 +3,22 @@
 Resume state for anyone (human or agent) continuing work in a fresh session. Newest entry first — append,
 don't rewrite history.
 
+## 2026-07-15 — Docs get the Starlight treatment; org secrets confirmed working
+
+**State:** Landing pages upgraded to **MDX with the Documentation repo's components** (verified against
+`Documentation/web/src/components/` source and cli's `index.mdx` as the reference): front door =
+`TopicHero` + `SimpleCard` grid; getting-started = tutorial chapter (`YouWillLearn`, `Steps`, `Tabs` for the
+four summon surfaces, `Recap`); section landings = card grids. Content pages remain `.md`. Icons chosen only
+from names already used across the site (+`discord` from Starlight's builtin set). `sync-content.mjs`
+processes product-repo `.mdx` (verified in its source). **Assumption recorded:** site-absolute links use the
+`/prompter/` slug — must match the P-24 `PRODUCTS[]` registration; visual QA (the `qa-cratis-docs` skill)
+happens once registered. Lint 0 errors; all relative links/toc hrefs verified.
+
+**Secrets test result (P-26 effectively closed):** the `documentation.yml` dispatch on this repo completed
+**success** — org-level `PAT_DOCUMENTATION` reaches Prompter, so org secret visibility includes this repo and
+`DOCKER_USERNAME`/`DOCKER_PASSWORD` (same org level, proven by secret-less Chronicle.Mcp publishing) will
+too. Remaining P-26 residue: only the Docker Hub `cratis/prompter` repository if pushes don't auto-create it.
+
 ## 2026-07-15 — Documentation restructured to the Cratis product shape + staging ladder
 
 **State:** `Documentation/` now follows the product-docs conventions: Getting started / Guides / Concepts /

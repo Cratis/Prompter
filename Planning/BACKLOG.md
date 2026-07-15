@@ -76,8 +76,10 @@ not to promise live in the parking lot.
   + sibling-clone list, so `Documentation/` here appears on cratis.io.
 - **P-25** Run the `sync-copilot-instructions` workflow to pull the shared `.ai/` + `.claude/` + `.github`
   config from the AI repo (do not hand-copy rules).
-- **P-26** Repo settings: create the GitHub repo `Cratis/Prompter`, add secrets `DOCKER_USERNAME`,
-  `DOCKER_PASSWORD`, `PAT_DOCUMENTATION`; Docker Hub repo `cratis/prompter`.
+- **P-26** ~~Repo settings~~ **Mostly done 2026-07-15**: `Cratis/Prompter` created (public, D-12) and pushed;
+  secrets are **org-level** and confirmed reaching this repo (live `documentation.yml` dispatch succeeded;
+  Chronicle.Mcp publishes with zero repo secrets). Residue: the Docker Hub `cratis/prompter` repository if
+  the first publish doesn't auto-create it.
 
 ## Content roadmap (design owned by [`CONTENT_AND_FRESHNESS.md`](CONTENT_AND_FRESHNESS.md))
 
