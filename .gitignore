@@ -297,3 +297,7 @@ Benchmarks/results
 
 vite.*.js
 vite*.map
+
+# Generated evaluation reports (P-18). The folder is kept via .gitkeep.
+Eval/results/*
+!Eval/results/.gitkeep

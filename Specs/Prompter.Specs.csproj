@@ -16,6 +16,7 @@
     </ItemGroup>
     <ItemGroup>
         <ProjectReference Include="..\Source\Prompter.csproj" />
+        <ProjectReference Include="..\Eval\Prompter.Eval.csproj" />
     </ItemGroup>
     <ItemGroup>
         <EmbeddedResource Include="Fixtures\landing-page.md" LogicalName="landing-page.md" />

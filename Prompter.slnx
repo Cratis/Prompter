@@ -14,4 +14,7 @@
   <Folder Name="/Specs/">
     <Project Path="Specs/Prompter.Specs.csproj" />
   </Folder>
+  <Folder Name="/Eval/">
+    <Project Path="Eval/Prompter.Eval.csproj" />
+  </Folder>
 </Solution>

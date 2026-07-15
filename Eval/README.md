@@ -1,12 +1,38 @@
-# Eval — the golden Q&A set and, later, the harness
+# Eval — the golden Q&A set and the harness
 
 `golden-questions.yaml` is Prompter's answer-quality gate (backlog **P-17**). It is a curated set of
 questions phrased the way real Cratis community members ask in Discord, each grounded in — or, for the
 out-of-scope block, deliberately *not* grounded in — the published docs at <https://cratis.io>.
 
-This is a content/data artifact: no code depends on it yet. The harness that consumes it (**P-18**,
-`Eval/Prompter.Eval.csproj`) and the CI gate that enforces it (**P-19**, `.github/workflows/eval.yml`)
-land in milestone M4.
+The harness that consumes it is **P-18** (`Prompter.Eval.csproj`, this folder); the CI gate that enforces
+it (**P-19**, `.github/workflows/eval.yml`) still lands later in milestone M4.
+
+## Running the harness
+
+`Prompter.Eval` is a developer-only console project (referenced in `Prompter.slnx`, never pulled into the
+bot's Docker publish). It runs each golden question through the bot's real `IAnswers` pipeline against the
+live corpus and scores three things per question:
+
+- **Citation-hit** (in-scope): did retrieval surface at least one `expected_pages` entry? Compared after
+  normalizing the ingested `.md` mirror form against the canonical golden form (`Scoring/CitationHit.cs`,
+  `Scoring/PageMatching.cs`).
+- **Refusal-accuracy**: out-of-scope questions must refuse; an in-scope question must not
+  (`Scoring/RefusalAccuracy.cs`). A confident answer to an out-of-scope question is a hard failure.
+- **Groundedness** (in-scope answers): an `IChatClient` judge scores 1–5 whether every claim is supported by
+  the retrieved passages (`Scoring/GroundednessEvaluator.cs`, using `Microsoft.Extensions.AI.Evaluation`,
+  cribbed from `dotnet/eShopSupport`'s `AnswerScoringEvaluator`).
+
+It needs the same infrastructure and keys as the bot: a populated Postgres/pgvector corpus (`docker compose
+up -d` then `dotnet run --project Source -- index`), a Voyage key for retrieval embeddings, and an Anthropic
+key for both the answer and the groundedness judge — supplied the usual way
+(`Cratis__Prompter__Voyage__ApiKey`, `Cratis__Prompter__Anthropic__ApiKey`).
+
+```bash
+dotnet run --project Eval
+```
+
+It writes a timestamped markdown + JSON report (per-question rows plus aggregate scores) to
+`Eval/results/`, which is git-ignored. Optional flags: `--golden <path>` and `--out <dir>`.
 
 ## What's in the set
 

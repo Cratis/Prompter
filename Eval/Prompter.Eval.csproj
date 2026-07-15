@@ -1,0 +1,40 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <!--
+    Prompter.Eval is the developer-only answer-quality harness (backlog P-18). It references the bot's
+    Source project to run the golden set through the real IAnswers pipeline, but nothing references it in
+    return, so it is never pulled into the bot's Docker publish. IsPublishable=false reinforces that.
+  -->
+  <PropertyGroup>
+    <OutputType>Exe</OutputType>
+    <RootNamespace>Cratis.Prompter.Eval</RootNamespace>
+    <AssemblyName>Cratis.Prompter.Eval</AssemblyName>
+    <IsPackable>false</IsPackable>
+    <IsPublishable>false</IsPublishable>
+    <!-- This console project references Source, whose Cratis.Fundamentals TypeDiscovery generator flows in
+         transitively and emits a provider referencing the top-level Program. That shadows Source's own
+         top-level Program (CS0436) - benign here (the compiler uses this project's Program), and the package
+         exposes no way to disable the generator downstream, so suppress the promoted-to-error warning. -->
+    <NoWarn>$(NoWarn);CS0436</NoWarn>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <PackageReference Include="Anthropic" />
+    <PackageReference Include="Microsoft.Extensions.AI" />
+    <PackageReference Include="Microsoft.Extensions.AI.Evaluation" />
+    <PackageReference Include="Microsoft.Extensions.Hosting" />
+    <PackageReference Include="Microsoft.Extensions.Http" />
+    <PackageReference Include="Npgsql" />
+    <PackageReference Include="Pgvector" />
+    <PackageReference Include="YamlDotNet" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\Source\Prompter.csproj" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <None Update="golden-questions.yaml" CopyToOutputDirectory="PreserveNewest" />
+  </ItemGroup>
+
+</Project>
