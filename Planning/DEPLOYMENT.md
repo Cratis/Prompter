@@ -5,6 +5,23 @@ D-11), following Studio's deployment conventions. Implementation order is
 [`IMPLEMENTATION_PLAN.md`](IMPLEMENTATION_PLAN.md) M5. Study `Studio/Deployment/` and
 `Studio/Documentation/deployment/` before touching anything — that repo is the reference implementation.
 
+## The staging ladder — you don't need the cluster to try it
+
+Because the bot **dials out** to Discord (see the gateway mechanics in
+[`DISCORD_INTEGRATION.md`](DISCORD_INTEGRATION.md)), it runs identically from anywhere with internet — no
+public IP, no ingress, no cluster required. Stage accordingly:
+
+| Stage | Where | Good for | What it takes |
+|---|---|---|---|
+| **0 · Laptop** | `docker compose up -d` + `cd Source && dotnet run` on a dev machine | Trying it out end-to-end on a **test Discord server**, all of M3 development, demoing to the team | Discord test app token + API keys in env vars. Free, running in minutes. Stops when the laptop sleeps — never for the real community |
+| **1 · Simple VM** (optional) | Smallest UpCloud VM in the existing account, Docker Compose, no Kubernetes/Pulumi | An always-on **beta on the real server** before M5 is built | ~€5–10/mo, one `docker compose up -d`; manual re-index (`dotnet run -- index`) or a cron hitting `/reindex` |
+| **2 · Cluster (D-11)** | Studio's UpCloud UKS via Pulumi | Production: automated deploys, observability, backups, the webhook chain | M5 work; the end state |
+
+**Recommended path:** Stage 0 now — it's also the cheapest way to burn down the NetCord-beta unknowns (P-11,
+P-12) before any infra exists. Skip Stage 1 unless the community beta needs to run always-on before M5 is
+ready; if so, stay inside the existing UpCloud account rather than adding a new vendor. Stage 2 when M5 lands.
+The artifacts are identical at every stage (same image, same compose file locally), so nothing is throwaway.
+
 ## Topology
 
 Prompter joins the **UpCloud UKS cluster** (region `no-svg1`, Norway) that Studio's Pulumi stack manages:
