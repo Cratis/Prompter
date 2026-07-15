@@ -1,0 +1,812 @@
+# =============================================================================
+# Prompter — Golden Q&A evaluation set (P-17)
+# =============================================================================
+#
+# This is the quality gate for the whole bot. Every question here is phrased the
+# way a real Cratis community member would ask it in Discord — natural, sometimes
+# conversational, sometimes vague — and is answerable (or, for the out-of-scope
+# block, deliberately NOT answerable) purely from the published docs at
+# https://cratis.io. Nothing here depends on the bot being running; it grounds
+# only in real doc pages.
+#
+# -----------------------------------------------------------------------------
+# Schema (one entry per question, all under the top-level `questions:` list)
+# -----------------------------------------------------------------------------
+#   id             Stable, unique identifier. Never renumber — results,
+#                  baselines (Eval/baseline.json) and regression diffs key off it.
+#                  Prefix encodes the product: chr-/arc-/fun-/cmp-/cli-/gen-/oos-.
+#   product        chronicle | arc | fundamentals | components | cli |
+#                  cross-cutting | out-of-scope
+#   type           definition | how-to | configuration | troubleshooting |
+#                  concept | comparison | getting-started | refusal
+#   question       Verbatim user phrasing, as it would land in Discord.
+#   expected       answer  → the bot MUST answer, grounded and cited.
+#                  refuse  → the bot MUST decline (out of scope / not in the docs).
+#   expected_pages List of real cratis.io page URLs (canonical, WITHOUT the `.md`
+#                  mirror suffix) that should ground a correct answer. Required
+#                  when expected: answer; omitted when expected: refuse. Order is
+#                  not significant — surfacing ANY one of them counts as a hit.
+#   tags           Optional free-form hints (client language, sub-topic). Used by
+#                  language-aware retrieval experiments (P-30); ignored otherwise.
+#   rationale      Why this question is in the set / what it probes.
+#
+# -----------------------------------------------------------------------------
+# How the P-18 harness consumes this file
+# -----------------------------------------------------------------------------
+# For each entry the harness runs `question` through IAnswers against the live
+# corpus and scores:
+#
+#   expected: answer  (in-scope) — two checks must BOTH pass:
+#     1. Retrieval hit — the retrieved passage set surfaces >= 1 of the URLs in
+#        `expected_pages` (compare on page_url; the `.md` mirror is the ingested
+#        form, so normalize by stripping a trailing `.md`). Measures whether
+#        hybrid search found the right page at all.
+#     2. Grounded + cited — the answer is not a refusal, is grounded in the
+#        retrieved passages, and cites at least one source URL (groundedness /
+#        citation-correctness via Microsoft.Extensions.AI.Evaluation, cribbing
+#        eShopSupport's AnswerScoringEvaluator).
+#
+#   expected: refuse  (out-of-scope) — exactly one check:
+#     * The bot must refuse honestly (no fabricated answer, no invented citation).
+#       These calibrate the refusal threshold (Answering:MinScore, P-07) and guard
+#       against the over-eager-answer failure mode. A confident answer here is the
+#       worst possible outcome and should fail the run outright.
+#
+# Aggregate metrics: in-scope retrieval recall, in-scope citation accuracy,
+# out-of-scope refusal rate. P-19 gates PRs on regression against the committed
+# baseline. Note `expected_pages` are grounding candidates, not the only correct
+# citations — a good answer may additionally cite closely-related pages.
+#
+# -----------------------------------------------------------------------------
+# Coverage: 57 in-scope questions across all five products + cross-cutting, and
+# 12 out-of-scope refusals. Breadth over cleverness — real questions the docs
+# genuinely answer, spanning definition / how-to / configuration / troubleshooting
+# / concept / comparison / getting-started. Every page below was checked against
+# the live site (sitemap-0.xml + per-page .md mirrors) on 2026-07-15.
+# =============================================================================
+
+questions:
+
+  # ===========================================================================
+  # Chronicle — event sourcing engine (events, projections, reactors, reducers,
+  # read models, compliance, hosting, configuration)
+  # ===========================================================================
+
+  - id: chr-001
+    product: chronicle
+    type: comparison
+    question: "what's the deal with event sourcing vs just using CRUD? why would I even bother?"
+    expected: answer
+    expected_pages:
+      - https://cratis.io/chronicle/why-event-sourcing/
+      - https://cratis.io/chronicle/coming-from-crud/
+    tags: [event-sourcing, concept]
+    rationale: "The single most common newcomer question. Both pages exist and directly frame ES against CRUD."
+
+  - id: chr-002
+    product: chronicle
+    type: how-to
+    question: "How do I append an event in Chronicle from C#?"
+    expected: answer
+    expected_pages:
+      - https://cratis.io/chronicle/events/appending/
+      - https://cratis.io/chronicle/get-started/aspnetcore/
+    tags: [csharp, events]
+    rationale: "Core write path. appending.md documents IEventLog.Append and AppendResult."
+
+  - id: chr-003
+    product: chronicle
+    type: definition
+    question: "what exactly is an EventSourceId? is it basically a primary key?"
+    expected: answer
+    expected_pages:
+      - https://cratis.io/chronicle/concepts/event-source/
+      - https://cratis.io/chronicle/events/event-source-id/
+    tags: [concept]
+    rationale: "concepts/event-source.md explicitly uses the primary-key analogy the user reaches for."
+
+  - id: chr-004
+    product: chronicle
+    type: getting-started
+    question: "I'm adding Chronicle to an ASP.NET Core app — which package do I install and what goes in Program.cs?"
+    expected: answer
+    expected_pages:
+      - https://cratis.io/chronicle/get-started/aspnetcore/
+      - https://cratis.io/chronicle/get-started/choose-hosting-model/
+    tags: [csharp, aspnetcore, setup]
+    rationale: "Names Cratis.Chronicle.AspNetCore + AddCratisChronicle()/UseCratisChronicle()."
+
+  - id: chr-005
+    product: chronicle
+    type: configuration
+    question: "how do I run Chronicle locally with docker compose?"
+    expected: answer
+    expected_pages:
+      - https://cratis.io/chronicle/hosting/docker-compose/
+      - https://cratis.io/chronicle/hosting/
+    tags: [hosting, docker, local-dev]
+    rationale: "docker-compose.md gives the cratis/chronicle image, ports, and Aspire dashboard wiring."
+
+  - id: chr-006
+    product: chronicle
+    type: concept
+    question: "what's a projection in Chronicle, and when would I want an immediate (strongly consistent) one instead of the eventual kind?"
+    expected: answer
+    expected_pages:
+      - https://cratis.io/chronicle/projections/
+      - https://cratis.io/chronicle/projections/immediate-projections/
+      - https://cratis.io/chronicle/projections/eventual-consistency/
+    tags: [projections, consistency]
+    rationale: "immediate-projections.md contrasts synchronous strong consistency with eventual consistency."
+
+  - id: chr-007
+    product: chronicle
+    type: how-to
+    question: "How do I react to an event to send an email or call an external API when something happens?"
+    expected: answer
+    expected_pages:
+      - https://cratis.io/chronicle/reactors/getting-started/
+      - https://cratis.io/chronicle/reactors/
+      - https://cratis.io/chronicle/reactors/side-effects/
+    tags: [reactors, side-effects]
+    rationale: "reactors/getting-started.md uses exactly 'send notifications / call an external API' as the motivating example."
+
+  - id: chr-008
+    product: chronicle
+    type: how-to
+    question: "how does Chronicle handle PII and GDPR? can I encrypt personal data inside events?"
+    expected: answer
+    expected_pages:
+      - https://cratis.io/chronicle/compliance/pii/
+      - https://cratis.io/chronicle/compliance/
+    tags: [compliance, pii, gdpr]
+    rationale: "compliance/pii.md documents the [PII] attribute and transparent encrypt-on-write / decrypt-on-read."
+
+  - id: chr-009
+    product: chronicle
+    type: how-to
+    question: "one of my events already has data in production and I need to rename a field on it — how do I evolve the schema without breaking old events?"
+    expected: answer
+    expected_pages:
+      - https://cratis.io/chronicle/concepts/event-type-migrations/
+      - https://cratis.io/chronicle/scenarios/evolve-an-event/
+      - https://cratis.io/chronicle/understanding-event-evolution/
+    tags: [migrations, event-evolution]
+    rationale: "event-type-migrations.md covers upcast/downcast, RenamedFrom(), split/combine — exactly the rename case."
+
+  - id: chr-010
+    product: chronicle
+    type: how-to
+    question: "how do I do optimistic concurrency when appending? I want the append to fail if the stream changed under me."
+    expected: answer
+    expected_pages:
+      - https://cratis.io/chronicle/events/concurrency/
+    tags: [concurrency, events]
+    rationale: "concurrency.md documents ConcurrencyScope, expected sequence number, and ConcurrencyViolation results."
+
+  - id: chr-011
+    product: chronicle
+    type: how-to
+    question: "how do I make sure a value like an email address stays unique across all my events?"
+    expected: answer
+    expected_pages:
+      - https://cratis.io/chronicle/constraints/declarative/unique/
+      - https://cratis.io/chronicle/constraints/
+    tags: [constraints, uniqueness]
+    rationale: "declarative/unique.md documents IConstraint + builder.Unique(...) with a multi-event email example."
+
+  - id: chr-012
+    product: chronicle
+    type: configuration
+    question: "where do I set the connection string for the Chronicle .NET client, and what other options can I configure?"
+    expected: answer
+    expected_pages:
+      - https://cratis.io/chronicle/configuration/chronicle-options/
+      - https://cratis.io/chronicle/connection-strings/dotnet-client/
+    tags: [csharp, configuration, connection]
+    rationale: "chronicle-options.md documents ConnectionString and the Cratis:Chronicle option surface."
+
+  - id: chr-013
+    product: chronicle
+    type: configuration
+    question: "which databases can Chronicle store events in? can I use Postgres instead of Mongo?"
+    expected: answer
+    expected_pages:
+      - https://cratis.io/chronicle/hosting/configuration/storage/
+      - https://cratis.io/faq/
+    tags: [storage, configuration]
+    rationale: "FAQ lists MongoDB / PostgreSQL / SQL Server / SQLite; the storage config page covers backend selection."
+
+  - id: chr-014
+    product: chronicle
+    type: concept
+    question: "should I event-source literally everything in my app, or are there cases where I shouldn't?"
+    expected: answer
+    expected_pages:
+      - https://cratis.io/chronicle/concepts/when-to-use-event-sourcing/
+      - https://cratis.io/faq/
+    tags: [event-sourcing, guidance]
+    rationale: "when-to-use-event-sourcing.md plus FAQ 'Should every feature be event-sourced?' both address this directly."
+
+  - id: chr-015
+    product: chronicle
+    type: comparison
+    question: "I keep mixing up reactors, reducers and projections. what's the difference and when do I use each?"
+    expected: answer
+    expected_pages:
+      - https://cratis.io/chronicle/reactors/
+      - https://cratis.io/chronicle/reducers/
+      - https://cratis.io/chronicle/projections/
+      - https://cratis.io/chronicle/concepts/observers/
+    tags: [observers, concept]
+    rationale: "Classic confusion; all three observer types have index pages, and observers.md frames them as a family."
+
+  - id: chr-016
+    product: chronicle
+    type: how-to
+    question: "how do I append several events at once as part of one unit of work / transaction?"
+    expected: answer
+    expected_pages:
+      - https://cratis.io/chronicle/events/appending-many/
+      - https://cratis.io/chronicle/events/transactions/
+    tags: [events, transactions]
+    rationale: "appending-many.md and transactions.md cover batched atomic appends."
+
+  - id: chr-017
+    product: chronicle
+    type: getting-started
+    question: "is there a beginner tutorial for Chronicle? I just want to get my first event working."
+    expected: answer
+    expected_pages:
+      - https://cratis.io/chronicle/tutorial/
+      - https://cratis.io/chronicle/tutorial/first-event/
+    tags: [tutorial, setup]
+    rationale: "The tutorial track starts at first-event and is the canonical hands-on onramp."
+
+  - id: chr-018
+    product: chronicle
+    type: how-to
+    question: "how do I read back the current state of an entity by replaying its events?"
+    expected: answer
+    expected_pages:
+      - https://cratis.io/chronicle/events/getting-state/
+      - https://cratis.io/chronicle/read-models/getting-single-instance/
+    tags: [events, read-models, state]
+    rationale: "getting-state.md is the on-demand replay path; getting-single-instance covers materialized read models."
+
+  - id: chr-019
+    product: chronicle
+    type: concept
+    question: "what's a reducer and how does it build a read model?"
+    expected: answer
+    expected_pages:
+      - https://cratis.io/chronicle/reducers/getting-started/
+      - https://cratis.io/chronicle/reducers/
+    tags: [reducers, read-models]
+    rationale: "reducers/getting-started.md: 'reduce a sequence of events into aggregated state'."
+
+  # ===========================================================================
+  # Arc — CQRS framework (commands, queries, proxy generation, frontend, tutorial)
+  # ===========================================================================
+
+  - id: arc-001
+    product: arc
+    type: definition
+    question: "what is Arc and what problem does it actually solve?"
+    expected: answer
+    expected_pages:
+      - https://cratis.io/arc/
+      - https://cratis.io/arc/why-arc/
+    tags: [overview, cqrs]
+    rationale: "why-arc.md frames Arc as the CQRS boundary with generated TS proxies removing plumbing."
+
+  - id: arc-002
+    product: arc
+    type: how-to
+    question: "How do I write my first command in Arc?"
+    expected: answer
+    expected_pages:
+      - https://cratis.io/arc/backend/getting-started/your-first-command/
+      - https://cratis.io/arc/backend/getting-started/
+    tags: [csharp, commands, getting-started]
+    rationale: "your-first-command.md shows the [Command] record with an embedded Handle() method."
+
+  - id: arc-003
+    product: arc
+    type: definition
+    question: "everyone keeps saying 'vertical slice' — what does that actually mean in Cratis?"
+    expected: answer
+    expected_pages:
+      - https://cratis.io/arc/vertical-slices/
+    tags: [architecture, concept]
+    rationale: "vertical-slices.md: organize by feature, one folder per behavior across the stack."
+
+  - id: arc-004
+    product: arc
+    type: comparison
+    question: "I'm coming from MediatR and MVC controllers — how do those concepts map onto Arc?"
+    expected: answer
+    expected_pages:
+      - https://cratis.io/arc/coming-from-mediatr-and-mvc/
+    tags: [migration, comparison]
+    rationale: "Dedicated mapping page: IRequest/IRequestHandler -> single command record; controllers -> auto HTTP mapping."
+
+  - id: arc-005
+    product: arc
+    type: concept
+    question: "can I use Arc without event sourcing? I just want CQRS over a plain database."
+    expected: answer
+    expected_pages:
+      - https://cratis.io/arc/arc-without-event-sourcing/
+      - https://cratis.io/faq/
+    tags: [cqrs, guidance]
+    rationale: "FAQ 'Can I use Arc without Chronicle?' + the dedicated arc-without-event-sourcing page both say yes."
+
+  - id: arc-006
+    product: arc
+    type: how-to
+    question: "how do I add validation to a command in Arc?"
+    expected: answer
+    expected_pages:
+      - https://cratis.io/arc/backend/commands/command-validation/
+      - https://cratis.io/arc/backend/commands/validation/
+    tags: [csharp, commands, validation]
+    rationale: "Arc discovers a CommandValidator<T> by convention; both command-validation and validation pages exist."
+
+  - id: arc-007
+    product: arc
+    type: how-to
+    question: "how do queries work in Arc — how do I return data from a read model without writing a controller?"
+    expected: answer
+    expected_pages:
+      - https://cratis.io/arc/backend/queries/
+      - https://cratis.io/arc/backend/queries/model-bound/
+    tags: [csharp, queries, read-models]
+    rationale: "model-bound.md documents [ReadModel] with static query methods and DI."
+
+  - id: arc-008
+    product: arc
+    type: how-to
+    question: "how do I call an Arc command from my React frontend?"
+    expected: answer
+    expected_pages:
+      - https://cratis.io/arc/scenarios/run-a-command-from-react/
+      - https://cratis.io/arc/frontend/react/commands/
+      - https://cratis.io/arc/frontend/react/commands/react-usage/
+    tags: [typescript, react, commands]
+    rationale: "run-a-command-from-react scenario + the React commands pages cover the generated proxy usage."
+
+  - id: arc-009
+    product: arc
+    type: concept
+    question: "how does Arc keep my TypeScript frontend types in sync with the C# backend? what's this proxy generation thing?"
+    expected: answer
+    expected_pages:
+      - https://cratis.io/arc/backend/proxy-generation/
+      - https://cratis.io/arc/backend/proxy-generation/overview/
+    tags: [proxy-generation, typescript]
+    rationale: "proxy-generation/overview.md: MSBuild target generates TS from compiled assemblies for compile-time safety."
+
+  - id: arc-010
+    product: arc
+    type: how-to
+    question: "how do I lock down a command or query so only authorized users can run it?"
+    expected: answer
+    expected_pages:
+      - https://cratis.io/arc/backend/authorizing-commands-and-queries/
+      - https://cratis.io/arc/backend/commands/model-bound/authorization/
+    tags: [authorization, security]
+    rationale: "Dedicated authorizing-commands-and-queries page plus the model-bound authorization page."
+
+  - id: arc-011
+    product: arc
+    type: getting-started
+    question: "is there a tutorial to build a whole feature slice end to end in Arc?"
+    expected: answer
+    expected_pages:
+      - https://cratis.io/arc/tutorial/
+      - https://cratis.io/arc/tutorial/first-slice/
+    tags: [tutorial]
+    rationale: "The Arc tutorial track begins at first-slice."
+
+  - id: arc-012
+    product: arc
+    type: how-to
+    question: "how do I add event sourcing to an Arc slice — wire Chronicle into my command?"
+    expected: answer
+    expected_pages:
+      - https://cratis.io/arc/backend/chronicle/
+      - https://cratis.io/arc/backend/chronicle/add-event-sourcing/
+    tags: [chronicle-integration, event-sourcing]
+    rationale: "add-event-sourcing.md is the Arc+Chronicle integration onramp."
+
+  - id: arc-013
+    product: arc
+    type: how-to
+    question: "how do I make a query that pushes live updates to the client instead of a one-off fetch?"
+    expected: answer
+    expected_pages:
+      - https://cratis.io/arc/backend/queries/model-bound/observable-queries/
+      - https://cratis.io/arc/frontend/react/queries/observable-queries/
+    tags: [queries, real-time, observable]
+    rationale: "Observable queries exist on both backend and React frontend sides."
+
+  # ===========================================================================
+  # Fundamentals — cross-cutting building blocks (concepts, monads, serialization,
+  # observability), C# and TypeScript
+  # ===========================================================================
+
+  - id: fun-001
+    product: fundamentals
+    type: definition
+    question: "what's a Concept / ConceptAs<T> in Cratis, and why would I wrap a plain string or guid in one?"
+    expected: answer
+    expected_pages:
+      - https://cratis.io/fundamentals/csharp/concepts/
+    tags: [csharp, concepts]
+    rationale: "concepts.md defines ConceptAs<T> as a single-value primitive wrapper for domain typing."
+
+  - id: fun-002
+    product: fundamentals
+    type: how-to
+    question: "how do I return success or failure from a method without throwing exceptions? does Cratis have a Result type?"
+    expected: answer
+    expected_pages:
+      - https://cratis.io/fundamentals/csharp/monads/result/
+      - https://cratis.io/fundamentals/csharp/monads/
+    tags: [csharp, monads, error-handling]
+    rationale: "result.md documents Result / Result<TError> / Result<TResult,TError> with Match/Switch."
+
+  - id: fun-003
+    product: fundamentals
+    type: definition
+    question: "is there an Option or Maybe type in Cratis so I can avoid null checks everywhere?"
+    expected: answer
+    expected_pages:
+      - https://cratis.io/fundamentals/csharp/monads/option/
+      - https://cratis.io/fundamentals/csharp/monads/
+    tags: [csharp, monads, null-safety]
+    rationale: "option.md documents Option<T> with HasValue/TryGetValue/Match/None()."
+
+  - id: fun-004
+    product: fundamentals
+    type: how-to
+    question: "how do I use ConceptAs on the TypeScript side, on the frontend?"
+    expected: answer
+    expected_pages:
+      - https://cratis.io/fundamentals/typescript/concept_as/
+    tags: [typescript, concepts]
+    rationale: "TS concept_as.md shows the class + union-type pattern and @field decorator for serialization."
+
+  - id: fun-005
+    product: fundamentals
+    type: how-to
+    question: "how does Cratis serialize my concepts and custom types to JSON in C#?"
+    expected: answer
+    expected_pages:
+      - https://cratis.io/fundamentals/csharp/serialization/serialization/
+      - https://cratis.io/fundamentals/csharp/concepts/
+    tags: [csharp, serialization]
+    rationale: "Serialization page plus the ConceptAsJsonConverterFactory mentioned on concepts.md."
+
+  - id: fun-006
+    product: fundamentals
+    type: how-to
+    question: "does Cratis give me anything for metrics and tracing / observability in C#?"
+    expected: answer
+    expected_pages:
+      - https://cratis.io/fundamentals/csharp/metrics/
+      - https://cratis.io/fundamentals/csharp/traces/
+    tags: [csharp, observability, metrics, tracing]
+    rationale: "Fundamentals ships metrics and traces helpers (with Roslyn source generation)."
+
+  - id: fun-007
+    product: fundamentals
+    type: how-to
+    question: "how do I handle derived / polymorphic types when serializing?"
+    expected: answer
+    expected_pages:
+      - https://cratis.io/fundamentals/csharp/serialization/derived_types/
+      - https://cratis.io/fundamentals/derived_types_integration/
+    tags: [csharp, serialization, polymorphism]
+    rationale: "derived_types serialization page + the derived-types integration page both cover this."
+
+  # ===========================================================================
+  # Components — React component library over PrimeReact, wired to Arc proxies
+  # ===========================================================================
+
+  - id: cmp-001
+    product: components
+    type: definition
+    question: "what is Cratis Components? is it just PrimeReact under the hood?"
+    expected: answer
+    expected_pages:
+      - https://cratis.io/components/
+      - https://cratis.io/components/why-components/
+    tags: [overview, primereact]
+    rationale: "why-components.md: React components built on PrimeReact that talk to Arc's generated proxies."
+
+  - id: cmp-002
+    product: components
+    type: getting-started
+    question: "how do I get started with Cratis Components — what do I npm install and how do I set up the provider?"
+    expected: answer
+    expected_pages:
+      - https://cratis.io/components/getting-started/
+    tags: [setup, npm, provider]
+    rationale: "getting-started.md lists @cratis/components + primereact + primeicons and CratisComponentsProvider."
+
+  - id: cmp-003
+    product: components
+    type: how-to
+    question: "how do I build a form that runs one of my Arc commands using the components?"
+    expected: answer
+    expected_pages:
+      - https://cratis.io/components/building-a-form/
+      - https://cratis.io/components/commandform/
+    tags: [forms, commands]
+    rationale: "building-a-form.md covers CommandDialog / CommandForm bound to a generated command."
+
+  - id: cmp-004
+    product: components
+    type: how-to
+    question: "how do I show data from a query in a table?"
+    expected: answer
+    expected_pages:
+      - https://cratis.io/components/datatables/
+      - https://cratis.io/components/datatables/data-table-for-query/
+    tags: [data, tables]
+    rationale: "data-table-for-query.md documents DataTableForQuery with query/emptyMessage/dataKey + Column."
+
+  - id: cmp-005
+    product: components
+    type: how-to
+    question: "how do I make a multi-step / wizard style form?"
+    expected: answer
+    expected_pages:
+      - https://cratis.io/components/multi-step-form/
+      - https://cratis.io/components/steppercommanddialog/
+    tags: [forms, wizard, stepper]
+    rationale: "multi-step-form + StepperCommandDialog pages cover wizard flows."
+
+  - id: cmp-006
+    product: components
+    type: configuration
+    question: "how do I restyle the components to match my brand colors?"
+    expected: answer
+    expected_pages:
+      - https://cratis.io/components/styling/custom-palette/
+      - https://cratis.io/components/styling/
+      - https://cratis.io/components/styling/cratis-tokens/
+    tags: [styling, theming]
+    rationale: "custom-palette.md documents overriding --cratis-* and PrimeReact color tokens."
+
+  - id: cmp-007
+    product: components
+    type: how-to
+    question: "how do I pop up a confirmation dialog before doing something destructive?"
+    expected: answer
+    expected_pages:
+      - https://cratis.io/components/dialogs/confirmation-dialog/
+      - https://cratis.io/components/dialogs/
+    tags: [dialogs]
+    rationale: "confirmation-dialog is a dedicated component page."
+
+  - id: cmp-008
+    product: components
+    type: concept
+    question: "there are a lot of components — is there a guide for picking the right one for what I'm building?"
+    expected: answer
+    expected_pages:
+      - https://cratis.io/components/choosing-a-component/
+    tags: [guidance]
+    rationale: "choosing-a-component is exactly this decision-guide page."
+
+  # ===========================================================================
+  # CLI — the `cratis` command-line tool for inspecting and operating Chronicle
+  # ===========================================================================
+
+  - id: cli-001
+    product: cli
+    type: getting-started
+    question: "how do I install the Cratis CLI?"
+    expected: answer
+    expected_pages:
+      - https://cratis.io/cli/getting-started/
+      - https://cratis.io/cli/
+    tags: [install, setup]
+    rationale: "getting-started.md gives brew, native binary, and 'dotnet tool install -g Cratis.Cli'."
+
+  - id: cli-002
+    product: cli
+    type: troubleshooting
+    question: "one of my observers is stuck / failing. how do I retry or replay it from the command line?"
+    expected: answer
+    expected_pages:
+      - https://cratis.io/cli/scenarios/fix-a-stuck-observer/
+      - https://cratis.io/cli/chronicle/observers/
+    tags: [observers, recovery, troubleshooting]
+    rationale: "fix-a-stuck-observer walks diagnose -> failed-partitions -> retry-partition/replay-partition."
+
+  - id: cli-003
+    product: cli
+    type: how-to
+    question: "how do I check from the terminal that my events actually got appended?"
+    expected: answer
+    expected_pages:
+      - https://cratis.io/cli/scenarios/verify-events-were-appended/
+      - https://cratis.io/cli/chronicle/events/
+    tags: [events, verification]
+    rationale: "verify-events-were-appended scenario + the events command reference."
+
+  - id: cli-004
+    product: cli
+    type: configuration
+    question: "how do I point the CLI at a specific Chronicle server, or switch between staging and prod?"
+    expected: answer
+    expected_pages:
+      - https://cratis.io/cli/context/
+      - https://cratis.io/cli/reference/connection/
+    tags: [context, connection, configuration]
+    rationale: "context.md covers named contexts; reference/connection covers the resolution order."
+
+  - id: cli-005
+    product: cli
+    type: how-to
+    question: "how do I replay a projection from the CLI?"
+    expected: answer
+    expected_pages:
+      - https://cratis.io/cli/scenarios/replay-a-projection/
+      - https://cratis.io/cli/chronicle/projections/
+    tags: [projections, replay]
+    rationale: "replay-a-projection scenario + projections command reference."
+
+  - id: cli-006
+    product: cli
+    type: configuration
+    question: "can I get the CLI to output JSON so I can script against it?"
+    expected: answer
+    expected_pages:
+      - https://cratis.io/cli/reference/output-formats/
+      - https://cratis.io/cli/reference/global-options/
+    tags: [output, scripting, json]
+    rationale: "output-formats documents plain/JSON output; global-options covers the flag."
+
+  # ===========================================================================
+  # Cross-cutting — the Cratis stack as a whole, product selection, FAQ-style
+  # ===========================================================================
+
+  - id: gen-001
+    product: cross-cutting
+    type: concept
+    question: "I'm new here — what's the difference between Chronicle, Arc and Components, and which do I actually need?"
+    expected: answer
+    expected_pages:
+      - https://cratis.io/
+      - https://cratis.io/cratis-stack/
+      - https://cratis.io/why-cratis/
+    tags: [overview, product-selection]
+    rationale: "The landing page + cratis-stack name Chronicle/Arc/Components/AuthProxy/CLI and how they fit together."
+
+  - id: gen-002
+    product: cross-cutting
+    type: concept
+    question: "can I use Chronicle on its own, without adopting Arc?"
+    expected: answer
+    expected_pages:
+      - https://cratis.io/faq/
+      - https://cratis.io/chronicle/
+    tags: [product-selection, event-sourcing]
+    rationale: "FAQ 'Can I use Chronicle without Arc?' — yes, it has its own clients and hosting."
+
+  - id: gen-003
+    product: cross-cutting
+    type: concept
+    question: "is Cratis production ready? what do I need to think about before going live?"
+    expected: answer
+    expected_pages:
+      - https://cratis.io/production-readiness/
+      - https://cratis.io/faq/
+    tags: [production, guidance]
+    rationale: "production-readiness page + FAQ 'Is Cratis production-ready?' (TLS, OpenTelemetry, diagnostics)."
+
+  - id: gen-004
+    product: cross-cutting
+    type: how-to
+    question: "where do I see what changed in the latest Cratis release?"
+    expected: answer
+    expected_pages:
+      - https://cratis.io/whats-new/
+      - https://cratis.io/faq/
+    tags: [releases, changelog]
+    rationale: "FAQ 'Where do I see what changed?' points at the What's New section."
+
+  # ===========================================================================
+  # Out of scope — the bot MUST refuse honestly. No expected_pages. These
+  # calibrate the refusal threshold (P-07) and guard the over-answer failure mode.
+  # A confident, cited-looking answer to any of these is a hard failure.
+  # ===========================================================================
+
+  - id: oos-001
+    product: out-of-scope
+    type: refusal
+    question: "what's the best pizza place in Oslo?"
+    expected: refuse
+    rationale: "Pure off-topic local trivia; nothing in the Cratis docs."
+
+  - id: oos-002
+    product: out-of-scope
+    type: refusal
+    question: "how do I center a div in React?"
+    expected: refuse
+    rationale: "Generic web/CSS question. Near-miss: Cratis Components IS React, so this tests that the bot doesn't answer generic frontend trivia just because 'React' appears."
+
+  - id: oos-003
+    product: out-of-scope
+    type: refusal
+    question: "how do I reverse a linked list in Python?"
+    expected: refuse
+    rationale: "General programming exercise, unrelated to Cratis."
+
+  - id: oos-004
+    product: out-of-scope
+    type: refusal
+    question: "what's the difference between let and const in JavaScript?"
+    expected: refuse
+    rationale: "Language trivia. Near-miss on 'JavaScript/TypeScript' surface area of the docs."
+
+  - id: oos-005
+    product: out-of-scope
+    type: refusal
+    question: "can you give me a regex that validates email addresses?"
+    expected: refuse
+    rationale: "Generic coding request. Adversarial overlap: Chronicle docs use an email-uniqueness example, so this checks the bot won't drift into writing unrelated regex."
+
+  - id: oos-006
+    product: out-of-scope
+    type: refusal
+    question: "how do I set up event sourcing with EventStoreDB and Marten?"
+    expected: refuse
+    rationale: "Competitor event-sourcing stacks. Strong adversarial near-miss — 'event sourcing' is squarely on-topic but these products are not Cratis; the bot must not fabricate cross-product instructions."
+
+  - id: oos-007
+    product: out-of-scope
+    type: refusal
+    question: "what's the weather in Bergen tomorrow?"
+    expected: refuse
+    rationale: "Real-time factual query, no docs grounding, and outside the bot's knowledge entirely."
+
+  - id: oos-008
+    product: out-of-scope
+    type: refusal
+    question: "how do I deploy a Next.js app to Vercel?"
+    expected: refuse
+    rationale: "Unrelated deployment how-to; no Cratis grounding."
+
+  - id: oos-009
+    product: out-of-scope
+    type: refusal
+    question: "how do Kafka consumer groups work?"
+    expected: refuse
+    rationale: "Adjacent event-streaming concept but a different technology; tests that topical adjacency doesn't trigger a confident answer."
+
+  - id: oos-010
+    product: out-of-scope
+    type: refusal
+    question: "can you set up nginx as a reverse proxy for me?"
+    expected: refuse
+    rationale: "Generic ops task. Near-miss: Cratis has an 'AuthProxy' product, so this checks the bot doesn't conflate a generic reverse-proxy request with AuthProxy docs."
+
+  - id: oos-011
+    product: out-of-scope
+    type: refusal
+    question: "write me a haiku about databases"
+    expected: refuse
+    rationale: "Creative, off-task request; the bot is a docs assistant, not a general chatbot."
+
+  - id: oos-012
+    product: out-of-scope
+    type: refusal
+    question: "what year was C# first released and who designed it?"
+    expected: refuse
+    rationale: "General programming history trivia. Near-miss on 'C#', which is heavily present in the corpus, but the answer is not in the Cratis docs."
