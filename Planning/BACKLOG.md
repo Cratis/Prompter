@@ -51,8 +51,12 @@ not to promise live in the parking lot.
   then delivers it with `SendFollowupMessageAsync`; return type changed to `Task` so NetCord doesn't
   double-respond. NetCord beta.11 API confirmed against the shipped assembly + netcord.dev. **Live "thinking…
   → answer" runtime check is the M3.1 done-when (needs a test server + keys).**
-- **P-12** Verify `GatewayClient.Id` correctly identifies the bot for mention detection (scaffold assumption),
-  and handle role-mentions (`<@&…>`) and the nickname mention form (`<@!…>`).
+- **P-12** ~~Mention hardening~~ + **M3.3 #ask channel** — **Done 2026-07-15** (code): pure
+  `Mentions.ResolveQuestion(content, botId, isBot, channelId, askChannelId)` handles `<@id>` and `<@!id>`,
+  ignores `<@&…>` role mentions / `@everyone` / bot authors / self, strips the mention to the question, and
+  treats plain messages in `Discord:AskChannelId` as questions (other channels still require a mention).
+  `GatewayClient.Id` confirmed populated from READY (no startup REST lookup needed). 13 facts.
+  **Live test-server check is the M3.2/M3.3 done-when.**
 - **P-13** ~~Forum auto-reply~~ **Done 2026-07-15** (code): `HelpForum` implements NetCord's
   `IGuildThreadCreateGatewayHandler` — on a newly-created thread whose `ParentId` matches
   `Discord:HelpForumChannelId`, it reads the starter message, answers as the first reply, then posts the standing
@@ -66,8 +70,8 @@ not to promise live in the parking lot.
 - **P-15** ~~Split answers over 2000 chars instead of truncating~~ **Done 2026-07-15** (code): pure
   `DiscordAnswers.Split(Answer) : IReadOnlyList<string>` packs paragraphs greedily into ≤2000-char chunks (max 3,
   sources on the last), hard-splits oversized paragraphs, falls back to `Format` for short answers; `Mentions`
-  sends each chunk in order. 15 facts. Follow-up refinement queued from `DISCORD_BEST_PRACTICES.md`: avoid
-  splitting inside a fenced code block.
+  sends each chunk in order. 23 facts, incl. code-fence safety (a fenced block is atomic; an oversized block
+  hard-splits with balanced re-opened fences and its language hint preserved).
 - **P-16** 👍/👎 feedback reactions on bot answers, recorded onto the interaction row.
 - **P-17a** Register the Discord application, enable the Message Content intent, generate the invite URL with
   minimal permissions (Send Messages, Create Public Threads, Embed Links) — team action.
