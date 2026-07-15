@@ -10,12 +10,19 @@ not to promise live in the parking lot.
 - **P-01** ~~Validate the page inventory source against the real site~~ **Verified 2026-07-15**: `llms.txt`
   on cratis.io is only a pointer index (to `llms-small.txt`/`llms-full.txt`), so ingestion walks
   `sitemap-0.xml` (870 pages) and fetches each page's `.md` mirror (`<path>.md`, root → `index.md`) —
-  implemented and spec-covered. Remaining residue: strip remaining MDX component tags (`<CardGrid>` etc.) from
-  mirrors beyond the import lines already filtered, and evaluate `llms-full.txt` as a cheaper single-fetch
-  alternative.
-- **P-02** Batch embedding calls (Voyage accepts up to 128 inputs per request) instead of one call per chunk;
-  respect rate limits with retry/backoff.
-- **P-03** Make the ingestion exclusion list configurable (today only `client-snippets` is hardcoded).
+  implemented and spec-covered. ~~Remaining residue: strip remaining MDX component tags.~~ **MDX residue
+  done 2026-07-15**: `MarkdownChunker.StripMdxComponents` strips imports, JSX `{/* */}` comments and
+  block-level component tags (paired, self-closing, multi-line) outside code fences, keeping prose children;
+  specced against real `index.md`/`arc.md` mirror fixtures. Open: evaluate `llms-full.txt` as a cheaper
+  single-fetch alternative; inline (mid-line) components are not stripped (none occur in the real mirrors).
+- **P-02** ~~Batch embedding calls~~ **Done 2026-07-15** (code): `Indexer` batches changed chunks into
+  requests of `Voyage:BatchSize` (default 128; verified against Voyage docs — voyage-4 allows 1,000 inputs /
+  320K tokens, so 128 is safely under both), with a character guard, and `ResilientEmbeddingGenerator` retries
+  429/5xx with exponential backoff. Batching + retry are spec-covered; **the full-corpus live run (done-when)
+  is pending a Voyage API key.**
+- **P-03** ~~Make the ingestion exclusion list configurable~~ **Done 2026-07-15**: `IngestionOptions.
+  ExcludedPathSegments` (defaults `client-snippets`, `api-reference`) consumed by `DocsSite`; `ParsePageUrls`
+  takes the list as a parameter; custom + default exclusions spec-covered.
 - **P-04** Decide the schema-migration story once the schema changes for the first time (plain SQL file today;
   candidates: versioned SQL files à la Ada's `Database` project).
 - **P-05** `prompter index` run in CI on a schedule as a fallback for the webhook (M5).
@@ -55,7 +62,9 @@ not to promise live in the parking lot.
 
 - **P-20** Re-index webhook: small HTTP endpoint (shared-secret protected) triggered by the Documentation
   repo's `build-docs` `repository_dispatch` chain, calling `IIndexer.Run()`.
-- **P-21** Deploy: Hetzner CAX11, Docker Compose (bot + postgres), documented one-command deploy.
+- **P-21** Deploy: join the existing UpCloud UKS cluster per D-11 — Prompter workload + in-cluster
+  Postgres/pgvector + ingress route + `deploy-production.yml` modeled on Studio's (`Studio/Deployment/` is
+  the reference). Resolve Q-5 (Pulumi code in Studio's stack vs. this repo) first.
 - **P-22** Retention purge job — schedule `IInteractionLog.PurgeExpired()` daily (RetentionDays default 90).
 - **P-23** Privacy notice: pinned Discord message + docs page naming the bot, what it stores (hashed user IDs,
   questions/answers, 90 days), and the LLM subprocessor. See D-8.
@@ -66,6 +75,31 @@ not to promise live in the parking lot.
 - **P-26** Repo settings: create the GitHub repo `Cratis/Prompter`, add secrets `DOCKER_USERNAME`,
   `DOCKER_PASSWORD`, `PAT_DOCUMENTATION`; Docker Hub repo `cratis/prompter`.
 
+## Content roadmap (design owned by [`CONTENT_AND_FRESHNESS.md`](CONTENT_AND_FRESHNESS.md))
+
+Phase 1 (docs site) is the v1 corpus and is covered by M1/M5 above. These extend the content base after v1:
+
+- **P-27** Phase 2: **release notes** source — ingest GitHub Releases of Chronicle, Arc, Fundamentals,
+  Components, cli as tagged chunks with "release note" citation attribution; refresh on `release` webhook or
+  nightly. The freshest signal we have between docs updates.
+- **P-28** Phase 2: **glossary + AI-rules grounding** — fold `AI/.ai/rules/glossary.md` (and the writing
+  conventions' terminology) into the system prompt so answers speak "the Cratis way"; refresh when the AI repo
+  changes.
+- **P-29** Phase 2: **Samples source** — READMEs + curated sample files from `Cratis/Samples`, chunked
+  whole-file with path headers, cited by GitHub URL.
+- **P-30** Phase 2: **product-aware + client-language-aware retrieval** — boost/filter by product path prefix
+  when the question names a product; prefer the asker's client language (C#/TS, later Kotlin/Elixir) variant
+  pages.
+- **P-31** Phase 3: **solved help-forum threads** as a source — only threads marked solved, authors stripped,
+  channel notice + opt-out honored, cited as "community answer". Needs a decision record extending D-8 before
+  any implementation.
+- **P-32** Phase 3: **GitHub Discussions / answered issues** across product repos (public data, filtered to
+  resolved).
+- **P-33** **Docs-gap flywheel** — weekly digest of refusals + 👎 answers to a maintainer channel; later
+  auto-file issues in the owning product repo. Prompter as a docs-coverage instrument.
+- **P-34** **Docs MCP server** — expose `IPassages.Search` as an MCP tool alongside Chronicle.Mcp so Claude
+  Code/Copilot/Cursor users share the bot's grounded retrieval.
+
 ## Open questions
 
 - **Q-1** Chronicle dogfooding for the interaction log — needs a team ruling (D-6, recommendation: post-v1).
@@ -73,9 +107,13 @@ not to promise live in the parking lot.
   pricing ends 2026-08-31.
 - **Q-3** Is EU-region inference (Vertex/Bedrock) a requirement or a nice-to-have? Affects D-8 wiring only.
 - **Q-4** Adopt Answer Overflow alongside Prompter (indexes solved threads into Google — complementary)?
+- **Q-5** Where does Prompter's Pulumi code live — a workload entry in Studio's `Deployment/` stack
+  (recommended, matches `studio-llm`/Prologue) or its own `Deployment/` project in this repo (D-11)?
+- **Q-6** Does UpCloud Managed PostgreSQL support the `vector` extension? Only matters if in-cluster
+  Postgres proves annoying (D-11 default is in-cluster).
 
 ## Parking lot (post-v1, not promised)
 
-Confidence-gated chime-in on opted-in channels (threaded, per-channel enable, easy mute) · docs-MCP server
-exposing `IPassages.Search` (pairs with Chronicle.Mcp) · weekly "unanswered questions" digest → docs coverage
-gaps · reranking experiment (unverified benefit — measure first) · Kotlin/Elixir client docs emphasis tuning.
+Confidence-gated chime-in on opted-in channels (threaded, per-channel enable, easy mute) · reranking
+experiment (unverified benefit — measure first). (Docs-MCP, docs-gap digest, and language-awareness were
+promoted into the content roadmap above.)

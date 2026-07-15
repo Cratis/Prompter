@@ -24,6 +24,7 @@ open residue into `BACKLOG.md` first).
 | Doc | Owns |
 |---|---|
 | [`DISCORD_INTEGRATION.md`](DISCORD_INTEGRATION.md) | The Discord behavior contract (functionality set, triggers, never-do's), intents/permissions, and the app-registration runbook |
+| [`CONTENT_AND_FRESHNESS.md`](CONTENT_AND_FRESHNESS.md) | The knowledge design: app-vs-corpus-vs-model mental model, the re-index-on-docs-deploy freshness architecture, the phased content-source roadmap, and the ecosystem-fit enhancements |
 | [`DEPLOYMENT.md`](DEPLOYMENT.md) | Production topology, one-time setup, recurring operations, operational GDPR posture |
 
 ## Reference

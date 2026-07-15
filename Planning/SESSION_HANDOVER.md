@@ -3,6 +3,86 @@
 Resume state for anyone (human or agent) continuing work in a fresh session. Newest entry first — append,
 don't rewrite history.
 
+## 2026-07-15 — Planning: deployment retargeted to the UpCloud cluster (D-11)
+
+**State:** No code changes. New fact from the team: Cratis runs Studio on an **UpCloud UKS cluster**
+(`no-svg1`, Norway) deployed via Pulumi C# with in-repo state — see `Studio/Deployment/` and
+`Studio/Documentation/deployment/` (the reference implementation, incl. `deploy-production.yml`'s
+version-pinning flow). [`DEPLOYMENT.md`](DEPLOYMENT.md) is rewritten around joining that cluster
+(bot workload + in-cluster Postgres/pgvector with object-storage backups, mirroring the MongoDB precedent);
+D-11 records the decision; the Hetzner plan is superseded (compose stays for local dev only). Open before
+M5.3: **Q-5** (Pulumi code in Studio's stack — recommended — vs. this repo) and **Q-6** (managed-Postgres
+pgvector support, only if in-cluster annoys). P-21/P-26 updated accordingly.
+
+## 2026-07-15 — Planning: content & freshness design added
+
+**State:** No code changes. Added [`CONTENT_AND_FRESHNESS.md`](CONTENT_AND_FRESHNESS.md) — the knowledge
+design the plan was missing: the app-vs-corpus-vs-model mental model (docs deploys trigger a **re-index**,
+never an app redeploy), the freshness architecture (event-driven `/reindex` from the Documentation deploy +
+nightly safety net), the phased content-source roadmap (Phase 2: release notes, glossary grounding, Samples;
+Phase 3: solved forum threads with consent, GitHub Discussions), and the ecosystem enhancements
+(product-aware retrieval, docs-gap flywheel, docs-MCP server). `BACKLOG.md` gained P-27…P-34 for these;
+docs-MCP/digest/language-awareness were promoted out of the parking lot. Note for P-31 (forum-thread
+ingestion): requires a decision record extending D-8 before implementation.
+
+## 2026-07-15 — Initial commits + M1 ingestion (code-complete, live run pending key)
+
+**State:** The repo is now committed (four initial commits: scaffolding → source → specs → planning; **not
+pushed** — `Cratis/Prompter` still does not exist, GitHub was left out of scope this session). All four **M1
+tasks are implemented and verified by build + specs** (Release build **zero warnings**, **88 specs green**, up
+from 29). The one thing not done live is the full real index run — it needs a **Voyage API key**, which is
+still not configured.
+
+**What shipped (M1):**
+
+- **M1.2 Configurable exclusions** — `IngestionOptions.ExcludedPathSegments` (defaults `client-snippets`,
+  `api-reference`) on `PrompterOptions.Ingestion`; `DocsSite.ParsePageUrls` now takes the list as a parameter
+  and `DocsSite` gets `IOptions<PrompterOptions>` injected. Custom + default exclusions spec-covered. **Done.**
+- **M1.3 MDX component stripping** — `MarkdownChunker.StripMdxComponents` (a code-fence-aware pre-pass) strips
+  module imports, JSX `{/* … */}` comments and block-level component tags (paired, self-closing, and
+  multi-line) while keeping the prose children of paired tags (hero text, card bodies). Import stripping moved
+  out of `SplitIntoSections` into this pass. Specced against **real `index.md` + `arc.md` mirror fixtures**
+  embedded in the Specs project (`Specs/Fixtures/`). **Done.**
+- **M1.1 Batch embeddings + retry** — `Indexer` now buffers changed chunks across pages and embeds them in
+  batches of `Voyage:BatchSize` (default **128**), upserting per batch, with a character-budget guard.
+  `ResilientEmbeddingGenerator` (a decorator around `VoyageEmbeddings`) retries 429/5xx with exponential
+  backoff; the pure policy is `EmbeddingRetry` (`IsTransient` / `BackoffFor`), fully spec-covered. Batching is
+  spec-verified with fakes (`Specs/Fakes/`). **Code done; live full-corpus run is the remaining "done-when",
+  blocked on the Voyage key.**
+- **M1.4 Index-run summary as data** — `IIndexer.Run` returns an `IndexRun` record (pages, embedded,
+  unchanged, removed, duration); `index` mode prints a one-line summary. `IndexRun` fields spec-verified via
+  the Indexer specs. **Code done; the printed line will appear once a real run completes (needs key).**
+
+**Next actions, in order:**
+
+1. **Get a free Voyage API key** → set `Cratis__Prompter__Voyage__ApiKey` (or `appsettings.Development.json`).
+2. `docker compose up -d` → `cd Source && dotnet run -- index`. Confirm: full run completes, prints the
+   summary line, and a **second run reports `0 embedded` / all unchanged** (M1.1 + M1.4 done-when). Then M1 is
+   fully closed.
+3. Start **M2** (Retrieval + Answering) — needs the indexed corpus + an **Anthropic key**. First task is the
+   `ask --verbose` UX (M2.1 in `IMPLEMENTATION_PLAN.md`).
+4. When ready to go public: create `Cratis/Prompter`, push the four+ commits, then run
+   `sync-copilot-instructions` (P-25) to pull the shared `.ai/` config (this supersedes CLAUDE.md's
+   conventions section — expected).
+
+**New gotchas / notes from this session:**
+
+- **Voyage limits (verified against docs, 2026-07-15):** the plan's "128 inputs" was outdated — voyage-4
+  actually allows **1,000 inputs and 320K tokens per request**. 128 is kept as a conservative, resilient
+  default (128 × ≤4,100 chars ≈ ~175K tokens, well under the cap). Tunable via `Voyage:BatchSize`.
+- **Embedding DI pattern changed:** `VoyageEmbeddings` is now registered as a typed `HttpClient` client and
+  wrapped by `ResilientEmbeddingGenerator` (the `IEmbeddingGenerator` singleton). Swapping the embedder means
+  changing what the decorator wraps.
+- **MDX stripping is block-level** (component tags must start a line — true for every tag in the real
+  mirrors). Inline mid-line components are intentionally left alone to avoid nuking inline generics like
+  `List<T>`; note if a future page uses them. Self-closing component **attribute prose** (e.g. `<LinkCard
+  description="…"/>`) is dropped with the tag — acceptable for the navigational landing page; revisit if it
+  matters.
+- **cratis.io → www.cratis.io 301:** the markdown mirrors 301-redirect to `www`; `HttpClient` follows it, so
+  live ingestion is unaffected.
+- Running `dotnet build`/`dotnet test` with `&&`-chaining hit a cwd reset here — run them as separate
+  commands (or pass the `.slnx` path explicitly).
+
 ## 2026-07-15 — M0 shipped: scaffold complete and verified
 
 **State:** Milestone M0 is done. The solution builds with **zero warnings in Release**, all **29 specs pass**,
