@@ -96,9 +96,10 @@ code lives as a workload entry in Studio's `Deployment/` stack (recommended — 
 platform services like `studio-llm` and Prologue) or as a `Deployment/` project in this repo. See
 [`DEPLOYMENT.md`](DEPLOYMENT.md).
 
-## D-12 · License and visibility: open source (MIT, public) — OPEN
+## D-12 · License and visibility: open source (MIT, public) — 2026-07-15
 
-**Recommendation: open source, MIT, public from day one.** Grounds: (a) the whole Cratis org is MIT/public —
+**Decided 2026-07-15** (ruled by the team when creating the repo): open source, MIT, public from day one —
+`https://github.com/Cratis/Prompter` was created public the same day. Original rationale: Grounds: (a) the whole Cratis org is MIT/public —
 a closed bot answering questions about an open platform from public docs would be off-brand, and community
 trust in a devtools Discord depends on it; (b) there is nothing to protect — the code is a thin RAG pattern
 over public content, the valuable assets (docs, community, interaction data, keys) are not in the code, and
@@ -108,7 +109,6 @@ retention purge (strengthens D-8); (d) it is a showcase for the Cratis AI-native
 Microsoft.Extensions.AI + Claude + pgvector with a measured eval gate), and a configurable-docs-site stretch
 makes it adoptable by any Starlight project. Accepted trade-off: the system prompt and refusal thresholds are
 readable — obscurity is weak protection anyway, and blast radius is capped by minimal permissions + rate
-limits. Guardrails when public: secrets stay in env/Pulumi-encrypted config only (already true), deployment
-state lives with the stack (Q-5), and the README sets expectations (built for the Cratis community, PRs
-welcome, no support promises). Needs a team ruling before `Cratis/Prompter` is created (P-26) — visibility is
-easiest to set correctly at creation time.
+limits. Guardrails now that it is public: secrets stay in env/Pulumi-encrypted config only (already true),
+deployment state lives with the stack (Q-5), and the README should set expectations (built for the Cratis
+community, PRs welcome, no support promises — still to add).

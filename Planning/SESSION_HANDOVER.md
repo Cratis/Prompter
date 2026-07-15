@@ -3,6 +3,16 @@
 Resume state for anyone (human or agent) continuing work in a fresh session. Newest entry first — append,
 don't rewrite history.
 
+## 2026-07-15 — Public on GitHub: Cratis/Prompter created and pushed
+
+**State:** D-12 ruled **public** by the team; `https://github.com/Cratis/Prompter` created (public, MIT) and
+`main` pushed with all history. Remaining from P-26: repo **secrets** (`DOCKER_USERNAME`, `DOCKER_PASSWORD`,
+`PAT_DOCUMENTATION`) and the Docker Hub `cratis/prompter` repository — team actions. P-25
+(`sync-copilot-instructions` workflow_dispatch to pull the shared `.ai/` config) is now unblocked — confirm
+the correct `source_repository` value with the team (likely the AI repo) before dispatching. Note: the
+Publish workflow triggers on merged PRs — the first merge to main will attempt a release; make sure Docker
+Hub secrets exist first or it will fail (harmlessly).
+
 ## 2026-07-15 — Planning: deployment retargeted to the UpCloud cluster (D-11)
 
 **State:** No code changes. New fact from the team: Cratis runs Studio on an **UpCloud UKS cluster**
