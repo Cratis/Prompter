@@ -74,22 +74,41 @@ re-implementing `sync-content.mjs`. Exclude Chronicle's generated `client-snippe
 the existing `build-docs` `repository_dispatch` — the Documentation repo already tells the world when docs
 change; Prompter subscribes via a protected webhook (M5).
 
-## D-11 · Deploy on the existing UpCloud cluster, Studio-style — 2026-07-15
-
-Prompter deploys to the **UpCloud UKS cluster (region `no-svg1`) that Studio's Pulumi stack manages**,
-following Studio's conventions (Pulumi C#, self-managed in-repo state, passphrase secrets, `UPCLOUD_TOKEN`,
-version-pinned images via `pulumi config set`, deploy workflow called from Publish). This supersedes the
-original standalone-Hetzner topology: no new infrastructure to operate, observability (Loki/Grafana) and
-backup patterns already exist, and the Norway region strengthens D-8. Postgres+pgvector runs in-cluster with
-object-storage backups, mirroring the cluster's MongoDB precedent (managed Postgres is the fallback if
-pgvector support checks out and in-cluster proves annoying). **Open sub-question Q-5:** whether the Pulumi
-code lives as a workload entry in Studio's `Deployment/` stack (recommended — the established pattern for
-platform services like `studio-llm` and Prologue) or as a `Deployment/` project in this repo. See
-[`DEPLOYMENT.md`](DEPLOYMENT.md).
-
 ## D-10 · Specs discipline — 2026-07-15
 
 Cratis.Specifications BDD style throughout (`for_<Type>/when_<behavior>/…`), same as every other repo. Pure
 logic (chunking, hashing, RRF math, prompt assembly, refusal thresholds) gets specs from day one; the golden
 Q&A eval harness (M4) is the spec suite for answer quality — a failing groundedness score blocks merge the same
 way a failing spec does.
+
+## D-11 · Deploy on the existing UpCloud cluster, Studio-style — 2026-07-15
+
+Prompter deploys to the **UpCloud UKS cluster (region `no-svg1`, Stavanger/Norway) that Studio's Pulumi stack
+manages**, following Studio's conventions (Pulumi C#, self-managed in-repo state, passphrase secrets,
+`UPCLOUD_TOKEN`, version-pinned images via `pulumi config set`, deploy workflow called from Publish). This
+supersedes the original standalone-Hetzner topology: no new infrastructure to operate, observability
+(Loki/Grafana) and backup patterns already exist, and the Norway region strengthens D-8. Marginal run cost
+drops to the LLM API alone (~$1–10/mo) — the cluster, storage, and backups are already paid for — which
+supersedes the ≤€15/mo standalone-box figure cited in D-2. Postgres+pgvector runs in-cluster with
+object-storage backups, mirroring the cluster's MongoDB precedent (managed Postgres is the fallback if
+pgvector support checks out and in-cluster proves annoying). **Open sub-question Q-5:** whether the Pulumi
+code lives as a workload entry in Studio's `Deployment/` stack (recommended — the established pattern for
+platform services like `studio-llm` and Prologue) or as a `Deployment/` project in this repo. See
+[`DEPLOYMENT.md`](DEPLOYMENT.md).
+
+## D-12 · License and visibility: open source (MIT, public) — OPEN
+
+**Recommendation: open source, MIT, public from day one.** Grounds: (a) the whole Cratis org is MIT/public —
+a closed bot answering questions about an open platform from public docs would be off-brand, and community
+trust in a devtools Discord depends on it; (b) there is nothing to protect — the code is a thin RAG pattern
+over public content, the valuable assets (docs, community, interaction data, keys) are not in the code, and
+the 2025–26 vendor consolidation shows "bot as a paid product" is not a business worth preserving optionality
+for; (c) transparency is a GDPR asset — the privacy notice can link to the source proving hashed IDs and the
+retention purge (strengthens D-8); (d) it is a showcase for the Cratis AI-native story (.NET 10 +
+Microsoft.Extensions.AI + Claude + pgvector with a measured eval gate), and a configurable-docs-site stretch
+makes it adoptable by any Starlight project. Accepted trade-off: the system prompt and refusal thresholds are
+readable — obscurity is weak protection anyway, and blast radius is capped by minimal permissions + rate
+limits. Guardrails when public: secrets stay in env/Pulumi-encrypted config only (already true), deployment
+state lives with the stack (Q-5), and the README sets expectations (built for the Cratis community, PRs
+welcome, no support promises). Needs a team ruling before `Cratis/Prompter` is created (P-26) — visibility is
+easiest to set correctly at creation time.
