@@ -83,8 +83,12 @@ not to promise live in the parking lot.
   five products + **12 out-of-scope refusals** (incl. adversarial near-misses like EventStoreDB/Marten, Kafka
   consumer groups). ~39 pages content-verified against the real `.md` mirrors; the rest sitemap-confirmed.
   Schema (id/product/type/question/expected/expected_pages/rationale) documents exactly how P-18 will score it.
-- **P-18** Eval harness scoring groundedness, citation correctness, and refusal behavior — crib
-  `dotnet/eShopSupport`'s `AnswerScoringEvaluator` and `Microsoft.Extensions.AI.Evaluation`.
+- **P-18** ~~Eval harness scoring groundedness, citation correctness, and refusal behavior~~ **Done
+  2026-07-15** (code): `Eval/Prompter.Eval.csproj` (dev-only, publish-excluded) parses the golden set
+  (YamlDotNet), runs each question through `IAnswers`, and scores citation-hit (page-set intersection with
+  `.md`/`/index` normalization), refusal-accuracy, and groundedness (`Microsoft.Extensions.AI.Evaluation`
+  judge, cribbed from eShopSupport), writing markdown+JSON to `Eval/results/`. Pure scorers spec-covered (11
+  facts). Run with `dotnet run --project Eval` once Voyage + Anthropic keys + a corpus exist.
 - **P-19** Wire the eval as a CI gate for prompt/retrieval changes (score regression fails the build).
 
 ## M5 — Operations
