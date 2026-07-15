@@ -13,6 +13,6 @@ public interface IIndexer
     /// remove chunks whose source no longer exists.
     /// </summary>
     /// <param name="cancellationToken">Token for cancelling the operation.</param>
-    /// <returns>Awaitable task.</returns>
-    Task Run(CancellationToken cancellationToken = default);
+    /// <returns>A <see cref="IndexRun"/> summarizing the pass.</returns>
+    Task<IndexRun> Run(CancellationToken cancellationToken = default);
 }

@@ -12,6 +12,7 @@ using Microsoft.Extensions.AI;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
+using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
 using NetCord.Gateway;
 using NetCord.Hosting.Gateway;
@@ -46,12 +47,18 @@ builder.Services.AddHttpClient<IDocsSite, DocsSite>((sp, client) =>
     client.BaseAddress = new Uri(options.DocsSiteUrl.TrimEnd('/') + "/");
 });
 
-builder.Services.AddHttpClient<IEmbeddingGenerator<string, Embedding<float>>, VoyageEmbeddings>((sp, client) =>
+builder.Services.AddHttpClient<VoyageEmbeddings>((sp, client) =>
 {
     var options = sp.GetRequiredService<IOptions<PrompterOptions>>().Value;
     client.BaseAddress = new Uri(options.Voyage.Url);
     client.DefaultRequestHeaders.Authorization = new("Bearer", options.Voyage.ApiKey);
 });
+
+builder.Services.AddSingleton<IEmbeddingGenerator<string, Embedding<float>>>(sp =>
+    new ResilientEmbeddingGenerator(
+        sp.GetRequiredService<VoyageEmbeddings>(),
+        sp.GetRequiredService<IOptions<PrompterOptions>>(),
+        sp.GetRequiredService<ILogger<ResilientEmbeddingGenerator>>()));
 
 builder.Services.AddSingleton<IChatClient>(sp =>
 {
@@ -90,7 +97,10 @@ await host.Services.GetRequiredService<IChunks>().EnsureSchema();
 switch (mode)
 {
     case "index":
-        await host.Services.GetRequiredService<IIndexer>().Run();
+        var run = await host.Services.GetRequiredService<IIndexer>().Run();
+        Console.WriteLine(
+            $"Indexed {run.Pages} pages in {run.Duration:mm\\:ss}: " +
+            $"{run.Embedded} embedded, {run.Unchanged} unchanged, {run.Removed} removed.");
         break;
 
     case "ask":

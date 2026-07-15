@@ -7,6 +7,6 @@ namespace Cratis.Prompter.Ingestion;
 
 internal static partial class IndexerLogging
 {
-    [LoggerMessage(LogLevel.Information, "Index run completed - {Embedded} chunks embedded, {Unchanged} unchanged, {Removed} removed")]
-    internal static partial void IndexRunCompleted(this ILogger<Indexer> logger, int embedded, int unchanged, int removed);
+    [LoggerMessage(LogLevel.Information, "Index run completed in {Duration} - {Pages} pages, {Embedded} chunks embedded, {Unchanged} unchanged, {Removed} removed")]
+    internal static partial void IndexRunCompleted(this ILogger<Indexer> logger, int pages, int embedded, int unchanged, int removed, TimeSpan duration);
 }
