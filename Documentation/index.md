@@ -1,32 +1,34 @@
 ---
 title: Prompter
-description: The Cratis community's documentation assistant on Discord - answers questions grounded in the published docs, with citations on every answer.
+description: The Cratis community's documentation assistant on Discord - grounded answers with citations, straight from the docs, right where you ask.
 ---
 
-Prompter is the Cratis community's documentation assistant on Discord. Like a theater prompter, it sits just
-offstage with the script - the published documentation at [cratis.io](https://cratis.io) - and feeds you the
-line you are missing.
+Prompter is the Cratis community's documentation assistant on Discord - it answers your questions grounded in
+the published documentation, cites the pages it used, and says so honestly when the docs don't cover it.
+
+Without Prompter, a question in Discord waits for a human in the right timezone who happens to know the
+answer - even when that answer sits in the documentation the whole time. With Prompter, the documentation
+answers first, in seconds, with links - and humans spend their energy on the questions that genuinely need
+them.
+
+## Start here
+
+- [Getting started](getting-started/index.md) - ask your first question and learn every way to summon the bot.
+- [Why Prompter](concepts/why-prompter.md) - the problem it solves and when not to rely on it.
+- [FAQ](reference/faq.md) - quick answers about the bot itself.
 
 ## What it does
 
-- Answers questions when you mention **@Prompter** or use **/ask** in the community Discord.
-- Grounds every answer strictly in the documentation and cites the pages it used.
-- Refuses honestly when the documentation does not cover a question, instead of guessing.
-- Stays current automatically - the corpus re-indexes when documentation changes are merged.
+- Answers when you [mention it, use `/ask`, post in the ask channel, or open a help-forum thread](getting-started/index.md).
+- Grounds every answer strictly in [the documentation](https://cratis.io) and cites its sources.
+- [Refuses honestly](concepts/grounded-answers.md) when the documentation doesn't cover a question.
+- Stays current automatically - the knowledge base updates within minutes of documentation changes.
 
-## What it does not do
+## What it doesn't do
 
-- It does not answer from general knowledge, and it does not interject into conversations uninvited.
-- It does not replace humans - answers it cannot ground get routed to the community.
+- It never answers from general knowledge, and it never interjects into conversations uninvited.
+- It doesn't replace humans - unanswerable questions are routed back to the community, and its misses become
+  [signals for missing documentation](concepts/grounded-answers.md).
 
-## Asking good questions
-
-Ask complete questions in one message, mention the product you are working with, and include the error or
-code shape when relevant. Prompter answers from the documentation, so questions about undocumented internals
-are better asked to a human.
-
-## Privacy
-
-Prompter stores questions and answers for quality follow-up with a one-way hash of the asker's Discord
-identifier - never the identifier itself - and purges interactions after 90 days. Model inference runs
-through the Anthropic API, which does not train on the data.
+Prompter is [open source under the MIT license](https://github.com/Cratis/Prompter) - built for the Cratis
+community, and readable end to end, including [exactly what it stores about you](concepts/privacy.md).

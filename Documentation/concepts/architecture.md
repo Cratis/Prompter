@@ -5,7 +5,8 @@ description: How Prompter ingests the documentation, retrieves passages, and gen
 
 Prompter is a single deployable with one database. It is a retrieval-augmented generation (RAG) pipeline: the
 documentation is never trained into a model - it is indexed, and relevant excerpts are given to the model per
-question, which is why answers stay current with the docs.
+question, which is why answers stay current with the docs. What that means for trust and freshness is covered
+in [Grounded answers](grounded-answers.md); this page covers the moving parts.
 
 ```mermaid
 flowchart LR

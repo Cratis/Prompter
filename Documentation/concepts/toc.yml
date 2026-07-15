@@ -1,0 +1,10 @@
+- name: Overview
+  href: index.md
+- name: Why Prompter
+  href: why-prompter.md
+- name: Architecture
+  href: architecture.md
+- name: Grounded answers
+  href: grounded-answers.md
+- name: Privacy
+  href: privacy.md
