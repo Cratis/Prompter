@@ -18,7 +18,7 @@ public class and_sitemap_has_pages : Specification
 
     PageUrl[] _urls = null!;
 
-    void Because() => _urls = [.. DocsSite.ParsePageUrls(Sitemap)];
+    void Because() => _urls = [.. DocsSite.ParsePageUrls(Sitemap, new IngestionOptions().ExcludedPathSegments)];
 
     [Fact] void should_map_pages_to_their_markdown_mirror() => _urls.ShouldContain(new PageUrl("https://cratis.io/chronicle/getting-started.md"));
     [Fact] void should_map_the_root_page_to_index() => _urls.ShouldContain(new PageUrl("https://cratis.io/index.md"));

@@ -24,6 +24,11 @@ public class PrompterOptions
     public int RetentionDays { get; set; } = 90;
 
     /// <summary>
+    /// Gets or sets the ingestion specific options.
+    /// </summary>
+    public IngestionOptions Ingestion { get; set; } = new();
+
+    /// <summary>
     /// Gets or sets the Discord specific options.
     /// </summary>
     public DiscordOptions Discord { get; set; } = new();

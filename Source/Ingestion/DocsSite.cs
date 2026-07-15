@@ -4,6 +4,7 @@
 using System.Runtime.CompilerServices;
 using System.Text.RegularExpressions;
 using Microsoft.Extensions.Logging;
+using Microsoft.Extensions.Options;
 
 namespace Cratis.Prompter.Ingestion;
 
@@ -12,11 +13,10 @@ namespace Cratis.Prompter.Ingestion;
 /// which exposes a sitemap and a markdown mirror per page (verified against cratis.io 2026-07-15).
 /// </summary>
 /// <param name="httpClient">The client configured with the docs site as base address.</param>
+/// <param name="options">The Prompter options carrying the ingestion configuration.</param>
 /// <param name="logger">Logger for diagnostics.</param>
-public partial class DocsSite(HttpClient httpClient, ILogger<DocsSite> logger) : IDocsSite
+public partial class DocsSite(HttpClient httpClient, IOptions<PrompterOptions> options, ILogger<DocsSite> logger) : IDocsSite
 {
-    static readonly string[] _excludedPathSegments = ["client-snippets", "api-reference"];
-
     [GeneratedRegex("<loc>(?<url>[^<]+)</loc>", RegexOptions.ExplicitCapture, 1000)]
     private static partial Regex SitemapLocation { get; }
 
@@ -25,12 +25,13 @@ public partial class DocsSite(HttpClient httpClient, ILogger<DocsSite> logger) :
     /// excluding generated content that does not ground answers well.
     /// </summary>
     /// <param name="sitemap">The XML content of the sitemap.</param>
+    /// <param name="excludedPathSegments">Path segments whose pages are excluded from ingestion.</param>
     /// <returns>The page URLs to ingest.</returns>
-    public static IEnumerable<PageUrl> ParsePageUrls(string sitemap) =>
+    public static IEnumerable<PageUrl> ParsePageUrls(string sitemap, IEnumerable<string> excludedPathSegments) =>
         SitemapLocation
             .Matches(sitemap)
             .Select(match => match.Groups["url"].Value)
-            .Where(url => !_excludedPathSegments.Any(segment => url.Contains(segment, StringComparison.OrdinalIgnoreCase)))
+            .Where(url => !excludedPathSegments.Any(segment => url.Contains(segment, StringComparison.OrdinalIgnoreCase)))
             .Select(ToMarkdownMirror)
             .Distinct()
             .Select(url => new PageUrl(url));
@@ -40,7 +41,7 @@ public partial class DocsSite(HttpClient httpClient, ILogger<DocsSite> logger) :
     {
         var sitemap = await httpClient.GetStringAsync(new Uri("sitemap-0.xml", UriKind.Relative), cancellationToken);
 
-        foreach (var url in ParsePageUrls(sitemap))
+        foreach (var url in ParsePageUrls(sitemap, options.Value.Ingestion.ExcludedPathSegments))
         {
             string markdown;
             try

@@ -18,7 +18,7 @@ public class and_sitemap_has_excluded_content : Specification
 
     PageUrl[] _urls = null!;
 
-    void Because() => _urls = [.. DocsSite.ParsePageUrls(Sitemap)];
+    void Because() => _urls = [.. DocsSite.ParsePageUrls(Sitemap, new IngestionOptions().ExcludedPathSegments)];
 
     [Fact] void should_exclude_api_reference() => _urls.Any(url => url.Value.Contains("api-reference")).ShouldBeFalse();
     [Fact] void should_exclude_client_snippets() => _urls.Any(url => url.Value.Contains("client-snippets")).ShouldBeFalse();
