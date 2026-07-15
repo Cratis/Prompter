@@ -26,7 +26,8 @@ cratis.io (.md page mirrors + llms.txt)          Discord (mention / #ask / help 
    re-index webhook ◀── Documentation repo `build-docs` repository_dispatch
 ```
 
-One deployable (`Source/Prompter`), one database, one box. Run cost target: ≤ €15/month all-in
+One deployable (`Source/Prompter`), one database, sharing the existing UpCloud UKS cluster (D-11). Marginal
+run cost is the LLM API alone (~$1–10/month) — the cluster, storage, and backups are already paid for
 ([`RESEARCH.md`](RESEARCH.md) §Cost).
 
 ## Milestones — build in this order
@@ -41,7 +42,7 @@ Each milestone is shippable and verified before the next starts. Items carry P-n
 | M2 | **Retrieval + Answering** | `prompter ask "<question>"` returns a grounded, cited answer in the terminal; low-score questions get an honest refusal |
 | M3 | **Discord** | @Prompter mention and `/ask` work in the Cratis server; auto-reply in the designated help forum channel; per-user rate limiting |
 | M4 | **Evaluation** | Golden Q&A set (≥40 questions) scored in CI; groundedness/citation regression gate; prompt iterated against real questions |
-| M5 | **Operations** | Deployed (Hetzner, Docker Compose), `build-docs` webhook re-indexes, logs/alerts, privacy notice posted in Discord, retention job active |
+| M5 | **Operations** | Deployed (UpCloud UKS cluster, Studio-style Pulumi), `build-docs` webhook re-indexes, logs/alerts, privacy notice posted in Discord, retention job active |
 
 **The eval milestone (M4) is not optional.** The recurring failure mode of self-built docs bots is tuning
 neglect — Astro archived theirs for exactly this ([`RESEARCH.md`](RESEARCH.md) §Market). M4 is what makes

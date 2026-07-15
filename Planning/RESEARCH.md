@@ -47,6 +47,8 @@ that led to building Prompter. This is background material — decisions extract
 - **Run cost:** Hetzner CAX11 ARM ~€6.50/mo (bot + Postgres in Compose) + $1–10/mo LLM API (50–200 q/mo,
   prompt-cached) + ~$0 embeddings (Voyage free under 200M tokens; corpus is ~2M). Claude pricing at decision
   time: Haiku 4.5 $1/$5 per MTok, Sonnet 5 $2/$10 intro through 2026-08-31 then $3/$15.
+  *(Superseded by D-11: deploy moved to the shared UpCloud UKS cluster — no dedicated box, so the ~€6.50/mo
+  Hetzner line falls away and the marginal cost is the LLM API alone.)*
 - **Stack:** NetCord (or Discord.Net fallback) · Microsoft.Extensions.AI (GA) · official `Anthropic` C# SDK as
   `IChatClient` · Postgres + pgvector 0.8 (exact scan at ~20k chunks) · hybrid BM25+vector RRF in one SQL query
   (the Supabase/Katz pattern) · Voyage `voyage-4` embeddings behind `IEmbeddingGenerator`.
