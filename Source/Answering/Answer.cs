@@ -21,6 +21,13 @@ public record Answer(
     IReadOnlyList<Passage> Passages)
 {
     /// <summary>
+    /// Gets the id of the interaction row this answer was recorded as, when it was recorded (Discord and
+    /// CLI answers are; a fresh <see cref="Refusal"/> before recording is not). Feedback buttons carry this
+    /// id so a verdict can be written back to the row.
+    /// </summary>
+    public long? InteractionId { get; init; }
+
+    /// <summary>
     /// Creates a refusal answer for when the documentation does not cover the question well enough.
     /// </summary>
     /// <param name="confidence">The top passage score that fell below the refusal threshold.</param>

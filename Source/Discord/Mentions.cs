@@ -1,7 +1,9 @@
 // Copyright (c) Cratis. All rights reserved.
 // Licensed under the MIT license. See LICENSE file in the project root for full license information.
 
+using System.Globalization;
 using Cratis.Prompter.Answering;
+using Cratis.Prompter.Storage;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
 using NetCord.Gateway;
@@ -17,6 +19,7 @@ namespace Cratis.Prompter.Discord;
 /// <param name="client">The gateway client, used to read the bot's own identity for self-mention detection.</param>
 /// <param name="rest">The REST client used to send follow-up messages.</param>
 /// <param name="answers">The answers Prompter can give.</param>
+/// <param name="interactionLog">The interaction log, used to record which message the answer landed on.</param>
 /// <param name="options">The Prompter options carrying the Discord ask-channel identifier.</param>
 /// <param name="logger">Logger for diagnostics.</param>
 /// <remarks>
@@ -28,6 +31,7 @@ public class Mentions(
     GatewayClient client,
     RestClient rest,
     IAnswers answers,
+    IInteractionLog interactionLog,
     IOptions<PrompterOptions> options,
     ILogger<Mentions> logger) : IMessageCreateGatewayHandler
 {
@@ -93,17 +97,40 @@ public class Mentions(
         var answer = await answers.For(new(question), UserHash.For(message.Author.Id), source);
 
         // Anchor the answer to the asking message with a reply reference on the first chunk; any further
-        // chunks follow as ordinary messages in the same channel.
+        // chunks follow as ordinary messages in the same channel. The 👍/👎 feedback buttons ride on the
+        // last chunk, and its message id is recorded against the interaction for auditing.
         var chunks = DiscordAnswers.Split(answer);
+        var interactionId = answer.InteractionId;
         for (var index = 0; index < chunks.Count; index++)
         {
+            var isLast = index == chunks.Count - 1;
+            var feedback = isLast ? interactionId : null;
+
+            RestMessage sent;
             if (index == 0)
             {
-                await message.ReplyAsync(chunks[index]);
+                var reply = new ReplyMessageProperties { Content = chunks[index] };
+                if (feedback is { } replyFeedback)
+                {
+                    reply.Components = [FeedbackButtonRow.For(replyFeedback)];
+                }
+
+                sent = await message.ReplyAsync(reply);
             }
             else
             {
-                await rest.SendMessageAsync(message.ChannelId, chunks[index]);
+                var followup = new MessageProperties { Content = chunks[index] };
+                if (feedback is { } followupFeedback)
+                {
+                    followup.Components = [FeedbackButtonRow.For(followupFeedback)];
+                }
+
+                sent = await rest.SendMessageAsync(message.ChannelId, followup);
+            }
+
+            if (isLast && interactionId is { } recordedId)
+            {
+                await interactionLog.SetAnswerMessage(recordedId, sent.Id.ToString(CultureInfo.InvariantCulture));
             }
         }
     }

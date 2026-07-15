@@ -14,12 +14,13 @@ namespace Cratis.Prompter.Storage;
 public class InteractionLog(NpgsqlDataSource dataSource, IOptions<PrompterOptions> options) : IInteractionLog
 {
     /// <inheritdoc/>
-    public async Task Record(Interaction interaction, CancellationToken cancellationToken = default)
+    public async Task<long> Record(Interaction interaction, CancellationToken cancellationToken = default)
     {
         await using var command = dataSource.CreateCommand(
             """
             INSERT INTO interactions (user_hash, source, question, answer, cited_pages, confidence, was_refusal)
             VALUES ($1, $2, $3, $4, $5, $6, $7)
+            RETURNING id
             """);
 
         command.Parameters.AddWithValue(interaction.UserHash);
@@ -29,6 +30,28 @@ public class InteractionLog(NpgsqlDataSource dataSource, IOptions<PrompterOption
         command.Parameters.AddWithValue(interaction.CitedPages.Select(page => page.Value).ToArray());
         command.Parameters.AddWithValue(interaction.Confidence);
         command.Parameters.AddWithValue(interaction.WasRefusal);
+
+        return (long)(await command.ExecuteScalarAsync(cancellationToken))!;
+    }
+
+    /// <inheritdoc/>
+    public async Task SetAnswerMessage(long interactionId, string answerMessageId, CancellationToken cancellationToken = default)
+    {
+        await using var command = dataSource.CreateCommand(
+            "UPDATE interactions SET answer_message_id = $1 WHERE id = $2");
+        command.Parameters.AddWithValue(answerMessageId);
+        command.Parameters.AddWithValue(interactionId);
+
+        await command.ExecuteNonQueryAsync(cancellationToken);
+    }
+
+    /// <inheritdoc/>
+    public async Task RecordFeedback(long interactionId, FeedbackVerdict verdict, CancellationToken cancellationToken = default)
+    {
+        await using var command = dataSource.CreateCommand(
+            "UPDATE interactions SET feedback = $1 WHERE id = $2");
+        command.Parameters.AddWithValue(verdict.ToText());
+        command.Parameters.AddWithValue(interactionId);
 
         await command.ExecuteNonQueryAsync(cancellationToken);
     }

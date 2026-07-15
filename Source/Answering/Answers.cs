@@ -52,11 +52,11 @@ public class Answers(
             answer = new(response.Text, citations, confidence, IsRefusal: false, found);
         }
 
-        await interactionLog.Record(
+        var interactionId = await interactionLog.Record(
             new(userHash, source, question, answer.Text, answer.Citations, answer.Confidence, answer.IsRefusal),
             cancellationToken);
 
-        return answer;
+        return answer with { InteractionId = interactionId };
     }
 
     static string ComposeUserMessage(Question question, IEnumerable<Passage> found)

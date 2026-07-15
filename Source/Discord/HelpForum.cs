@@ -1,7 +1,9 @@
 // Copyright (c) Cratis. All rights reserved.
 // Licensed under the MIT license. See LICENSE file in the project root for full license information.
 
+using System.Globalization;
 using Cratis.Prompter.Answering;
+using Cratis.Prompter.Storage;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
 using NetCord;
@@ -17,19 +19,21 @@ namespace Cratis.Prompter.Discord;
 /// </summary>
 /// <param name="rest">The REST client used to read the starter message and post replies into the thread.</param>
 /// <param name="answers">The answers Prompter can give.</param>
+/// <param name="interactionLog">The interaction log, used to record which message the answer landed on.</param>
 /// <param name="options">The Prompter options carrying the help-forum channel identifier.</param>
 /// <param name="logger">Logger for diagnostics.</param>
 public class HelpForum(
     RestClient rest,
     IAnswers answers,
+    IInteractionLog interactionLog,
     IOptions<PrompterOptions> options,
     ILogger<HelpForum> logger) : IGuildThreadCreateGatewayHandler
 {
     /// <summary>
     /// The standing note posted after every auto-reply, inviting a human follow-up and pointing at the
-    /// feedback reactions.
+    /// feedback buttons on the answer.
     /// </summary>
-    public const string FollowUpNote = "A human will follow up — the reactions below tell us if this helped.";
+    public const string FollowUpNote = "A human will follow up — the 👍/👎 buttons above tell us if this helped.";
 
     /// <summary>
     /// Decides whether a newly created thread should receive an automatic answer.
@@ -84,8 +88,24 @@ public class HelpForum(
         logger.AnsweringForumThread(thread.Id, starter.Author.Id);
 
         var answer = await answers.For(new(question), UserHash.For(starter.Author.Id), "discord-forum");
+        var content = DiscordAnswers.Format(answer);
 
-        await rest.SendMessageAsync(thread.Id, DiscordAnswers.Format(answer));
+        // The 👍/👎 feedback buttons ride on the answer message; the standing note follows as its own message.
+        if (answer.InteractionId is { } interactionId)
+        {
+            var sent = await rest.SendMessageAsync(thread.Id, new MessageProperties
+            {
+                Content = content,
+                Components = [FeedbackButtonRow.For(interactionId)]
+            });
+
+            await interactionLog.SetAnswerMessage(interactionId, sent.Id.ToString(CultureInfo.InvariantCulture));
+        }
+        else
+        {
+            await rest.SendMessageAsync(thread.Id, content);
+        }
+
         await rest.SendMessageAsync(thread.Id, FollowUpNote);
     }
 }

@@ -15,6 +15,7 @@ using NetCord.Gateway;
 using NetCord.Hosting.Gateway;
 using NetCord.Hosting.Services;
 using NetCord.Hosting.Services.ApplicationCommands;
+using NetCord.Hosting.Services.ComponentInteractions;
 
 var mode = args.FirstOrDefault() ?? "bot";
 
@@ -62,7 +63,8 @@ webBuilder.Services
         options.Intents = GatewayIntents.Guilds | GatewayIntents.GuildMessages | GatewayIntents.MessageContent;
     })
     .AddGatewayHandlers(typeof(Program).Assembly)
-    .AddApplicationCommands();
+    .AddApplicationCommands()
+    .AddComponentInteractions();
 
 var app = webBuilder.Build();
 
