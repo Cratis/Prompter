@@ -7,6 +7,6 @@ namespace Cratis.Prompter.Discord;
 
 internal static partial class MentionsLogging
 {
-    [LoggerMessage(LogLevel.Information, "Answering mention from user {UserId}")]
-    internal static partial void AnsweringMention(this ILogger<Mentions> logger, ulong userId);
+    [LoggerMessage(LogLevel.Information, "Answering {Source} question from user {UserId}")]
+    internal static partial void AnsweringQuestion(this ILogger<Mentions> logger, string source, ulong userId);
 }
