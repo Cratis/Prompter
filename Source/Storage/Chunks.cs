@@ -1,7 +1,6 @@
 // Copyright (c) Cratis. All rights reserved.
 // Licensed under the MIT license. See LICENSE file in the project root for full license information.
 
-using System.Reflection;
 using Cratis.Prompter.Ingestion;
 using Npgsql;
 using Pgvector;
@@ -14,18 +13,26 @@ namespace Cratis.Prompter.Storage;
 /// <param name="dataSource">The Postgres data source.</param>
 public class Chunks(NpgsqlDataSource dataSource) : IChunks
 {
-    const string SchemaResourceName = "Cratis.Prompter.Storage.Schema.sql";
+    const string CreateMigrationsTableSql =
+        """
+        CREATE TABLE IF NOT EXISTS schema_migrations (
+            version TEXT PRIMARY KEY,
+            applied_at TIMESTAMPTZ NOT NULL DEFAULT now()
+        )
+        """;
 
     /// <inheritdoc/>
     public async Task EnsureSchema(CancellationToken cancellationToken = default)
     {
-        await using var stream = Assembly.GetExecutingAssembly().GetManifestResourceStream(SchemaResourceName)
-            ?? throw new MissingSchemaResource(SchemaResourceName);
-        using var reader = new StreamReader(stream);
-        var schema = await reader.ReadToEndAsync(cancellationToken);
+        await EnsureMigrationsTable(cancellationToken);
 
-        await using var command = dataSource.CreateCommand(schema);
-        await command.ExecuteNonQueryAsync(cancellationToken);
+        var available = EmbeddedMigrations.LoadFrom(typeof(Chunks).Assembly);
+        var applied = await GetAppliedVersions(cancellationToken);
+
+        foreach (var migration in MigrationPlan.Pending(available, applied))
+        {
+            await Apply(migration, cancellationToken);
+        }
     }
 
     /// <inheritdoc/>
@@ -77,5 +84,38 @@ public class Chunks(NpgsqlDataSource dataSource) : IChunks
         command.Parameters.AddWithValue(existing.Select(id => id.Value).ToArray());
 
         return await command.ExecuteNonQueryAsync(cancellationToken);
+    }
+
+    async Task EnsureMigrationsTable(CancellationToken cancellationToken)
+    {
+        await using var command = dataSource.CreateCommand(CreateMigrationsTableSql);
+        await command.ExecuteNonQueryAsync(cancellationToken);
+    }
+
+    async Task<IReadOnlySet<MigrationVersion>> GetAppliedVersions(CancellationToken cancellationToken)
+    {
+        var applied = new HashSet<MigrationVersion>();
+
+        await using var command = dataSource.CreateCommand("SELECT version FROM schema_migrations");
+        await using var reader = await command.ExecuteReaderAsync(cancellationToken);
+        while (await reader.ReadAsync(cancellationToken))
+        {
+            applied.Add(MigrationVersion.Parse(reader.GetString(0)));
+        }
+
+        return applied;
+    }
+
+    async Task Apply(Migration migration, CancellationToken cancellationToken)
+    {
+        // The migration body and its version record run as a single simple-protocol batch inside one
+        // explicit transaction: if any statement fails the whole batch rolls back, so a partial run never
+        // records a version whose migration did not fully apply. The migration body is multiple statements,
+        // which rules out parameters (those force the extended, one-statement-per-command protocol); the
+        // version is a validated numeric (major.minor.patch), so embedding it as a literal is injection-safe.
+        var sql = $"BEGIN;\n{migration.Sql}\nINSERT INTO schema_migrations (version) VALUES ('{migration.Version}');\nCOMMIT;";
+
+        await using var command = dataSource.CreateCommand(sql);
+        await command.ExecuteNonQueryAsync(cancellationToken);
     }
 }

@@ -18,7 +18,7 @@
     <PackageReference Include="Pgvector" />
   </ItemGroup>
   <ItemGroup>
-    <EmbeddedResource Include="Storage/Schema.sql" />
+    <EmbeddedResource Include="Storage/Migrations/**/*.sql" />
     <None Update="appsettings.json" CopyToOutputDirectory="PreserveNewest" />
   </ItemGroup>
 </Project>
