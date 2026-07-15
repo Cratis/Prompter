@@ -33,7 +33,11 @@ public static class HostBuilderExtensions
 
         builder.Services
             .AddOptions<PrompterOptions>()
-            .BindConfiguration(configSection);
+            .BindConfiguration(configSection)
+            .Validate(
+                options => options.Discord.RateLimit.IsValid,
+                "Cratis:Prompter:Discord:RateLimit requires WindowMinutes > 0 and MaxQuestions >= 0.")
+            .ValidateOnStart();
 
         builder.Configuration
             .AddJsonFile("appsettings.json", optional: true, reloadOnChange: true)
@@ -82,5 +86,10 @@ public static class HostBuilderExtensions
         builder.Services.AddSingleton<IPassages, Passages>();
         builder.Services.AddSingleton<IAnswers, Answers>();
         builder.Services.AddSingleton<IIndexer, Indexer>();
+
+        // The per-user question throttle and the clock its refills are measured against. Both are shared
+        // across every Discord entry point, so they live as singletons in the common registration.
+        builder.Services.AddSingleton(TimeProvider.System);
+        builder.Services.AddSingleton<Discord.RateLimiter>();
     }
 }

@@ -17,4 +17,12 @@ public class RateLimitOptions
     /// Gets or sets the length of the rolling rate-limit window, in minutes.
     /// </summary>
     public int WindowMinutes { get; set; } = 10;
+
+    /// <summary>
+    /// Gets a value indicating whether these options form a usable configuration: the window must be
+    /// positive (a zero window divides by zero when computing the token refill rate, silently disabling
+    /// limiting by producing an infinite allowance) and the allowance must be non-negative. Validated at
+    /// startup so a misconfiguration fails fast rather than quietly letting everyone through.
+    /// </summary>
+    public bool IsValid => WindowMinutes > 0 && MaxQuestions >= 0;
 }

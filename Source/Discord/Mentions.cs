@@ -20,6 +20,8 @@ namespace Cratis.Prompter.Discord;
 /// <param name="rest">The REST client used to send follow-up messages.</param>
 /// <param name="answers">The answers Prompter can give.</param>
 /// <param name="interactionLog">The interaction log, used to record which message the answer landed on.</param>
+/// <param name="rateLimiter">The per-user question throttle, checked before the expensive answer path.</param>
+/// <param name="timeProvider">The clock the rate limiter's refills are measured against.</param>
 /// <param name="options">The Prompter options carrying the Discord ask-channel identifier.</param>
 /// <param name="logger">Logger for diagnostics.</param>
 /// <remarks>
@@ -32,6 +34,8 @@ public class Mentions(
     RestClient rest,
     IAnswers answers,
     IInteractionLog interactionLog,
+    RateLimiter rateLimiter,
+    TimeProvider timeProvider,
     IOptions<PrompterOptions> options,
     ILogger<Mentions> logger) : IMessageCreateGatewayHandler
 {
@@ -80,58 +84,94 @@ public class Mentions(
     }
 
     /// <inheritdoc/>
+    /// <remarks>
+    /// A gateway handler must never throw — an unhandled exception can destabilize the gateway loop — so the
+    /// whole body is guarded: the user is throttled before the expensive answer path, answering runs under a
+    /// timeout, and any failure is logged and answered with a short apology instead of leaving them in silence.
+    /// </remarks>
     public async ValueTask HandleAsync(Message arg)
     {
         var message = arg;
-        var askChannelId = options.Value.Discord.AskChannelId;
-        var (shouldAnswer, question) = ResolveQuestion(message.Content, client.Id, message.Author.IsBot, message.ChannelId, askChannelId);
-        if (!shouldAnswer)
+        try
         {
-            return;
+            var askChannelId = options.Value.Discord.AskChannelId;
+            var (shouldAnswer, question) = ResolveQuestion(message.Content, client.Id, message.Author.IsBot, message.ChannelId, askChannelId);
+            if (!shouldAnswer)
+            {
+                return;
+            }
+
+            var userHash = UserHash.For(message.Author.Id);
+            if (!rateLimiter.TryConsume(userHash, timeProvider.GetUtcNow()))
+            {
+                logger.RateLimited(message.Author.Id);
+                await message.ReplyAsync(options.Value.Discord.RateLimitedReply);
+                return;
+            }
+
+            var inAskChannel = askChannelId is { } ask && message.ChannelId == ask;
+            var source = inAskChannel ? "discord-ask-channel" : "discord-mention";
+            logger.AnsweringQuestion(source, message.Author.Id);
+
+            using var timeout = new CancellationTokenSource(TimeSpan.FromSeconds(options.Value.Discord.AnswerTimeoutSeconds));
+            var answer = await answers.For(new(question), userHash, source, timeout.Token);
+
+            // Anchor the answer to the asking message with a reply reference on the first chunk; any further
+            // chunks follow as ordinary messages in the same channel. The 👍/👎 feedback buttons ride on the
+            // last chunk, and its message id is recorded against the interaction for auditing.
+            var chunks = DiscordAnswers.Split(answer);
+            var interactionId = answer.InteractionId;
+            for (var index = 0; index < chunks.Count; index++)
+            {
+                var isLast = index == chunks.Count - 1;
+                var feedback = isLast ? interactionId : null;
+
+                RestMessage sent;
+                if (index == 0)
+                {
+                    var reply = new ReplyMessageProperties { Content = chunks[index] };
+                    if (feedback is { } replyFeedback)
+                    {
+                        reply.Components = [FeedbackButtonRow.For(replyFeedback)];
+                    }
+
+                    sent = await message.ReplyAsync(reply);
+                }
+                else
+                {
+                    var followup = new MessageProperties { Content = chunks[index] };
+                    if (feedback is { } followupFeedback)
+                    {
+                        followup.Components = [FeedbackButtonRow.For(followupFeedback)];
+                    }
+
+                    sent = await rest.SendMessageAsync(message.ChannelId, followup);
+                }
+
+                if (isLast && interactionId is { } recordedId)
+                {
+                    await interactionLog.SetAnswerMessage(recordedId, sent.Id.ToString(CultureInfo.InvariantCulture));
+                }
+            }
         }
-
-        var inAskChannel = askChannelId is { } ask && message.ChannelId == ask;
-        var source = inAskChannel ? "discord-ask-channel" : "discord-mention";
-        logger.AnsweringQuestion(source, message.Author.Id);
-
-        var answer = await answers.For(new(question), UserHash.For(message.Author.Id), source);
-
-        // Anchor the answer to the asking message with a reply reference on the first chunk; any further
-        // chunks follow as ordinary messages in the same channel. The 👍/👎 feedback buttons ride on the
-        // last chunk, and its message id is recorded against the interaction for auditing.
-        var chunks = DiscordAnswers.Split(answer);
-        var interactionId = answer.InteractionId;
-        for (var index = 0; index < chunks.Count; index++)
+        catch (Exception exception)
         {
-            var isLast = index == chunks.Count - 1;
-            var feedback = isLast ? interactionId : null;
+            logger.AnswerFailed(exception, message.Author.Id);
+            await TryApologize(message);
+        }
+    }
 
-            RestMessage sent;
-            if (index == 0)
-            {
-                var reply = new ReplyMessageProperties { Content = chunks[index] };
-                if (feedback is { } replyFeedback)
-                {
-                    reply.Components = [FeedbackButtonRow.For(replyFeedback)];
-                }
-
-                sent = await message.ReplyAsync(reply);
-            }
-            else
-            {
-                var followup = new MessageProperties { Content = chunks[index] };
-                if (feedback is { } followupFeedback)
-                {
-                    followup.Components = [FeedbackButtonRow.For(followupFeedback)];
-                }
-
-                sent = await rest.SendMessageAsync(message.ChannelId, followup);
-            }
-
-            if (isLast && interactionId is { } recordedId)
-            {
-                await interactionLog.SetAnswerMessage(recordedId, sent.Id.ToString(CultureInfo.InvariantCulture));
-            }
+    async Task TryApologize(Message message)
+    {
+        try
+        {
+            await message.ReplyAsync(options.Value.Discord.ErrorReply);
+        }
+        catch (Exception exception)
+        {
+            // The apology itself failed to send (channel gone, missing permission); there is nothing more to
+            // do but record it — the handler still returns without throwing.
+            logger.ApologyFailed(exception, message.Author.Id);
         }
     }
 }
