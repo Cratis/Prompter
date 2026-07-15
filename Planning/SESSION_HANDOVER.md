@@ -3,6 +3,33 @@
 Resume state for anyone (human or agent) continuing work in a fresh session. Newest entry first — append,
 don't rewrite history.
 
+## 2026-07-15 — Multi-agent push through M2–M5 (autonomous integration)
+
+**State:** `main` @ `0723d78`, pushed, **197 specs green, 0 warnings**. Running an autonomous multi-agent loop
+(isolated worktrees, I integrate + gate on real `main`). **Done + integrated this run:** P-04 versioned SQL
+migrations (live-verified on Postgres), P-11 deferred `/ask`, P-13 forum auto-reply, P-15 long-answer splitting
+(incl. code-fence safety), P-17 golden eval set (69 Qs), P-12 mention hardening + M3.3 `#ask` channel, P-20
+re-index webhook + `/healthz` (bot mode is now a Kestrel `WebApplication` co-hosting the gateway) + `Guilds`
+intent. Also added `Planning/DISCORD_BEST_PRACTICES.md` and `Documentation/guides/{using-prompter,discord-setup,
+deploying}.md`. **Still running:** P-18 eval harness project, P-16 feedback buttons (+ `v1_1_0` migration).
+
+**Decisions from the team this run:** D-4 (Postgres+pgvector) **reaffirmed** — a "do we need SQL?" review
+landed on keep (SQLite was the alternative; kept for the already-built hybrid RRF + cluster fit). Cratis/Chronicle
+dogfooding: recommendation is **post-v1** — v1 keeps the `IInteractionLog` seam (D-6), Chronicle-backed log +
+Studio dashboards become the flagship post-v1 milestone. (Record these formally as a D-4 note + D-6 ruling when
+convenient; not yet done.)
+
+**Critical gotcha — nested-worktree builds:** agent worktrees live at `.claude/worktrees/…` INSIDE the repo, so
+the SDK's up-tree `.globalconfig` discovery finds two configs → `MultipleGlobalAnalyzerKeys` fails any build run
+*inside* a worktree. Agents verify out-of-tree; the **authoritative gate is `dotnet build/test -c Release
+Prompter.slnx` on real `main`** (single config), which I run after every cherry-pick. Do not "fix" this in the
+repo — a normal checkout/CI has one config.
+
+**M3 live-verification residual (unchanged):** all Discord runtime paths (deferred `/ask`, mentions, forum
+reply, feedback buttons) are code-complete + NetCord-beta.11-API-verified but need a **test server + Discord
+token**; retrieval/answering + eval still need **Voyage + Anthropic** keys. Next disjoint waves after P-16/P-18:
+P-22 retention job, P-08 query-rewrite, P-09 prompt caching, M3.8 resilience wrap.
+
 ## 2026-07-15 — Docs get the Starlight treatment; org secrets confirmed working
 
 **State:** Landing pages upgraded to **MDX with the Documentation repo's components** (verified against
