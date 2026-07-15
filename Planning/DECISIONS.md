@@ -74,6 +74,19 @@ re-implementing `sync-content.mjs`. Exclude Chronicle's generated `client-snippe
 the existing `build-docs` `repository_dispatch` — the Documentation repo already tells the world when docs
 change; Prompter subscribes via a protected webhook (M5).
 
+## D-11 · Deploy on the existing UpCloud cluster, Studio-style — 2026-07-15
+
+Prompter deploys to the **UpCloud UKS cluster (region `no-svg1`) that Studio's Pulumi stack manages**,
+following Studio's conventions (Pulumi C#, self-managed in-repo state, passphrase secrets, `UPCLOUD_TOKEN`,
+version-pinned images via `pulumi config set`, deploy workflow called from Publish). This supersedes the
+original standalone-Hetzner topology: no new infrastructure to operate, observability (Loki/Grafana) and
+backup patterns already exist, and the Norway region strengthens D-8. Postgres+pgvector runs in-cluster with
+object-storage backups, mirroring the cluster's MongoDB precedent (managed Postgres is the fallback if
+pgvector support checks out and in-cluster proves annoying). **Open sub-question Q-5:** whether the Pulumi
+code lives as a workload entry in Studio's `Deployment/` stack (recommended — the established pattern for
+platform services like `studio-llm` and Prologue) or as a `Deployment/` project in this repo. See
+[`DEPLOYMENT.md`](DEPLOYMENT.md).
+
 ## D-10 · Specs discipline — 2026-07-15
 
 Cratis.Specifications BDD style throughout (`for_<Type>/when_<behavior>/…`), same as every other repo. Pure

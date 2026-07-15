@@ -1,54 +1,72 @@
 # Deployment — production runbook
 
-How Prompter runs in production. Implementation order is [`IMPLEMENTATION_PLAN.md`](IMPLEMENTATION_PLAN.md)
-M5. Cost target from the research: ≤ €15/month all-in.
+How Prompter runs in production: **on the existing UpCloud Kubernetes cluster that runs Studio** (decision
+D-11), following Studio's deployment conventions. Implementation order is
+[`IMPLEMENTATION_PLAN.md`](IMPLEMENTATION_PLAN.md) M5. Study `Studio/Deployment/` and
+`Studio/Documentation/deployment/` before touching anything — that repo is the reference implementation.
 
 ## Topology
 
-One small ARM VPS runs everything via Docker Compose: the bot container (`cratis/prompter`, published by
-`publish.yml`) and Postgres+pgvector, sharing a private compose network. The bot exposes only `GET /healthz`
-and `POST /reindex` (shared-secret) — put them behind the box firewall allowing 80/443 only if the webhook
-needs to be reachable from GitHub; otherwise keep the port closed and use a GitHub-runner-initiated call.
+Prompter joins the **UpCloud UKS cluster** (region `no-svg1`, Norway) that Studio's Pulumi stack manages:
 
-- **Box:** Hetzner CAX11 (2 vCPU ARM, 4 GB) — ~€6.50/mo incl. IPv4. Ubuntu LTS + `docker.io`/compose plugin.
-- **Images:** multi-arch (`linux/arm64` included) — already handled by `publish.yml`.
+- **The bot** — one k8s Deployment (single replica; the Discord gateway wants exactly one connection) using
+  Studio's `SimpleWorkload` pattern, image `cratis/prompter` (or the private registry, matching however
+  `studio-llm` images are hosted). Exposes `GET /healthz` (liveness/readiness probes) and `POST /reindex`
+  (shared secret) — the reindex route published through the existing ingress/load balancer so the
+  Documentation build can reach it.
+- **Postgres + pgvector** — in-cluster StatefulSet with a persistent volume, mirroring how the cluster
+  already runs MongoDB, with backups to UpCloud Object Storage the same way MongoDB's S3 backups are wired.
+  (Alternative: UpCloud Managed PostgreSQL if it supports the `vector` extension — verify before choosing;
+  in-cluster is the recommendation because it matches the MongoDB precedent and the corpus is rebuildable.)
+- **Observability for free** — logs flow into the existing Loki/Grafana via Promtail; add a simple Grafana
+  panel (questions/day, refusal rate) once interactions accumulate.
 
-## One-time setup (P-26 first)
+Being in `no-svg1` also strengthens the GDPR story from D-8: all stored data (interactions included) stays in
+Norway on an EU-jurisdiction provider; the only external processors remain the Anthropic API (answers) and
+Voyage (embedding text of public docs).
 
-1. **GitHub:** create `Cratis/Prompter`, push `main`, add secrets `DOCKER_USERNAME`, `DOCKER_PASSWORD`,
-   `PAT_DOCUMENTATION`; run `publish.yml` once (workflow_dispatch, version `0.1.0`) → `cratis/prompter:0.1.0`.
-2. **Box:** create CAX11, harden (ssh keys only, ufw default deny incoming + allow ssh), install docker.
-3. **Deploy dir** `/opt/prompter/` with `docker-compose.production.yml` (to be authored in M5 — bot +
-   postgres, named volume, `restart: unless-stopped`, `env_file: .env`) and `.env`:
+## Deploy flow (mirrors Studio's)
 
-   ```env
-   Cratis__Prompter__ConnectionString=Host=postgres;Port=5432;Database=prompter;Username=prompter;Password=<generated>
-   Cratis__Prompter__Discord__Token=…
-   Cratis__Prompter__Discord__AskChannelId=…
-   Cratis__Prompter__Discord__HelpForumChannelId=…
-   Cratis__Prompter__Anthropic__ApiKey=…
-   Cratis__Prompter__Voyage__ApiKey=…
-   Cratis__Prompter__Reindex__Secret=<generated>
-   ```
+1. **Release the app**: merged PR → `publish.yml` builds and pushes the versioned image (exactly as today).
+2. **Deploy the version**: a `deploy-production.yml` modeled on Studio's — `workflow_call` from Publish +
+   manual `workflow_dispatch(version)` — pins the image tag with `pulumi config set` and runs `pulumi up`,
+   then commits the updated self-managed Pulumi state back to the repo (`file://./state`, passphrase
+   provider, `PULUMI_CONFIG_PASSPHRASE` + `UPCLOUD_TOKEN` secrets — same secret names as Studio).
+3. **Where the Pulumi code lives** is Q-5 (open): either a `Deployment/` project in this repo targeting the
+   existing cluster, or a `prompterImage` entry in Studio's `Deployment/` stack next to `llmImage` /
+   `prologueApiImage`. Recommendation in D-11: **join Studio's stack** — that is the established pattern for
+   platform services on this cluster, one place pins every image. Revisit if Prompter's release cadence needs
+   to decouple.
 
-4. `docker compose up -d`, then one manual `docker compose exec prompter dotnet Cratis.Prompter.dll index`
-   (or trigger `/reindex`) to build the corpus.
+Remember the separation that makes this cheap ([`CONTENT_AND_FRESHNESS.md`](CONTENT_AND_FRESHNESS.md)):
+**app deploys are for code changes only** — documentation changes never redeploy anything; they trigger the
+`/reindex` endpoint and the corpus updates in place.
+
+## One-time setup (P-26, revised for UpCloud)
+
+1. GitHub repo `Cratis/Prompter` + secrets: `DOCKER_USERNAME`/`DOCKER_PASSWORD` (or registry creds matching
+   Studio's registry), `PAT_DOCUMENTATION`; plus — wherever the Pulumi code lands — access to
+   `PULUMI_CONFIG_PASSPHRASE` and `UPCLOUD_TOKEN`.
+2. First image release via `publish.yml`.
+3. Pulumi additions (per Q-5 resolution): Prompter workload + Postgres StatefulSet + ingress route +
+   config/secrets (`Cratis__Prompter__…` env vars from k8s secrets: Discord token, Anthropic key, Voyage key,
+   reindex secret, connection string).
+4. `pulumi up`, run the first index (`/reindex` or a one-off `index` job), install the Discord app per
+   [`DISCORD_INTEGRATION.md`](DISCORD_INTEGRATION.md).
 
 ## Recurring operations
 
 | Concern | How |
 |---|---|
-| **Update** | `docker compose pull && docker compose up -d` after a release (manual and deliberate — no auto-update) |
-| **Docs freshness** | `/reindex` webhook from the Documentation build (M5.1) + the retention/reindex fallback schedule |
-| **Backups** | Nightly `pg_dump` to a second volume/object storage — the corpus is rebuildable from cratis.io, so **interactions** are the only data that matters; losing them is annoying, not fatal |
-| **Monitoring** | Free uptime monitor on `/healthz`; `docker logs` for diagnosis; weekly glance at refusal rate + feedback ratio in `interactions` |
-| **Secrets rotation** | All secrets live only in `.env` on the box + GitHub secrets; rotate Discord token/API keys by editing `.env` + `docker compose up -d` |
-| **Data subject requests** | Delete by hashed user id: `DELETE FROM interactions WHERE user_hash = …` (hash the requester's Discord id with the same scheme — see `Discord/UserHash.cs`) |
+| **App update** | Merge → Publish → deploy workflow pins the new version → `pulumi up` (Studio pattern; badge/state committed) |
+| **Docs freshness** | `/reindex` webhook from the Documentation build + nightly schedule — no deploys involved |
+| **Backups** | Postgres → UpCloud Object Storage, same wiring as the cluster's MongoDB backups; the corpus is rebuildable from cratis.io, so **interactions** are the only data that matters |
+| **Monitoring** | k8s probes on `/healthz`; logs in Loki/Grafana (already collected); weekly glance at refusal rate + feedback ratio |
+| **Secrets rotation** | k8s secrets via the Pulumi stack (passphrase-encrypted config), rotated with `pulumi config set --secret` + `pulumi up` |
+| **Data subject requests** | Delete by hashed user id: `DELETE FROM interactions WHERE user_hash = …` (hash the requester's Discord id with the scheme in `Discord/UserHash.cs`) |
 
-## GDPR posture (operational summary of D-8)
+## Superseded plan
 
-EU-owned box (Hetzner, Germany/Finland) holds all stored data; the only external processors are the Anthropic
-API (answers; no training on API data) and Voyage (embedding text of public docs — no personal data). User
-identifiers are stored hashed, questions/answers purge after `RetentionDays` (90). The privacy notice pinned
-in Discord names all of this. If EU-region *inference* ever becomes a requirement (Q-3), swap the
-`IChatClient` registration to Claude via Vertex AI (europe-west) or Bedrock (eu-central-1) — config, not code.
+The original v1 plan targeted a standalone Hetzner CAX11 with Docker Compose (~€6.50/mo) — superseded by
+D-11 (existing UpCloud cluster: no new infra to operate, existing observability/backups/registry, Norway
+region). The compose file in this repo remains the **local development** environment only.

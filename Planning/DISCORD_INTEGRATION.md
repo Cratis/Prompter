@@ -51,6 +51,18 @@ registration is instant — prefer guild-scoped while iterating on a test server
 Create a private test server; install the bot there first. Every M3 task's "done when" runs there before the
 real server sees anything. Keep a `#playground` channel and a test forum channel mirroring the real setup.
 
+## How the connection works (mechanics)
+
+The bot **dials out** to Discord: on startup it opens a persistent WebSocket (the "gateway") authenticated
+with the bot token, and Discord streams events (message created, thread created, reaction added) down that
+connection; replies go out through Discord's REST API. Consequences worth knowing when wiring infrastructure:
+
+- **No inbound port is needed for Discord at all** — the only inbound routes Prompter exposes are its own
+  `GET /healthz` and `POST /reindex`; only those need an ingress route ([`DEPLOYMENT.md`](DEPLOYMENT.md)).
+- **Exactly one instance** should run — two replicas means two gateway sessions answering everything twice.
+- If the connection drops, the library reconnects and resumes; missed-while-down messages are not replayed
+  (acceptable: an unanswered mention is retryable by the human).
+
 ## Notes for implementers
 
 - NetCord 1.0.0-beta.11 is **pinned** in `Directory.Packages.props` — API surface may move between betas;
