@@ -65,8 +65,13 @@ not to promise live in the parking lot.
 - **P-14** ~~Per-user rate limiting (e.g. 5 questions / 10 min)~~ **Done 2026-07-15** (logic): `RateLimiter`
   is a pure per-user token bucket (`TryConsume(userHash, now)`), config `Discord:RateLimit` (`MaxQuestions`
   5 / `WindowMinutes` 10), spec-covered (within-limit, exceed, window refill, partial refill, per-user
-  isolation). **Wiring into the gateway handler + the friendly refusal message is M3 integration** (needs the
-  NetCord-verified message path).
+  isolation). **Wired 2026-07-16**: registered in `AddPrompter`; every entry point (mention, `#ask`, `/ask`,
+  forum) calls `TryConsume(UserHash.For(id), TimeProvider.System.GetUtcNow())` before answering and sends a
+  friendly `DiscordOptions.RateLimitedReply` when over limit (ephemeral for `/ask`). `WindowMinutes>0` is
+  validated at startup (`ValidateOnStart`) so a zero-window misconfig fails fast instead of silently disabling
+  limiting. **M3.8 resilience** landed with it: `answers.For` runs under a 60s `AnswerTimeoutSeconds`
+  cancellation, and each handler has a catch-all that logs + posts `DiscordOptions.ErrorReply` instead of going
+  silent — the gateway handlers can no longer throw.
 - **P-15** ~~Split answers over 2000 chars instead of truncating~~ **Done 2026-07-15** (code): pure
   `DiscordAnswers.Split(Answer) : IReadOnlyList<string>` packs paragraphs greedily into ≤2000-char chunks (max 3,
   sources on the last), hard-splits oversized paragraphs, falls back to `Format` for short answers; `Mentions`
