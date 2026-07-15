@@ -15,6 +15,7 @@ public static class DiscordAnswers
     const int MaxChunks = 3;
     const string ParagraphSeparator = "\n\n";
     const string Ellipsis = "…";
+    const string CodeFence = "```";
 
     /// <summary>
     /// Formats an answer as a single Discord message, capped to Discord's message length.
@@ -79,29 +80,148 @@ public static class DiscordAnswers
             .Replace("\r\n", "\n", StringComparison.Ordinal)
             .Replace('\r', '\n');
 
-        var paragraphs = new List<string>();
-        foreach (var part in normalized.Split(ParagraphSeparator, StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries))
+        // Segment on blank lines, but keep a fenced code block whole - blank lines inside a fence
+        // are part of the block, and a code block is always its own paragraph so it stays atomic.
+        var segments = new List<string>();
+        var current = new StringBuilder();
+        var inFence = false;
+        foreach (var line in normalized.Split('\n'))
         {
-            if (part.Length <= MaxMessageLength)
+            if (IsFenceDelimiter(line))
             {
-                paragraphs.Add(part);
+                if (inFence)
+                {
+                    AppendLine(current, line);
+                    Flush(segments, current);
+                }
+                else
+                {
+                    Flush(segments, current);
+                    AppendLine(current, line);
+                }
+
+                inFence = !inFence;
+            }
+            else if (!inFence && line.Trim().Length == 0)
+            {
+                Flush(segments, current);
             }
             else
             {
-                paragraphs.AddRange(HardSplit(part));
+                AppendLine(current, line);
+            }
+        }
+
+        Flush(segments, current);
+
+        var paragraphs = new List<string>();
+        foreach (var segment in segments)
+        {
+            if (segment.Length <= MaxMessageLength)
+            {
+                paragraphs.Add(segment);
+            }
+            else
+            {
+                paragraphs.AddRange(HardSplit(segment));
             }
         }
 
         return paragraphs;
     }
 
-    static IEnumerable<string> HardSplit(string paragraph)
+    static void AppendLine(StringBuilder builder, string line)
     {
-        for (var start = 0; start < paragraph.Length; start += MaxMessageLength)
+        if (builder.Length > 0)
         {
-            yield return paragraph.Substring(start, Math.Min(MaxMessageLength, paragraph.Length - start));
+            builder.Append('\n');
+        }
+
+        builder.Append(line);
+    }
+
+    static void Flush(List<string> segments, StringBuilder builder)
+    {
+        var segment = builder.ToString().Trim();
+        if (segment.Length > 0)
+        {
+            segments.Add(segment);
+        }
+
+        builder.Clear();
+    }
+
+    static bool IsFenceDelimiter(string line) => line.TrimStart().StartsWith(CodeFence, StringComparison.Ordinal);
+
+    static IEnumerable<string> HardSplit(string paragraph) =>
+        paragraph.StartsWith(CodeFence, StringComparison.Ordinal) ? HardSplitCodeBlock(paragraph) : HardSplitText(paragraph);
+
+    static IEnumerable<string> HardSplitText(string text)
+    {
+        for (var start = 0; start < text.Length; start += MaxMessageLength)
+        {
+            yield return text.Substring(start, Math.Min(MaxMessageLength, text.Length - start));
         }
     }
+
+    static IEnumerable<string> HardSplitCodeBlock(string paragraph)
+    {
+        var lines = paragraph.Split('\n');
+        var open = $"{CodeFence}{LanguageOf(lines[0])}";
+        var contentEnd = lines.Length > 1 && IsFenceDelimiter(lines[^1]) ? lines.Length - 1 : lines.Length;
+        var budget = MaxMessageLength - open.Length - CodeFence.Length - 2;
+
+        if (budget <= 0)
+        {
+            foreach (var piece in HardSplitText(paragraph))
+            {
+                yield return piece;
+            }
+
+            yield break;
+        }
+
+        // Pack whole code lines, keeping each outgoing message a self-contained fenced block that
+        // closes with ``` and reopens with the same language hint on the next message.
+        var current = new StringBuilder();
+        for (var index = 1; index < contentEnd; index++)
+        {
+            foreach (var segment in WrapLine(lines[index], budget))
+            {
+                if (current.Length == 0)
+                {
+                    current.Append(segment);
+                }
+                else if (current.Length + 1 + segment.Length <= budget)
+                {
+                    current.Append('\n').Append(segment);
+                }
+                else
+                {
+                    yield return $"{open}\n{current}\n{CodeFence}";
+                    current.Clear().Append(segment);
+                }
+            }
+        }
+
+        yield return $"{open}\n{current}\n{CodeFence}";
+    }
+
+    static IEnumerable<string> WrapLine(string line, int budget)
+    {
+        if (line.Length <= budget)
+        {
+            yield return line;
+            yield break;
+        }
+
+        for (var start = 0; start < line.Length; start += budget)
+        {
+            yield return line.Substring(start, Math.Min(budget, line.Length - start));
+        }
+    }
+
+    static string LanguageOf(string openLine) => openLine.Trim().TrimStart('`').Trim();
 
     static List<string> Pack(List<string> paragraphs)
     {
