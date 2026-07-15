@@ -36,7 +36,7 @@ public class Answers(
         if (confidence < answering.MinScore)
         {
             logger.RefusingToAnswer(question, confidence);
-            answer = Answer.Refusal(confidence);
+            answer = Answer.Refusal(confidence, found);
         }
         else
         {
@@ -49,7 +49,7 @@ public class Answers(
                 cancellationToken);
 
             var citations = found.Select(passage => passage.Page).Distinct().Take(4).ToArray();
-            answer = new(response.Text, citations, confidence, IsRefusal: false);
+            answer = new(response.Text, citations, confidence, IsRefusal: false, found);
         }
 
         await interactionLog.Record(

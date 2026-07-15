@@ -1,0 +1,16 @@
+// Copyright (c) Cratis. All rights reserved.
+// Licensed under the MIT license. See LICENSE file in the project root for full license information.
+
+using Cratis.Prompter.Cli;
+
+namespace Cratis.Prompter.Specs.for_AskArguments.when_parsing;
+
+public class and_the_verbose_flag_precedes_the_question : Specification
+{
+    AskArguments _result = null!;
+
+    void Because() => _result = AskArguments.Parse(["--verbose", "How", "do", "I", "append", "events"]);
+
+    [Fact] void should_be_verbose() => _result.Verbose.ShouldBeTrue();
+    [Fact] void should_recognize_the_flag_in_any_position() => _result.Question.ShouldEqual("How do I append events");
+}

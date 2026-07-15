@@ -34,7 +34,11 @@ not to promise live in the parking lot.
 - **P-07** Calibrate the refusal threshold (`Answering:MinScore`) on real questions — the default is a guess.
 - **P-08** Consider a query-rewrite step (cheap model) for conversational questions before retrieval.
 - **P-09** Enable Anthropic prompt caching for the system prompt + excerpt scaffold once traffic justifies it.
-- **P-10** `prompter ask` should print confidence and passage provenance with a `--verbose` flag.
+- **P-10** ~~`prompter ask` should print confidence and passage provenance with a `--verbose` flag~~
+  **Done 2026-07-15** (code): `ask --verbose` lists the retrieved passages (score/page/heading, best first)
+  before the answer, and `ask` exits non-zero on a refusal (for scripts/CI probes). The parse/render/exit
+  logic is pure and spec-covered (`AskArguments`, `AskOutput`); `Answer` now carries the `Passages` it was
+  grounded in. **The live `--verbose` run against the real corpus is pending Voyage + Anthropic keys.**
 
 ## M3 — Discord
 

@@ -14,7 +14,8 @@ public class and_answer_has_citations : Specification
         "Append events through the event log.",
         [new PageUrl("https://cratis.io/chronicle/events.md")],
         0.5,
-        IsRefusal: false));
+        IsRefusal: false,
+        []));
 
     [Fact] void should_start_with_the_answer() => _result.StartsWith("Append events").ShouldBeTrue();
     [Fact] void should_link_sources_without_markdown_extension() => _result.ShouldContain("<https://cratis.io/chronicle/events>");

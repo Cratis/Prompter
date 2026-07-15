@@ -4,6 +4,7 @@
 using Anthropic;
 using Cratis.Prompter;
 using Cratis.Prompter.Answering;
+using Cratis.Prompter.Cli;
 using Cratis.Prompter.Embeddings;
 using Cratis.Prompter.Ingestion;
 using Cratis.Prompter.Retrieval;
@@ -104,14 +105,14 @@ switch (mode)
         break;
 
     case "ask":
-        var question = string.Join(' ', args.Skip(1));
-        var answer = await host.Services.GetRequiredService<IAnswers>().For(new(question), "cli", "cli");
-        Console.WriteLine(answer.Text);
-        foreach (var citation in answer.Citations)
+        var ask = AskArguments.Parse(args.Skip(1));
+        var answer = await host.Services.GetRequiredService<IAnswers>().For(new(ask.Question), "cli", "cli");
+        foreach (var line in AskOutput.Lines(answer, ask.Verbose))
         {
-            Console.WriteLine($"  - {citation}");
+            Console.WriteLine(line);
         }
 
+        Environment.ExitCode = AskOutput.ExitCode(answer);
         break;
 
     default:
