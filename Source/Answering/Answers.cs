@@ -2,6 +2,7 @@
 // Licensed under the MIT license. See LICENSE file in the project root for full license information.
 
 using System.Text;
+using Anthropic.Models.Messages;
 using Cratis.Prompter.Retrieval;
 using Cratis.Prompter.Storage;
 using Microsoft.Extensions.AI;
@@ -40,9 +41,17 @@ public class Answers(
         }
         else
         {
+            // The system prompt is a frozen constant, so mark it as an Anthropic prompt-cache
+            // breakpoint (D-5). The AsIChatClient adapter maps this to cache_control:
+            // { type: "ephemeral" } on the system block, letting the cached prefix be reused
+            // across questions once it exceeds the model's minimum cacheable length.
+            var systemMessage = new ChatMessage(
+                ChatRole.System,
+                [new TextContent(SystemPrompt.Text).WithCacheControl(new CacheControlEphemeral())]);
+
             var response = await chatClient.GetResponseAsync(
                 [
-                    new(ChatRole.System, SystemPrompt.Text),
+                    systemMessage,
                     new(ChatRole.User, ComposeUserMessage(question, found))
                 ],
                 new() { MaxOutputTokens = answering.MaxOutputTokens },
