@@ -28,10 +28,26 @@ public static class DiscordAnswers
     /// </remarks>
     public static string Format(Answer answer)
     {
-        var content = BuildContent(answer);
-        return content.Length <= MaxMessageLength
-            ? content
-            : $"{content[..SafeCutLength(content, 0, MaxMessageLength - 1)]}{Ellipsis}";
+        var body = answer.Text.Trim();
+        var sources = SourcesLine(answer);
+
+        if (sources.Length == 0)
+        {
+            return body.Length <= MaxMessageLength
+                ? body
+                : $"{body[..SafeCutLength(body, 0, MaxMessageLength - Ellipsis.Length)]}{Ellipsis}";
+        }
+
+        var full = $"{body}{ParagraphSeparator}{sources}";
+        if (full.Length <= MaxMessageLength)
+        {
+            return full;
+        }
+
+        // Too long to fit the body and its sources together: truncate only the body so the "Sources:" line -
+        // the citations, which are the point - always survives intact rather than being dropped or cut
+        // mid-URL (a bare, unbracketed URL would unfurl into an embed).
+        return $"{Truncate(body, RoomForBody(sources))}{ParagraphSeparator}{sources}";
     }
 
     /// <summary>
