@@ -49,7 +49,19 @@ public class Feedback(IInteractionLog interactionLog, ILogger<Feedback> logger)
             return;
         }
 
-        await interactionLog.RecordFeedback(click.InteractionId, click.Verdict);
-        logger.RecordedFeedback(click.Verdict.ToText(), click.InteractionId);
+        try
+        {
+            // Last-writer-wins: overwriting any prior verdict is intentional — any viewer of the answer may
+            // vote, and this is best-effort community signal, not an authored judgement, so no author check
+            // is needed (Discord only dispatches interactions for custom ids on messages the user can see).
+            await interactionLog.RecordFeedback(click.InteractionId, click.Verdict);
+            logger.RecordedFeedback(click.Verdict.ToText(), click.InteractionId);
+        }
+        catch (Exception exception)
+        {
+            // The user was already told "thanks"; a blip writing the vote is best-effort, so log and move on
+            // rather than letting the exception escape the handler after a successful acknowledgement.
+            logger.FeedbackWriteFailed(exception, click.Verdict.ToText(), click.InteractionId);
+        }
     }
 }

@@ -92,6 +92,8 @@ public class Mentions(
     public async ValueTask HandleAsync(Message arg)
     {
         var message = arg;
+        long? auditInteractionId = null;
+        string? answerMessageId = null;
         try
         {
             var askChannelId = options.Value.Discord.AskChannelId;
@@ -150,7 +152,8 @@ public class Mentions(
 
                 if (isLast && interactionId is { } recordedId)
                 {
-                    await interactionLog.SetAnswerMessage(recordedId, sent.Id.ToString(CultureInfo.InvariantCulture));
+                    auditInteractionId = recordedId;
+                    answerMessageId = sent.Id.ToString(CultureInfo.InvariantCulture);
                 }
             }
         }
@@ -158,6 +161,21 @@ public class Mentions(
         {
             logger.AnswerFailed(exception, message.Author.Id);
             await TryApologize(message);
+            return;
+        }
+
+        // The answer is delivered. Recording which message it landed on is audit-only, so its failure is
+        // best-effort here and never reaches the answer-failed catch to apologize on top of a good answer.
+        if (auditInteractionId is { } auditId && answerMessageId is { } messageId)
+        {
+            try
+            {
+                await interactionLog.SetAnswerMessage(auditId, messageId);
+            }
+            catch (Exception exception)
+            {
+                logger.AnswerMessageAuditFailed(exception, message.Author.Id);
+            }
         }
     }
 

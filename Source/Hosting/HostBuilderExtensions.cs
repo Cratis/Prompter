@@ -37,6 +37,9 @@ public static class HostBuilderExtensions
             .Validate(
                 options => options.Discord.RateLimit.IsValid,
                 "Cratis:Prompter:Discord:RateLimit requires WindowMinutes > 0 and MaxQuestions >= 0.")
+            .Validate(
+                options => options.RetentionIsValid,
+                "Cratis:Prompter:RetentionDays must be greater than 0; a value of 0 purges the entire interactions table on the first sweep.")
             .ValidateOnStart();
 
         builder.Configuration

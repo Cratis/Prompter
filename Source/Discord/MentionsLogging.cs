@@ -16,6 +16,9 @@ internal static partial class MentionsLogging
     [LoggerMessage(LogLevel.Error, "Failed to answer question from user {UserId}")]
     internal static partial void AnswerFailed(this ILogger<Mentions> logger, Exception exception, ulong userId);
 
+    [LoggerMessage(LogLevel.Warning, "Failed to record the answer message id for the question from user {UserId}; the answer was still delivered")]
+    internal static partial void AnswerMessageAuditFailed(this ILogger<Mentions> logger, Exception exception, ulong userId);
+
     [LoggerMessage(LogLevel.Error, "Failed to send apology to user {UserId} after an answer failure")]
     internal static partial void ApologyFailed(this ILogger<Mentions> logger, Exception exception, ulong userId);
 }

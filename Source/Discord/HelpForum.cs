@@ -67,6 +67,8 @@ public class HelpForum(
     /// </remarks>
     public async ValueTask HandleAsync(GuildThreadCreateEventArgs arg)
     {
+        long? auditInteractionId = null;
+        string? answerMessageId = null;
         try
         {
             // Discord raises THREAD_CREATE both for brand-new threads and when the bot merely gains visibility
@@ -120,19 +122,44 @@ public class HelpForum(
                     Components = [FeedbackButtonRow.For(interactionId)]
                 });
 
-                await interactionLog.SetAnswerMessage(interactionId, sent.Id.ToString(CultureInfo.InvariantCulture));
+                auditInteractionId = interactionId;
+                answerMessageId = sent.Id.ToString(CultureInfo.InvariantCulture);
             }
             else
             {
                 await rest.SendMessageAsync(thread.Id, content);
             }
-
-            await rest.SendMessageAsync(thread.Id, FollowUpNote);
         }
         catch (Exception exception)
         {
             logger.AnswerFailed(exception, arg.Thread.Id);
             await TryApologize(arg.Thread.Id);
+            return;
+        }
+
+        // The answer is delivered. Recording which message it landed on is audit-only, so its failure is
+        // best-effort here and never reaches the answer-failed catch to apologize on top of a good answer.
+        if (auditInteractionId is { } recordedId && answerMessageId is { } messageId)
+        {
+            try
+            {
+                await interactionLog.SetAnswerMessage(recordedId, messageId);
+            }
+            catch (Exception exception)
+            {
+                logger.AnswerMessageAuditFailed(exception, arg.Thread.Id);
+            }
+        }
+
+        // The standing "a human will follow up" note is a best-effort follow-up to a delivered answer; a send
+        // failure here must not trigger the answer-failed apology on top of a good answer.
+        try
+        {
+            await rest.SendMessageAsync(arg.Thread.Id, FollowUpNote);
+        }
+        catch (Exception exception)
+        {
+            logger.FollowUpNoteFailed(exception, arg.Thread.Id);
         }
     }
 

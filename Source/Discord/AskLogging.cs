@@ -13,6 +13,9 @@ internal static partial class AskLogging
     [LoggerMessage(LogLevel.Error, "Failed to answer /ask from user {UserId}")]
     internal static partial void AnswerFailed(this ILogger<Ask> logger, Exception exception, ulong userId);
 
+    [LoggerMessage(LogLevel.Warning, "Failed to record the answer message id for the /ask from user {UserId}; the answer was still delivered")]
+    internal static partial void AnswerMessageAuditFailed(this ILogger<Ask> logger, Exception exception, ulong userId);
+
     [LoggerMessage(LogLevel.Error, "Failed to send apology to user {UserId} after an /ask failure")]
     internal static partial void ApologyFailed(this ILogger<Ask> logger, Exception exception, ulong userId);
 }

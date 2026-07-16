@@ -62,6 +62,8 @@ public class Ask(
 
         await Context.Interaction.SendResponseAsync(InteractionCallback.DeferredMessage());
 
+        long? auditInteractionId = null;
+        string? answerMessageId = null;
         try
         {
             using var timeout = new CancellationTokenSource(TimeSpan.FromSeconds(options.Value.Discord.AnswerTimeoutSeconds));
@@ -76,7 +78,8 @@ public class Ask(
                     Components = [FeedbackButtonRow.For(interactionId)]
                 });
 
-                await interactionLog.SetAnswerMessage(interactionId, sent.Id.ToString(CultureInfo.InvariantCulture));
+                auditInteractionId = interactionId;
+                answerMessageId = sent.Id.ToString(CultureInfo.InvariantCulture);
             }
             else
             {
@@ -89,6 +92,21 @@ public class Ask(
             // resolving the "thinking…" placeholder instead of leaving the user hanging.
             logger.AnswerFailed(exception, Context.User.Id);
             await TryApologize();
+            return;
+        }
+
+        // The answer is delivered. Recording which message it landed on is audit-only, so its failure is
+        // best-effort here and never reaches the answer-failed catch to apologize on top of a good answer.
+        if (auditInteractionId is { } recordedId && answerMessageId is { } messageId)
+        {
+            try
+            {
+                await interactionLog.SetAnswerMessage(recordedId, messageId);
+            }
+            catch (Exception exception)
+            {
+                logger.AnswerMessageAuditFailed(exception, Context.User.Id);
+            }
         }
     }
 

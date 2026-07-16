@@ -12,4 +12,7 @@ internal static partial class FeedbackLogging
 
     [LoggerMessage(LogLevel.Warning, "Ignoring feedback click with unrecognized custom id {CustomId}")]
     internal static partial void UnrecognizedFeedbackCustomId(this ILogger<Feedback> logger, string customId);
+
+    [LoggerMessage(LogLevel.Warning, "Failed to record {Verdict} feedback on interaction {InteractionId}")]
+    internal static partial void FeedbackWriteFailed(this ILogger<Feedback> logger, Exception exception, string verdict, long interactionId);
 }
