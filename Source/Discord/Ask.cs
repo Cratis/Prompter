@@ -44,7 +44,7 @@ public class Ask(
     [SlashCommand("ask", "Ask Prompter a question about Cratis")]
     public async Task Handle(string question)
     {
-        var userHash = UserHash.For(Context.User.Id);
+        var userHash = UserHash.For(Context.User.Id, options.Value.Discord.UserHashKey);
 
         // Check the throttle before deferring: the ephemeral flag is locked at acknowledgement time, so a
         // rate-limited ask must respond ephemerally here rather than after a public defer.

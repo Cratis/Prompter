@@ -66,8 +66,8 @@ Remember the separation that makes this cheap ([`CONTENT_AND_FRESHNESS.md`](CONT
    `PULUMI_CONFIG_PASSPHRASE` and `UPCLOUD_TOKEN`.
 2. First image release via `publish.yml`.
 3. Pulumi additions (per Q-5 resolution): Prompter workload + Postgres StatefulSet + ingress route +
-   config/secrets (`Cratis__Prompter__…` env vars from k8s secrets: Discord token, Anthropic key, Voyage key,
-   reindex secret, connection string).
+   config/secrets (`Cratis__Prompter__…` env vars from k8s secrets: Discord token, user-id hash key, Anthropic
+   key, Voyage key, reindex secret, connection string).
 4. `pulumi up`, run the first index (`/reindex` or a one-off `index` job), install the Discord app per
    [`DISCORD_INTEGRATION.md`](DISCORD_INTEGRATION.md).
 

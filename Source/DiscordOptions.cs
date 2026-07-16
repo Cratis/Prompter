@@ -14,6 +14,15 @@ public class DiscordOptions
     public string Token { get; set; } = string.Empty;
 
     /// <summary>
+    /// Gets or sets the secret key that keys the one-way hash of Discord user ids before they are stored (see
+    /// <see cref="Discord.UserHash"/> and the GDPR decision record D-8). Required whenever <see cref="Token"/> is set:
+    /// a Discord snowflake is public and enumerable and this code is public, so without a secret key the stored
+    /// hash would be trivially reversible by anyone holding the interaction log. Keep it out of source control —
+    /// supply it via environment or a secret store.
+    /// </summary>
+    public string UserHashKey { get; set; } = string.Empty;
+
+    /// <summary>
     /// Gets or sets the identifier of the dedicated ask channel, where every plain message is treated as a
     /// question without requiring a mention. Every other channel still requires a mention.
     /// </summary>

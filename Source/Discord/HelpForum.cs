@@ -99,7 +99,7 @@ public class HelpForum(
                 return;
             }
 
-            var userHash = UserHash.For(starter.Author.Id);
+            var userHash = UserHash.For(starter.Author.Id, options.Value.Discord.UserHashKey);
             if (!rateLimiter.TryConsume(userHash, timeProvider.GetUtcNow()))
             {
                 logger.RateLimited(thread.Id, starter.Author.Id);

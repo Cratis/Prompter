@@ -104,7 +104,7 @@ public class Mentions(
                 return;
             }
 
-            var userHash = UserHash.For(message.Author.Id);
+            var userHash = UserHash.For(message.Author.Id, options.Value.Discord.UserHashKey);
             if (!rateLimiter.TryConsume(userHash, timeProvider.GetUtcNow()))
             {
                 logger.RateLimited(message.Author.Id);
