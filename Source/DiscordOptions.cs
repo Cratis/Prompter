@@ -14,6 +14,13 @@ public class DiscordOptions
     public string Token { get; set; } = string.Empty;
 
     /// <summary>
+    /// Gets a value indicating whether a bot token is configured. Validated at startup in bot mode only (the
+    /// console <c>index</c>/<c>ask</c> modes never open a gateway), so an empty token fails fast at startup
+    /// instead of surfacing later as an opaque Discord gateway authentication failure.
+    /// </summary>
+    public bool TokenIsPresent => Token.Length > 0;
+
+    /// <summary>
     /// Gets or sets the identifier of the dedicated ask channel, where every plain message is treated as a
     /// question without requiring a mention. Every other channel still requires a mention.
     /// </summary>
@@ -34,6 +41,14 @@ public class DiscordOptions
     /// is sent instead, so a slow or stuck model never leaves a user waiting indefinitely.
     /// </summary>
     public int AnswerTimeoutSeconds { get; set; } = 60;
+
+    /// <summary>
+    /// Gets a value indicating whether the answer timeout is usable: it must be strictly positive, because a
+    /// value of zero (or less) makes the per-answer cancellation fire immediately, so every question is
+    /// abandoned and answered with the apology. Validated at startup so the misconfiguration fails fast rather
+    /// than silently turning every answer into an error reply.
+    /// </summary>
+    public bool AnswerTimeoutIsValid => AnswerTimeoutSeconds > 0;
 
     /// <summary>
     /// Gets or sets the friendly reply sent when a user exceeds their per-user question rate limit, in place

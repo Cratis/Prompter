@@ -43,6 +43,9 @@ public static class HostBuilderExtensions
             .Validate(
                 options => options.Voyage.DimensionsMatchSchema,
                 $"Cratis:Prompter:Voyage:Dimensions must equal {VoyageOptions.SchemaDimensions} to match the fixed 'embedding vector({VoyageOptions.SchemaDimensions})' schema column; any other value fails every embedding upsert at runtime.")
+            .Validate(
+                options => options.Discord.AnswerTimeoutIsValid,
+                "Cratis:Prompter:Discord:AnswerTimeoutSeconds must be greater than 0; a value of 0 abandons every answer immediately and replies with the apology instead.")
             .ValidateOnStart();
 
         builder.Services.AddSingleton(sp =>

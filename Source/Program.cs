@@ -55,6 +55,18 @@ var configSection = ConfigurationPath.Combine("Cratis", "Prompter");
 var webBuilder = WebApplication.CreateBuilder(args);
 
 webBuilder.AddPrompter();
+
+// Bot mode is the only run mode that opens a Discord gateway, so the token requirement is validated here
+// rather than in the shared registration (the console index/ask modes run without a token). This validator
+// lives only in the bot process and fails startup fast on an empty token instead of surfacing later as an
+// opaque gateway authentication failure.
+webBuilder.Services
+    .AddOptions<Cratis.Prompter.PrompterOptions>()
+    .Validate(
+        options => options.Discord.TokenIsPresent,
+        "Cratis:Prompter:Discord:Token must be set in bot mode; an empty token fails late at the Discord gateway rather than at startup.")
+    .ValidateOnStart();
+
 webBuilder.Services.AddSingleton<ReindexGate>();
 webBuilder.Services.AddHostedService<RetentionPurge>();
 webBuilder.Services
