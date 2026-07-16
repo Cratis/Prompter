@@ -39,6 +39,7 @@ public class Passages(
                 SELECT id, RANK() OVER (ORDER BY ts_rank_cd(tsv, websearch_to_tsquery('english', $2)) DESC) AS rank
                 FROM chunks
                 WHERE tsv @@ websearch_to_tsquery('english', $2)
+                ORDER BY ts_rank_cd(tsv, websearch_to_tsquery('english', $2)) DESC
                 LIMIT {CandidatesPerMethod}
             )
             SELECT c.page_url, c.title, c.heading_path, c.content,
