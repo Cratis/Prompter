@@ -3,6 +3,63 @@
 Resume state for anyone (human or agent) continuing work in a fresh session. Newest entry first — append,
 don't rewrite history.
 
+## 2026-07-16 — v1 code-complete: full M1–M5 build, two review passes, docs reconciled
+
+**State:** `main` @ `a1159cb`, pushed, **260 specs green, 0 warnings** (Release). The `aspnet`-base Docker
+image builds end-to-end (verified). **v1 is code-complete** — every M1–M5 feature is implemented and
+spec-verified; what remains is live-key / test-server / deploy-gated (see "What's left"). Built via the
+autonomous multi-agent loop (isolated worktrees; I integrate + run the authoritative Release build+tests on
+real `main` before each commit).
+
+**Shipped + integrated this run (on top of the prior M1/M2.1 work):**
+- **M2:** P-09 prompt caching (system prompt marked ephemeral-cacheable via `Anthropic` 12.35.1's
+  `WithCacheControl`; no-op until the prompt exceeds the model's min cache size, then automatic).
+- **M3 (complete):** P-11 deferred `/ask`, P-12 mention hardening, M3.3 `#ask` channel, P-13 forum auto-reply,
+  P-14 rate limiting **wired** into every entry point, P-15 long-answer splitting (+ code-fence + surrogate
+  safety), P-16 feedback as **buttons** (not reactions; `v1_1_0` migration + component handler), M3.8
+  resilience (60s timeout + catch-all apology; handlers never throw). NetCord beta.11 APIs verified against
+  the shipped assemblies.
+- **M4:** P-17 golden set (69 Qs), P-18 eval harness (`Eval/Prompter.Eval.csproj`), P-19 labeled-PR eval CI
+  gate (`eval.yml` + `baseline.json` placeholder + `check-baseline.py`).
+- **M5:** P-20 re-index webhook + `/healthz` (bot mode is a Kestrel `WebApplication` co-hosting the gateway;
+  `Guilds` intent added for thread-create), P-22 retention purge job.
+- **Docs/hygiene:** `DISCORD_BEST_PRACTICES.md`, three `Documentation/guides/*`, reconciled
+  `DISCORD_INTEGRATION.md` + `V1_PLAN.md` + `IMPLEMENTATION_PLAN.md` + `README.md` to the shipped reality, and
+  added a `.dockerignore` + gitignored `.claude/worktrees/`.
+
+**Review passes (3 total) — all confirmed findings fixed:** (1) a **high-severity corpus-wipe** (empty crawl
+deleted the whole `chunks` table — now guarded); (2) medium error-path bugs — audit writes moved out of the
+answer `try` so a post-delivery failure no longer false-apologizes, `RetentionDays>0` validated at startup
+(a `0` wiped the interactions table), feedback write guarded; (3) a **final integration/runtime audit**
+(DI graph decompiled against NetCord internals) found the composition root complete and correctly-lifetimed,
+migrations-before-serving, and interaction dispatch fully wired — **no startup/resolution/config-binding
+defects**.
+
+**Known low-priority item (documented, not fixed):** the typed `HttpClient`s for `VoyageEmbeddings`/`DocsSite`
+are consumed by singletons, so `IHttpClientFactory` handler rotation never occurs — irrelevant for a
+single-instance bot on stable DNS, but if ever multi-instance / long-uptime-DNS-sensitive, inject
+`IHttpClientFactory` or set `PooledConnectionLifetime`. Not worth an unattended refactor.
+
+**Decisions this run:** D-4 (Postgres+pgvector) **reaffirmed** (a "do we need SQL?" review kept it over SQLite
+for the already-built hybrid RRF + cluster fit). Cratis/Chronicle dogfooding → recommended **post-v1** (D-6's
+path: v1 keeps the `IInteractionLog` seam; Chronicle-backed log + Studio dashboards is the flagship post-v1
+milestone). Default answer model `claude-sonnet-5` confirmed a valid current id.
+
+**What's left for v1 (all key / test-server / team-gated — nothing further is code-blocked):**
+1. **Keys** — a Voyage + Anthropic key to: run the live full-corpus index (M1 done-when), the `ask --verbose`
+   grounded run (M2.1), **M2.2 threshold calibration** (P-07 — set `Answering:MinScore` from ~25 probes), and
+   generate the real `Eval/baseline.json` (then P-19 becomes a live gate).
+2. **Discord token + test server** — the runtime checks for deferred `/ask`, mentions, `#ask`, forum reply,
+   feedback buttons, rate-limit refusal, and the resilience apology.
+3. **Team/deploy** — P-21 deploy to the UpCloud UKS cluster (D-11, resolve Q-5), P-17a Discord app
+   registration, P-23 privacy notice (docs page exists; pin it), P-24/25/26 (Documentation registration, sync
+   `.ai/` config, Docker Hub repo). P-06 hybrid tuning and P-08 query-rewrite stay deferred until calibration
+   (P-07) shows a need.
+
+**Gotcha (unchanged):** builds run *inside* an agent worktree under `.claude/worktrees/` fail with
+`MultipleGlobalAnalyzerKeys` (two `.globalconfig` on the SDK's up-tree walk). Agents verify out-of-tree; the
+authoritative gate is `dotnet build/test -c Release Prompter.slnx` on real `main`. Don't "fix" it in-repo.
+
 ## 2026-07-15 — Multi-agent push through M2–M5 (autonomous integration)
 
 **State:** `main` @ `0723d78`, pushed, **197 specs green, 0 warnings**. Running an autonomous multi-agent loop
