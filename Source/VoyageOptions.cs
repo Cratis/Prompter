@@ -9,6 +9,14 @@ namespace Cratis.Prompter;
 public class VoyageOptions
 {
     /// <summary>
+    /// The embedding dimensionality the database schema is fixed to - the <c>embedding vector(1024)</c> column
+    /// declared in <c>Storage/Migrations/v1_0_0.sql</c>. <see cref="Dimensions"/> is sent to Voyage as the
+    /// requested <c>output_dimension</c>, so any value other than this makes every upsert fail at runtime with
+    /// a vector-size mismatch; <see cref="DimensionsMatchSchema"/> guards it at startup.
+    /// </summary>
+    public const int SchemaDimensions = 1024;
+
+    /// <summary>
     /// Gets or sets the API key.
     /// </summary>
     public string ApiKey { get; set; } = string.Empty;
@@ -24,9 +32,17 @@ public class VoyageOptions
     public string Url { get; set; } = "https://api.voyageai.com/";
 
     /// <summary>
-    /// Gets or sets the dimensionality of the embeddings. Must match the vector size in the database schema.
+    /// Gets or sets the dimensionality of the embeddings. Must equal <see cref="SchemaDimensions"/> to match
+    /// the fixed vector size in the database schema.
     /// </summary>
-    public int Dimensions { get; set; } = 1024;
+    public int Dimensions { get; set; } = SchemaDimensions;
+
+    /// <summary>
+    /// Gets a value indicating whether <see cref="Dimensions"/> matches the vector size the database schema is
+    /// fixed to (<see cref="SchemaDimensions"/>). Any mismatch fails every embedding upsert at runtime, so this
+    /// is validated at startup to fail fast rather than mid-index.
+    /// </summary>
+    public bool DimensionsMatchSchema => Dimensions == SchemaDimensions;
 
     /// <summary>
     /// Gets or sets the maximum number of inputs sent in a single embeddings request. Voyage accepts up to

@@ -40,6 +40,9 @@ public static class HostBuilderExtensions
             .Validate(
                 options => options.RetentionIsValid,
                 "Cratis:Prompter:RetentionDays must be greater than 0; a value of 0 purges the entire interactions table on the first sweep.")
+            .Validate(
+                options => options.Voyage.DimensionsMatchSchema,
+                $"Cratis:Prompter:Voyage:Dimensions must equal {VoyageOptions.SchemaDimensions} to match the fixed 'embedding vector({VoyageOptions.SchemaDimensions})' schema column; any other value fails every embedding upsert at runtime.")
             .ValidateOnStart();
 
         builder.Services.AddSingleton(sp =>
