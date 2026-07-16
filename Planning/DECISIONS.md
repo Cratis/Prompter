@@ -42,13 +42,18 @@ own `IEmbeddingGenerator` (Anthropic has no embeddings endpoint; Voyage's free t
 hundreds of times over). Both sit behind Microsoft.Extensions.AI abstractions — swapping models is config, not
 code. Model choice here is a quality decision, not a cost one (whole-community LLM spend is $1–10/month).
 
-## D-6 · Chronicle dogfooding for the interaction log — OPEN
+## D-6 · Chronicle dogfooding for the interaction log — decided: NOT now — 2026-07-16
 
 The Q&A interaction log (question asked, answer given, feedback received) is naturally event-shaped, and a bot
-built on our own platform is a good story. But Chronicle + MongoDB on the same small box doubles the moving
-parts before the bot has proven itself. **Recommendation:** v1 logs interactions through the `IInteractionLog`
-seam into Postgres; revisit after M5 — adopting Chronicle then is an adapter swap, not a redesign. Needs a team
-ruling before anyone builds analytics on the Postgres shape.
+built on our own platform is a good story. It was actively reconsidered on 2026-07-16 and **ruled out for the
+foreseeable roadmap** — "it's just a Discord bot." A four-repo research pass (Chronicle/Arc/Ada) established
+that Chronicle is a **separate gRPC kernel server** (not an in-process library — it can't share our Postgres
+in-process), that its Postgres backend is only ~7 weeks old (Mongo is the proven path), and that adopting it
+would add a hard runtime dependency + a local kernel container to an otherwise self-contained bot — for
+analytics value we don't need at launch. Our GDPR posture (D-8) already covers v1 without it. v1 keeps the
+simple Postgres `IInteractionLog`. Revisit only on a concrete pull, from the findings and build path captured
+in [`CHRONICLE_RESEARCH.md`](CHRONICLE_RESEARCH.md) — adopting Chronicle then is still an adapter swap behind the
+`IInteractionLog` seam, not a redesign.
 
 ## D-7 · Interaction model: mention + forum auto-reply + #ask — no auto-chime in v1 — 2026-07-15
 
