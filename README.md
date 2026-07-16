@@ -145,7 +145,6 @@ Configuration binds to the `Cratis:Prompter` section (environment variables use 
 | Docs site to ingest | `Cratis__Prompter__DocsSiteUrl` | `https://cratis.io` |
 | Embedding batch size | `Cratis__Prompter__Voyage__BatchSize` | `128` |
 | Discord bot token | `Cratis__Prompter__Discord__Token` | — |
-| User-id hash key (required with a token; keys the GDPR hash) | `Cratis__Prompter__Discord__UserHashKey` | — |
 | Ask channel (mention-free questions) | `Cratis__Prompter__Discord__AskChannelId` | — |
 | Help forum channel (auto-reply) | `Cratis__Prompter__Discord__HelpForumChannelId` | — |
 | Rate limit — questions per window | `Cratis__Prompter__Discord__RateLimit__MaxQuestions` | `5` |

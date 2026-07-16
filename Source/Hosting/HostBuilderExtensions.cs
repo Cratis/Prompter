@@ -40,9 +40,6 @@ public static class HostBuilderExtensions
             .Validate(
                 options => options.RetentionIsValid,
                 "Cratis:Prompter:RetentionDays must be greater than 0; a value of 0 purges the entire interactions table on the first sweep.")
-            .Validate(
-                options => options.Discord.Token.Length == 0 || options.Discord.UserHashKey.Length > 0,
-                "Cratis:Prompter:Discord:UserHashKey is required when a Discord token is configured; it keys the GDPR user-id hash (D-8) so stored ids cannot be reversed from the public code and member roster.")
             .ValidateOnStart();
 
         builder.Services.AddSingleton(sp =>

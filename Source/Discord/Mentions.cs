@@ -3,7 +3,6 @@
 
 using System.Globalization;
 using Cratis.Prompter.Answering;
-using Cratis.Prompter.Storage;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
 using NetCord.Gateway;
@@ -19,7 +18,6 @@ namespace Cratis.Prompter.Discord;
 /// <param name="client">The gateway client, used to read the bot's own identity for self-mention detection.</param>
 /// <param name="rest">The REST client used to send follow-up messages.</param>
 /// <param name="answers">The answers Prompter can give.</param>
-/// <param name="interactionLog">The interaction log, used to record which message the answer landed on.</param>
 /// <param name="rateLimiter">The per-user question throttle, checked before the expensive answer path.</param>
 /// <param name="timeProvider">The clock the rate limiter's refills are measured against.</param>
 /// <param name="options">The Prompter options carrying the Discord ask-channel identifier.</param>
@@ -33,7 +31,6 @@ public class Mentions(
     GatewayClient client,
     RestClient rest,
     IAnswers answers,
-    IInteractionLog interactionLog,
     RateLimiter rateLimiter,
     TimeProvider timeProvider,
     IOptions<PrompterOptions> options,
@@ -93,8 +90,6 @@ public class Mentions(
     public async ValueTask HandleAsync(Message arg)
     {
         var message = arg;
-        long? auditInteractionId = null;
-        string? answerMessageId = null;
         try
         {
             var askChannelId = options.Value.Discord.AskChannelId;
@@ -104,24 +99,25 @@ public class Mentions(
                 return;
             }
 
-            var userHash = UserHash.For(message.Author.Id, options.Value.Discord.UserHashKey);
-            if (!rateLimiter.TryConsume(userHash, timeProvider.GetUtcNow()))
+            // The rate-limit key is the user id, used only in memory to throttle - it is never stored or logged.
+            var userKey = message.Author.Id.ToString(CultureInfo.InvariantCulture);
+            if (!rateLimiter.TryConsume(userKey, timeProvider.GetUtcNow()))
             {
-                logger.RateLimited(message.Author.Id);
+                logger.RateLimited();
                 await message.ReplyAsync(options.Value.Discord.RateLimitedReply);
                 return;
             }
 
             var inAskChannel = askChannelId is { } ask && message.ChannelId == ask;
             var source = inAskChannel ? "discord-ask-channel" : "discord-mention";
-            logger.AnsweringQuestion(source, message.Author.Id);
+            logger.AnsweringQuestion(source);
 
             using var timeout = new CancellationTokenSource(TimeSpan.FromSeconds(options.Value.Discord.AnswerTimeoutSeconds));
-            var answer = await answers.For(new(question), userHash, source, timeout.Token);
+            var answer = await answers.For(new(question), source, timeout.Token);
 
             // Anchor the answer to the asking message with a reply reference on the first chunk; any further
             // chunks follow as ordinary messages in the same channel. The 👍/👎 feedback buttons ride on the
-            // last chunk, and its message id is recorded against the interaction for auditing.
+            // last chunk.
             var chunks = DiscordAnswers.Split(answer);
             var interactionId = answer.InteractionId;
             for (var index = 0; index < chunks.Count; index++)
@@ -129,7 +125,6 @@ public class Mentions(
                 var isLast = index == chunks.Count - 1;
                 var feedback = isLast ? interactionId : null;
 
-                RestMessage sent;
                 if (index == 0)
                 {
                     var reply = new ReplyMessageProperties { Content = chunks[index] };
@@ -138,7 +133,7 @@ public class Mentions(
                         reply.Components = [FeedbackButtonRow.For(replyFeedback)];
                     }
 
-                    sent = await message.ReplyAsync(reply);
+                    await message.ReplyAsync(reply);
                 }
                 else
                 {
@@ -148,35 +143,14 @@ public class Mentions(
                         followup.Components = [FeedbackButtonRow.For(followupFeedback)];
                     }
 
-                    sent = await rest.SendMessageAsync(message.ChannelId, followup);
-                }
-
-                if (isLast && interactionId is { } recordedId)
-                {
-                    auditInteractionId = recordedId;
-                    answerMessageId = sent.Id.ToString(CultureInfo.InvariantCulture);
+                    await rest.SendMessageAsync(message.ChannelId, followup);
                 }
             }
         }
         catch (Exception exception)
         {
-            logger.AnswerFailed(exception, message.Author.Id);
+            logger.AnswerFailed(exception);
             await TryApologize(message);
-            return;
-        }
-
-        // The answer is delivered. Recording which message it landed on is audit-only, so its failure is
-        // best-effort here and never reaches the answer-failed catch to apologize on top of a good answer.
-        if (auditInteractionId is { } auditId && answerMessageId is { } messageId)
-        {
-            try
-            {
-                await interactionLog.SetAnswerMessage(auditId, messageId);
-            }
-            catch (Exception exception)
-            {
-                logger.AnswerMessageAuditFailed(exception, message.Author.Id);
-            }
         }
     }
 
@@ -190,7 +164,7 @@ public class Mentions(
         {
             // The apology itself failed to send (channel gone, missing permission); there is nothing more to
             // do but record it — the handler still returns without throwing.
-            logger.ApologyFailed(exception, message.Author.Id);
+            logger.ApologyFailed(exception);
         }
     }
 }

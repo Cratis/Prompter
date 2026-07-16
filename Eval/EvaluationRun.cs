@@ -27,7 +27,7 @@ internal sealed class EvaluationRun(IAnswers answers, GroundednessEvaluator eval
     {
         try
         {
-            var answer = await answers.For(new Question(question.Question), "eval", "eval", cancellationToken);
+            var answer = await answers.For(new Question(question.Question), "eval", cancellationToken);
             var refusalCorrect = RefusalAccuracy.IsCorrect(question.ExpectsRefusal, answer.IsRefusal);
 
             bool? citationHit = question.ExpectsRefusal

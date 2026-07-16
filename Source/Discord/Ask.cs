@@ -3,7 +3,6 @@
 
 using System.Globalization;
 using Cratis.Prompter.Answering;
-using Cratis.Prompter.Storage;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
 using NetCord;
@@ -16,14 +15,12 @@ namespace Cratis.Prompter.Discord;
 /// The <c>/ask</c> slash command.
 /// </summary>
 /// <param name="answers">The answers Prompter can give.</param>
-/// <param name="interactionLog">The interaction log, used to record which message the answer landed on.</param>
 /// <param name="rateLimiter">The per-user question throttle, checked before deferring.</param>
 /// <param name="timeProvider">The clock the rate limiter's refills are measured against.</param>
 /// <param name="options">The Prompter options carrying the rate-limit window, timeout, and reply text.</param>
 /// <param name="logger">Logger for diagnostics.</param>
 public class Ask(
     IAnswers answers,
-    IInteractionLog interactionLog,
     RateLimiter rateLimiter,
     TimeProvider timeProvider,
     IOptions<PrompterOptions> options,
@@ -44,13 +41,14 @@ public class Ask(
     [SlashCommand("ask", "Ask Prompter a question about Cratis")]
     public async Task Handle(string question)
     {
-        var userHash = UserHash.For(Context.User.Id, options.Value.Discord.UserHashKey);
+        // The rate-limit key is the user id, used only in memory to throttle - it is never stored or logged.
+        var userKey = Context.User.Id.ToString(CultureInfo.InvariantCulture);
 
         // Check the throttle before deferring: the ephemeral flag is locked at acknowledgement time, so a
         // rate-limited ask must respond ephemerally here rather than after a public defer.
-        if (!rateLimiter.TryConsume(userHash, timeProvider.GetUtcNow()))
+        if (!rateLimiter.TryConsume(userKey, timeProvider.GetUtcNow()))
         {
-            logger.RateLimited(Context.User.Id);
+            logger.RateLimited();
             await Context.Interaction.SendResponseAsync(
                 InteractionCallback.Message(new()
                 {
@@ -62,24 +60,19 @@ public class Ask(
 
         await Context.Interaction.SendResponseAsync(InteractionCallback.DeferredMessage());
 
-        long? auditInteractionId = null;
-        string? answerMessageId = null;
         try
         {
             using var timeout = new CancellationTokenSource(TimeSpan.FromSeconds(options.Value.Discord.AnswerTimeoutSeconds));
-            var answer = await answers.For(new(question), userHash, "discord-ask", timeout.Token);
+            var answer = await answers.For(new(question), "discord-ask", timeout.Token);
             var content = DiscordAnswers.Format(answer);
 
             if (answer.InteractionId is { } interactionId)
             {
-                var sent = await Context.Interaction.SendFollowupMessageAsync(new()
+                await Context.Interaction.SendFollowupMessageAsync(new()
                 {
                     Content = content,
                     Components = [FeedbackButtonRow.For(interactionId)]
                 });
-
-                auditInteractionId = interactionId;
-                answerMessageId = sent.Id.ToString(CultureInfo.InvariantCulture);
             }
             else
             {
@@ -90,23 +83,8 @@ public class Ask(
         {
             // Already deferred, so the apology must land as a followup inside the interaction window,
             // resolving the "thinking…" placeholder instead of leaving the user hanging.
-            logger.AnswerFailed(exception, Context.User.Id);
+            logger.AnswerFailed(exception);
             await TryApologize();
-            return;
-        }
-
-        // The answer is delivered. Recording which message it landed on is audit-only, so its failure is
-        // best-effort here and never reaches the answer-failed catch to apologize on top of a good answer.
-        if (auditInteractionId is { } recordedId && answerMessageId is { } messageId)
-        {
-            try
-            {
-                await interactionLog.SetAnswerMessage(recordedId, messageId);
-            }
-            catch (Exception exception)
-            {
-                logger.AnswerMessageAuditFailed(exception, Context.User.Id);
-            }
         }
     }
 
@@ -120,7 +98,7 @@ public class Ask(
         {
             // The followup itself failed to send; nothing more can be delivered to the interaction, so just
             // record it — the command still returns without throwing.
-            logger.ApologyFailed(exception, Context.User.Id);
+            logger.ApologyFailed(exception);
         }
     }
 }

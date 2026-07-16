@@ -7,6 +7,6 @@ namespace Cratis.Prompter.Answering;
 
 internal static partial class AnswersLogging
 {
-    [LoggerMessage(LogLevel.Information, "Refusing to answer '{Question}' - top passage score {Confidence} is below the threshold")]
-    internal static partial void RefusingToAnswer(this ILogger<Answers> logger, Question question, double confidence);
+    [LoggerMessage(LogLevel.Information, "Refusing to answer - top passage score {Confidence} is below the threshold")]
+    internal static partial void RefusingToAnswer(this ILogger<Answers> logger, double confidence);
 }

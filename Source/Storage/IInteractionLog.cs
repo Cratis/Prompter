@@ -18,15 +18,6 @@ public interface IInteractionLog
     Task<long> Record(Interaction interaction, CancellationToken cancellationToken = default);
 
     /// <summary>
-    /// Attaches the Discord message id the answer was delivered on to a recorded interaction, for auditing.
-    /// </summary>
-    /// <param name="interactionId">The identifier returned by <see cref="Record"/>.</param>
-    /// <param name="answerMessageId">The Discord message id the answer (and its feedback buttons) landed on.</param>
-    /// <param name="cancellationToken">Token for cancelling the operation.</param>
-    /// <returns>Awaitable task.</returns>
-    Task SetAnswerMessage(long interactionId, string answerMessageId, CancellationToken cancellationToken = default);
-
-    /// <summary>
     /// Records the feedback verdict a user gave on a recorded interaction's answer.
     /// </summary>
     /// <param name="interactionId">The identifier returned by <see cref="Record"/>, decoded from the button custom id.</param>

@@ -27,7 +27,7 @@ public class Answers(
     ILogger<Answers> logger) : IAnswers
 {
     /// <inheritdoc/>
-    public async Task<Answer> For(Question question, string userHash, string source, CancellationToken cancellationToken = default)
+    public async Task<Answer> For(Question question, string source, CancellationToken cancellationToken = default)
     {
         var answering = options.Value.Answering;
         var found = (await passages.Search(question, answering.MaxPassages, cancellationToken)).ToArray();
@@ -36,7 +36,7 @@ public class Answers(
         Answer answer;
         if (confidence < answering.MinScore)
         {
-            logger.RefusingToAnswer(question, confidence);
+            logger.RefusingToAnswer(confidence);
             answer = Answer.Refusal(confidence, found);
         }
         else
@@ -62,7 +62,7 @@ public class Answers(
         }
 
         var interactionId = await interactionLog.Record(
-            new(userHash, source, question, answer.Text, answer.Citations, answer.Confidence, answer.IsRefusal),
+            new(source, answer.Citations, answer.Confidence, answer.IsRefusal),
             cancellationToken);
 
         return answer with { InteractionId = interactionId };

@@ -20,18 +20,21 @@ public class RateLimiter(IOptions<PrompterOptions> options)
     /// <summary>
     /// Attempts to spend one question's allowance for a user, refilling the bucket for the elapsed time first.
     /// </summary>
-    /// <param name="userHash">The hashed identity of the asking user (see <see cref="UserHash"/>).</param>
+    /// <param name="userKey">
+    /// An in-memory identifier for the asking user (their id), used only to bucket requests. It is never
+    /// stored or logged, so it needs no hashing - the interaction log keeps no user identity at all (D-13).
+    /// </param>
     /// <param name="now">The current time, used to refill the bucket.</param>
     /// <returns>
     /// <see langword="true"/> when the question is allowed; <see langword="false"/> when the user is over
     /// their limit.
     /// </returns>
-    public bool TryConsume(string userHash, DateTimeOffset now)
+    public bool TryConsume(string userKey, DateTimeOffset now)
     {
         double capacity = _limit.MaxQuestions;
         var refillPerSecond = capacity / TimeSpan.FromMinutes(_limit.WindowMinutes).TotalSeconds;
         var bucket = _buckets.GetOrAdd(
-            userHash,
+            userKey,
             static (_, seed) => new Bucket(seed.Capacity, seed.Now),
             (Capacity: capacity, Now: now));
 

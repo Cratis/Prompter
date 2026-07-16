@@ -3,7 +3,6 @@
 
 using System.Globalization;
 using Cratis.Prompter.Answering;
-using Cratis.Prompter.Storage;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
 using NetCord;
@@ -19,7 +18,6 @@ namespace Cratis.Prompter.Discord;
 /// </summary>
 /// <param name="rest">The REST client used to read the starter message and post replies into the thread.</param>
 /// <param name="answers">The answers Prompter can give.</param>
-/// <param name="interactionLog">The interaction log, used to record which message the answer landed on.</param>
 /// <param name="rateLimiter">The per-user question throttle, checked before the expensive answer path.</param>
 /// <param name="timeProvider">The clock the rate limiter's refills are measured against.</param>
 /// <param name="options">The Prompter options carrying the help-forum channel identifier.</param>
@@ -27,7 +25,6 @@ namespace Cratis.Prompter.Discord;
 public class HelpForum(
     RestClient rest,
     IAnswers answers,
-    IInteractionLog interactionLog,
     RateLimiter rateLimiter,
     TimeProvider timeProvider,
     IOptions<PrompterOptions> options,
@@ -67,8 +64,6 @@ public class HelpForum(
     /// </remarks>
     public async ValueTask HandleAsync(GuildThreadCreateEventArgs arg)
     {
-        long? auditInteractionId = null;
-        string? answerMessageId = null;
         try
         {
             // Discord raises THREAD_CREATE both for brand-new threads and when the bot merely gains visibility
@@ -99,31 +94,29 @@ public class HelpForum(
                 return;
             }
 
-            var userHash = UserHash.For(starter.Author.Id, options.Value.Discord.UserHashKey);
-            if (!rateLimiter.TryConsume(userHash, timeProvider.GetUtcNow()))
+            // The rate-limit key is the user id, used only in memory to throttle - it is never stored or logged.
+            var userKey = starter.Author.Id.ToString(CultureInfo.InvariantCulture);
+            if (!rateLimiter.TryConsume(userKey, timeProvider.GetUtcNow()))
             {
-                logger.RateLimited(thread.Id, starter.Author.Id);
+                logger.RateLimited(thread.Id);
                 await rest.SendMessageAsync(thread.Id, options.Value.Discord.RateLimitedReply);
                 return;
             }
 
-            logger.AnsweringForumThread(thread.Id, starter.Author.Id);
+            logger.AnsweringForumThread(thread.Id);
 
             using var timeout = new CancellationTokenSource(TimeSpan.FromSeconds(options.Value.Discord.AnswerTimeoutSeconds));
-            var answer = await answers.For(new(question), userHash, "discord-forum", timeout.Token);
+            var answer = await answers.For(new(question), "discord-forum", timeout.Token);
             var content = DiscordAnswers.Format(answer);
 
             // The 👍/👎 feedback buttons ride on the answer message; the standing note follows as its own message.
             if (answer.InteractionId is { } interactionId)
             {
-                var sent = await rest.SendMessageAsync(thread.Id, new MessageProperties
+                await rest.SendMessageAsync(thread.Id, new MessageProperties
                 {
                     Content = content,
                     Components = [FeedbackButtonRow.For(interactionId)]
                 });
-
-                auditInteractionId = interactionId;
-                answerMessageId = sent.Id.ToString(CultureInfo.InvariantCulture);
             }
             else
             {
@@ -135,20 +128,6 @@ public class HelpForum(
             logger.AnswerFailed(exception, arg.Thread.Id);
             await TryApologize(arg.Thread.Id);
             return;
-        }
-
-        // The answer is delivered. Recording which message it landed on is audit-only, so its failure is
-        // best-effort here and never reaches the answer-failed catch to apologize on top of a good answer.
-        if (auditInteractionId is { } recordedId && answerMessageId is { } messageId)
-        {
-            try
-            {
-                await interactionLog.SetAnswerMessage(recordedId, messageId);
-            }
-            catch (Exception exception)
-            {
-                logger.AnswerMessageAuditFailed(exception, arg.Thread.Id);
-            }
         }
 
         // The standing "a human will follow up" note is a best-effort follow-up to a delivered answer; a send

@@ -37,7 +37,7 @@ if (mode == "index" || mode == "ask")
     else
     {
         var ask = AskArguments.Parse(args.Skip(1));
-        var answer = await host.Services.GetRequiredService<IAnswers>().For(new(ask.Question), "cli", "cli");
+        var answer = await host.Services.GetRequiredService<IAnswers>().For(new(ask.Question), "cli");
         foreach (var line in AskOutput.Lines(answer, ask.Verbose))
         {
             Console.WriteLine(line);

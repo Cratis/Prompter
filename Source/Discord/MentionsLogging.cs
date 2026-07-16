@@ -7,18 +7,15 @@ namespace Cratis.Prompter.Discord;
 
 internal static partial class MentionsLogging
 {
-    [LoggerMessage(LogLevel.Information, "Answering {Source} question from user {UserId}")]
-    internal static partial void AnsweringQuestion(this ILogger<Mentions> logger, string source, ulong userId);
+    [LoggerMessage(LogLevel.Information, "Answering {Source} question")]
+    internal static partial void AnsweringQuestion(this ILogger<Mentions> logger, string source);
 
-    [LoggerMessage(LogLevel.Information, "Rate-limited question from user {UserId}")]
-    internal static partial void RateLimited(this ILogger<Mentions> logger, ulong userId);
+    [LoggerMessage(LogLevel.Information, "Rate-limited question")]
+    internal static partial void RateLimited(this ILogger<Mentions> logger);
 
-    [LoggerMessage(LogLevel.Error, "Failed to answer question from user {UserId}")]
-    internal static partial void AnswerFailed(this ILogger<Mentions> logger, Exception exception, ulong userId);
+    [LoggerMessage(LogLevel.Error, "Failed to answer question")]
+    internal static partial void AnswerFailed(this ILogger<Mentions> logger, Exception exception);
 
-    [LoggerMessage(LogLevel.Warning, "Failed to record the answer message id for the question from user {UserId}; the answer was still delivered")]
-    internal static partial void AnswerMessageAuditFailed(this ILogger<Mentions> logger, Exception exception, ulong userId);
-
-    [LoggerMessage(LogLevel.Error, "Failed to send apology to user {UserId} after an answer failure")]
-    internal static partial void ApologyFailed(this ILogger<Mentions> logger, Exception exception, ulong userId);
+    [LoggerMessage(LogLevel.Error, "Failed to send apology after an answer failure")]
+    internal static partial void ApologyFailed(this ILogger<Mentions> logger, Exception exception);
 }

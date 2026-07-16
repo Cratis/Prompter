@@ -7,15 +7,12 @@ namespace Cratis.Prompter.Discord;
 
 internal static partial class AskLogging
 {
-    [LoggerMessage(LogLevel.Information, "Rate-limited /ask from user {UserId}")]
-    internal static partial void RateLimited(this ILogger<Ask> logger, ulong userId);
+    [LoggerMessage(LogLevel.Information, "Rate-limited /ask")]
+    internal static partial void RateLimited(this ILogger<Ask> logger);
 
-    [LoggerMessage(LogLevel.Error, "Failed to answer /ask from user {UserId}")]
-    internal static partial void AnswerFailed(this ILogger<Ask> logger, Exception exception, ulong userId);
+    [LoggerMessage(LogLevel.Error, "Failed to answer /ask")]
+    internal static partial void AnswerFailed(this ILogger<Ask> logger, Exception exception);
 
-    [LoggerMessage(LogLevel.Warning, "Failed to record the answer message id for the /ask from user {UserId}; the answer was still delivered")]
-    internal static partial void AnswerMessageAuditFailed(this ILogger<Ask> logger, Exception exception, ulong userId);
-
-    [LoggerMessage(LogLevel.Error, "Failed to send apology to user {UserId} after an /ask failure")]
-    internal static partial void ApologyFailed(this ILogger<Ask> logger, Exception exception, ulong userId);
+    [LoggerMessage(LogLevel.Error, "Failed to send apology after an /ask failure")]
+    internal static partial void ApologyFailed(this ILogger<Ask> logger, Exception exception);
 }
