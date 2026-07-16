@@ -16,6 +16,9 @@ internal static partial class OperationsLogging
     [LoggerMessage(LogLevel.Error, "Background reindex run failed")]
     internal static partial void ReindexFailed(this ILogger logger, Exception exception);
 
+    [LoggerMessage(LogLevel.Information, "Background reindex run cancelled by host shutdown")]
+    internal static partial void ReindexCancelled(this ILogger logger);
+
     [LoggerMessage(LogLevel.Warning, "Reindex rejected: a run is already in progress")]
     internal static partial void ReindexAlreadyRunning(this ILogger logger);
 

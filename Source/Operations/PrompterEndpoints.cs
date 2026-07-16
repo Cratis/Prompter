@@ -5,6 +5,7 @@ using Cratis.Prompter.Ingestion;
 using Microsoft.AspNetCore.Builder;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Routing;
+using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
 using NetCord.Gateway;
@@ -54,6 +55,7 @@ public static class PrompterEndpoints
         IOptions<PrompterOptions> options,
         ReindexGate gate,
         IIndexer indexer,
+        IHostApplicationLifetime lifetime,
         ILoggerFactory loggerFactory)
     {
         var logger = loggerFactory.CreateLogger(ReindexLogCategory);
@@ -73,14 +75,20 @@ public static class PrompterEndpoints
 
         logger.ReindexStarted();
 
-        // Fire-and-forget: the index run takes minutes, far longer than the HTTP request should live. The gate
-        // is released in the finally so a failed run never wedges future triggers, and every outcome is logged.
+        // Fire-and-forget: the index run takes minutes, far longer than the HTTP request should live. It runs
+        // under ApplicationStopping so a shutdown mid-run cancels it cleanly rather than being killed abruptly.
+        // The gate is released in the finally so a failed or cancelled run never wedges future triggers, and
+        // every outcome is logged.
         _ = Task.Run(async () =>
         {
             try
             {
-                var run = await indexer.Run();
+                var run = await indexer.Run(lifetime.ApplicationStopping);
                 logger.ReindexCompleted(run.Duration, run.Pages, run.Embedded, run.Unchanged, run.Removed);
+            }
+            catch (OperationCanceledException)
+            {
+                logger.ReindexCancelled();
             }
             catch (Exception exception)
             {
