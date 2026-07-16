@@ -1,0 +1,25 @@
+# The bot image is a single-project publish of Source/ (plus the root build config).
+# Keep the build context small and deterministic: exclude build output, VCS, tooling,
+# and everything the app image does not need. Do NOT exclude the root MSBuild config
+# (Directory.Build.props, Directory.Packages.props, global.json, .globalconfig,
+# .editorconfig) — the publish needs them.
+
+# Build output
+**/bin/
+**/obj/
+
+# VCS and tooling
+.git/
+.gitattributes
+.github/
+.claude/
+.vs/
+.vscode/
+*.user
+
+# Content the bot image does not need (Source/ is the only project it publishes)
+Specs/
+Eval/
+Planning/
+Documentation/
+docker-compose.yml

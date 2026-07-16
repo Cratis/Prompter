@@ -301,3 +301,6 @@ vite*.map
 # Generated evaluation reports (P-18). The folder is kept via .gitkeep.
 Eval/results/*
 !Eval/results/.gitkeep
+
+# Transient agent worktrees created by tooling under the checkout.
+.claude/worktrees/
