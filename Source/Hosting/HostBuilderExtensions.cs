@@ -42,10 +42,6 @@ public static class HostBuilderExtensions
                 "Cratis:Prompter:RetentionDays must be greater than 0; a value of 0 purges the entire interactions table on the first sweep.")
             .ValidateOnStart();
 
-        builder.Configuration
-            .AddJsonFile("appsettings.json", optional: true, reloadOnChange: true)
-            .AddEnvironmentVariables();
-
         builder.Services.AddSingleton(sp =>
         {
             var options = sp.GetRequiredService<IOptions<PrompterOptions>>().Value;

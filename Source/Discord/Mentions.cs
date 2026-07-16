@@ -25,9 +25,9 @@ namespace Cratis.Prompter.Discord;
 /// <param name="options">The Prompter options carrying the Discord ask-channel identifier.</param>
 /// <param name="logger">Logger for diagnostics.</param>
 /// <remarks>
-/// The bot's own user id is read from <see cref="GatewayClient.Id"/>, which Discord populates from the READY
-/// payload before any message-create event is dispatched, so self-mention detection needs no per-message or
-/// startup REST lookup.
+/// The bot's own user id is read from <see cref="GatewayClient.Id"/>, which NetCord decodes from the bot token
+/// itself — so it is available immediately at construction (no wait for the READY payload) and self-mention
+/// detection needs no per-message or startup REST lookup.
 /// </remarks>
 public class Mentions(
     GatewayClient client,
@@ -85,9 +85,10 @@ public class Mentions(
 
     /// <inheritdoc/>
     /// <remarks>
-    /// A gateway handler must never throw — an unhandled exception can destabilize the gateway loop — so the
-    /// whole body is guarded: the user is throttled before the expensive answer path, answering runs under a
-    /// timeout, and any failure is logged and answered with a short apology instead of leaving them in silence.
+    /// NetCord already catches and logs a throwing gateway handler, but it won't do the two things that matter
+    /// to the person who asked — send an apology and log with this handler's own context — so the whole body is
+    /// guarded anyway: the user is throttled before the expensive answer path, answering runs under a timeout,
+    /// and any failure is logged and answered with a short apology instead of leaving them in silence.
     /// </remarks>
     public async ValueTask HandleAsync(Message arg)
     {

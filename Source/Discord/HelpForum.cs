@@ -60,10 +60,10 @@ public class HelpForum(
 
     /// <inheritdoc/>
     /// <remarks>
-    /// A gateway handler must never throw — an unhandled exception can destabilize the gateway loop — so the
-    /// whole body is guarded: the starter's author is throttled before the expensive answer path, answering
-    /// runs under a timeout, and any failure is logged and answered in-thread with a short apology instead of
-    /// leaving the thread silent.
+    /// NetCord already catches and logs a throwing gateway handler, but it won't answer the thread or log with
+    /// this handler's context — so the whole body is guarded anyway: the starter's author is throttled before
+    /// the expensive answer path, answering runs under a timeout, and any failure is logged and answered
+    /// in-thread with a short apology instead of leaving the thread silent.
     /// </remarks>
     public async ValueTask HandleAsync(GuildThreadCreateEventArgs arg)
     {
