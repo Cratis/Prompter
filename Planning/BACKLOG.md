@@ -100,7 +100,12 @@ not to promise live in the parking lot.
   `.md`/`/index` normalization), refusal-accuracy, and groundedness (`Microsoft.Extensions.AI.Evaluation`
   judge, cribbed from eShopSupport), writing markdown+JSON to `Eval/results/`. Pure scorers spec-covered (11
   facts). Run with `dotnet run --project Eval` once Voyage + Anthropic keys + a corpus exist.
-- **P-19** Wire the eval as a CI gate for prompt/retrieval changes (score regression fails the build).
+- **P-19** ~~Wire the eval as a CI gate~~ **Done 2026-07-16** (scaffolding): `.github/workflows/eval.yml`
+  runs on `workflow_dispatch` + PRs **labeled `eval`** only (unlabeled PRs skip → zero API spend), spins up a
+  `pgvector/pgvector:pg17` service, indexes, runs the harness, uploads the report, and fails via
+  `Eval/check-baseline.py` when any metric drops below `Eval/baseline.json` minus a tolerance. Secrets:
+  `VOYAGE_API_KEY`, `ANTHROPIC_API_KEY`. **The baseline holds documented placeholders — regenerate from one
+  real `dotnet run --project Eval` once keys exist** (steps in `Eval/README.md`), then it becomes a live gate.
 
 ## M5 — Operations
 
