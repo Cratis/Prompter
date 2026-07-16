@@ -3,6 +3,35 @@
 Resume state for anyone (human or agent) continuing work in a fresh session. Newest entry first — append,
 don't rewrite history.
 
+## 2026-07-16 — Review follow-ups: safe subset (P-35, P-37, P-38, P-39, P-40, P-42) on a branch
+
+**State:** Branch **`fix/format-preserve-sources`** off `main` @ `99ab61f`, **not pushed / not merged**. Release
+build **0 warnings**, **278 specs green** (up from 260 on `main`; the branch adds P-37's specs plus the new
+review-fix specs). Six commits sit on top of `main`:
+
+- `735a2fc` **P-37** — `DiscordAnswers.Format` keeps citations on long single-message answers (prior session).
+- `4db49ba` **P-35** — hash the embedded composite (title + heading path + content), not just the body.
+  `Chunk.EmbeddingInputFor`/`Chunk.EmbeddingInput` are the single source of truth shared by the chunker (hashes
+  it) and indexer (embeds it), so a title/heading rename re-embeds instead of being skipped as unchanged.
+- `39e1a84` **P-38** — validate `Voyage:Dimensions` against the fixed `vector(1024)` schema at startup
+  (`VoyageOptions.SchemaDimensions` + `DimensionsMatchSchema` in the shared `ValidateOnStart` chain).
+- `2977a7b` **P-42 (partial)** — startup validation for `AnswerTimeoutSeconds > 0` (shared chain) and a
+  non-empty `Discord.Token` (bot-mode-only validator in `Program.cs`, so keyless CLI still passes).
+- `bc9e1da` **P-39** — session `pg_advisory_lock` (held on a dedicated connection) serializes overlapping
+  migration starts; version insert is also `ON CONFLICT (version) DO NOTHING`. **Live-verified** on Postgres:
+  fresh `index` applies 1.0.0→1.2.0, a second run is a clean no-op, no advisory lock lingers, and both runs stop
+  at the expected keyless Voyage 401.
+- `bed7b45` **P-40** — `EmbeddingRetry.IsTransient(null)` now retries status-less network faults (connection
+  reset / DNS / socket timeout).
+
+**Deliberately excluded from this pass:** **P-36** (changes citation behavior — needs live validation) and
+**P-41** (eval baseline — needs API keys). **Residual on P-42:** threading `ApplicationStopping` into the
+background reindex is still open. **P-40** optional extras (jitter, `Retry-After`, retrying HttpClient
+`TaskCanceledException` timeouts) were not taken. **P-43** (worktree hygiene) untouched.
+
+**Next:** decide whether to merge `fix/format-preserve-sources` into `main` + push (a review follow-up,
+externally visible on public `main`). Then P-07 calibration once keys land.
+
 ## 2026-07-16 — Interaction log minimized to zero personal data (D-13)
 
 **State:** Branch **`privacy/minimal-interaction-log`** off `main`, **not pushed**. Release build **0 warnings**,

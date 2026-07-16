@@ -176,21 +176,36 @@ there. Two High findings were already fixed on branch `review/2026-07-16-followu
 hash → keyed HMAC, and the lexical retrieval arm dropping its top matches). The refusal-threshold finding is
 folded into **P-07**; the hybrid-tuning angle into **P-06**. Remaining actionable items:
 
-- **P-35** Hash the string that is actually embedded (title + heading path + content), not just the body, so a
-  heading/title rename re-embeds instead of being skipped as unchanged.
+- **P-35** ~~Hash the string that is actually embedded (title + heading path + content), not just the body~~
+  **Done 2026-07-16** (branch `fix/format-preserve-sources`): `Chunk.EmbeddingInputFor`/`Chunk.EmbeddingInput`
+  are now the single source of truth for the embedded string, hashed by the chunker and embedded by the
+  indexer, so a title/heading rename re-embeds instead of being skipped as unchanged and the two can't drift.
+  Specs: hash-covers-embedded-string invariant + heading-rename + title-rename each change the hash.
 - **P-36** Derive answer citations from the model's `[n]` markers (map to `found[n-1].Page`), not the top-4
-  retrieved pages — fixes miscitation and makes the `[n]` markers line up with the "Sources" list.
-- **P-37** Make `DiscordAnswers.Format` reserve room for the sources line and truncate only the body, so long
-  `/ask` and forum answers stop dropping citations / breaking embed-suppression brackets.
-- **P-38** Validate `Voyage:Dimensions` against the `vector(1024)` schema at startup (or make it a constant).
-- **P-39** Guard `EnsureSchema` with a `pg_advisory_lock` (or make the version insert `ON CONFLICT DO NOTHING`)
-  so overlapping starts don't fail to boot.
-- **P-40** Broaden retry classification to status-less transient failures (connection reset, DNS, timeout); add
-  jitter and honor `Retry-After`.
+  retrieved pages — fixes miscitation and makes the `[n]` markers line up with the "Sources" list. **Deferred
+  (needs live validation, out of the safe review-fix subset.)**
+- **P-37** ~~Make `DiscordAnswers.Format` reserve room for the sources line and truncate only the body~~
+  **Done 2026-07-16** (branch `fix/format-preserve-sources`, commit `735a2fc`).
+- **P-38** ~~Validate `Voyage:Dimensions` against the `vector(1024)` schema at startup~~ **Done 2026-07-16**
+  (branch `fix/format-preserve-sources`): `VoyageOptions.SchemaDimensions` (1024) + `DimensionsMatchSchema`
+  wired into the shared `AddPrompter` `ValidateOnStart` chain; default matches so keyless CLI is unaffected.
+- **P-39** ~~Guard `EnsureSchema` with a `pg_advisory_lock`~~ **Done 2026-07-16** (branch
+  `fix/format-preserve-sources`): a session-level `pg_advisory_lock` held on a dedicated connection for the
+  whole migration run serializes overlapping starts; the version insert is also `ON CONFLICT (version) DO
+  NOTHING` as a second line of defense. Live-verified against Postgres (fresh apply 1.0.0→1.2.0, clean no-op
+  second run, no lingering lock).
+- **P-40** ~~Broaden retry classification to status-less transient failures~~ **Done 2026-07-16** (branch
+  `fix/format-preserve-sources`): `EmbeddingRetry.IsTransient(null)` now retries (connection reset / DNS /
+  socket timeout surfacing as a status-less `HttpRequestException`). Optional jitter / `Retry-After` and
+  HttpClient-timeout (`TaskCanceledException`) retrying were **not** taken this pass — revisit if a live index
+  run shows a need.
 - **P-41** Enforce an in-scope answer-rate metric in the eval gate and regenerate `Eval/baseline.json` from a
-  keyed run — otherwise over-refusal regressions pass CI.
+  keyed run — otherwise over-refusal regressions pass CI. **Deferred (needs API keys, out of the safe subset.)**
 - **P-42** Add startup validation for `AnswerTimeoutSeconds > 0` and (bot mode) a non-empty `Discord.Token`;
-  thread `ApplicationStopping` into the background reindex so shutdown cancels it cleanly.
+  thread `ApplicationStopping` into the background reindex so shutdown cancels it cleanly. **Partly done
+  2026-07-16** (branch `fix/format-preserve-sources`): the two startup validations landed
+  (`DiscordOptions.AnswerTimeoutIsValid` in the shared chain; `TokenIsPresent` as a bot-mode-only validator in
+  `Program.cs`). **Residual:** threading `ApplicationStopping` into the background reindex is still open.
 - **P-43** Prune the 20 stale agent worktrees + 19 `worktree-agent-*` local branches (git hygiene).
 
 ## Open questions
