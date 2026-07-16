@@ -29,8 +29,8 @@ embeddings used for retrieval. Neither trains on your questions - see [Privacy](
 
 ## Does it read my DMs or other channels?
 
-No. It only processes messages on its answer surfaces, and it stores a one-way hash of your identity - never
-your username. [Privacy](../concepts/privacy.md) lists exactly what is kept and for how long.
+No. It only processes messages on its answer surfaces, and it stores nothing that identifies you - not your
+username, not your ID, not even a hash of it. [Privacy](../concepts/privacy.md) lists exactly what is kept.
 
 ## Can I run it for my own project?
 

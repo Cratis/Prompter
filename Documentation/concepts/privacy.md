@@ -9,28 +9,36 @@ in code.
 
 ## What is stored when you ask a question
 
+Prompter keeps **no personal data** — no message content and nothing that identifies you. The only thing
+recorded is anonymous operational signal about each answer:
+
 | Data | Stored as | Why |
 |---|---|---|
-| Your Discord identity | A **one-way hash** - never your ID or username | Rate limiting and abuse control need to tell users apart; nothing needs to know who you are |
-| Your question and the answer | Text, for **90 days**, then purged automatically | Measuring answer quality and finding documentation gaps |
-| Where it was asked | The surface (mention, `/ask`, ask channel, forum) - not the message or channel ID | Understanding which surfaces work |
-| Your 👍/👎 reaction | The verdict on the answer row | The quality feedback loop |
+| Which surface it was asked on | The surface type (mention, `/ask`, ask channel, forum) — not the message, channel, or user | Understanding which surfaces get used |
+| Which docs pages the answer cited | The page URLs | Measuring grounding and finding documentation gaps |
+| Whether Prompter answered or refused, and how confident it was | A flag and a score | Tracking refusal rate and answer quality |
+| Your 👍/👎 | The verdict, attached to that anonymous row | The quality feedback loop |
 
-Prompter does not read or store DMs, does not store messages that aren't questions to it, and never posts
-anywhere it wasn't asked.
+Your **question and the answer text are not stored** — they are processed to produce the reply and then
+discarded. Your **Discord identity is never stored**: the bot throttles each person only in memory, and that
+key is never written to disk or logs. None of the recorded signal can be traced back to you, so the
+anonymous rows fall outside data-protection obligations entirely. Prompter does not read or store DMs, does
+not store messages that aren't questions to it, and never posts anywhere it wasn't asked.
 
 ## Who else sees your question
 
-Two external services process question text, both under terms that exclude training on it:
+To answer you, your question text is sent to two external services and then discarded — neither they nor
+Prompter retain it for training:
 
 - **Anthropic** (Claude) generates the answer from your question and the retrieved documentation passages.
   Anthropic does not train on API data.
 - **Voyage AI** computes an embedding of the question for retrieval.
 
-Everything stored at rest lives on Cratis-operated infrastructure in Norway.
+Everything Prompter stores at rest (the anonymous signal above) lives on Cratis-operated infrastructure in
+Norway.
 
 ## Your rights
 
-You can ask for your interactions to be deleted - contact a maintainer on the
-[Cratis Discord](https://discord.gg/kt4AMpV8WV) and the rows matching your hashed identity are removed.
-Retention and processing questions go to the same place.
+Because Prompter stores nothing that identifies you and keeps none of your message content, there is nothing
+personal to export or delete — the recorded signal is anonymous by construction. Questions about how it works,
+or about the processing above, go to a maintainer on the [Cratis Discord](https://discord.gg/kt4AMpV8WV).

@@ -64,6 +64,11 @@ opted-in channels is a post-v1 experiment (parking lot), enabled per channel, th
 
 ## D-8 · GDPR posture — 2026-07-15
 
+> **Amended by [D-13](#d-13--interaction-log-stores-no-personal-data--2026-07-16) (2026-07-16):** the
+> interaction log now stores **no personal data at all** — no message content and no user identifier (not
+> even a hash). The hashed-ID, question/answer-text retention, and DSAR-by-hash rules below are superseded by
+> data minimization; the rest of D-8 (controller status, subprocessor posture, EU-inference fallback) stands.
+
 We are the controller (Norway/EEA; Datatilsynet). v1 rules: store Discord user IDs **hashed** (rate limiting
 and abuse control need identity-shaped data, analytics does not need identities); question/answer text retained
 on a configurable window (default 90 days) with an automatic purge job; a pinned privacy notice in the server
@@ -117,3 +122,23 @@ readable — obscurity is weak protection anyway, and blast radius is capped by 
 limits. Guardrails now that it is public: secrets stay in env/Pulumi-encrypted config only (already true),
 deployment state lives with the stack (Q-5), and the README should set expectations (built for the Cratis
 community, PRs welcome, no support promises — still to add).
+
+## D-13 · Interaction log stores no personal data — 2026-07-16
+
+**Amends [D-8](#d-8--gdpr-posture--2026-07-15).** The interaction log keeps **no personal data**: no message
+content (question/answer text) and no user identifier — not even the keyed hash D-8 called for. A `v1_2_0`
+migration drops the `question`, `answer`, `user_hash`, and `answer_message_id` columns, leaving only anonymous
+operational signal per answer: `source`, `cited_pages`, `confidence`, `was_refusal`, and `feedback`. Raw
+Discord user IDs are also removed from the operational logs. Rate limiting still tells users apart, but only
+via an **in-memory** key (the raw id) that is never written to disk or logs — so the whole `UserHash`/keyed-hash
+apparatus and its required key are gone.
+
+Grounds: the log was **write-only** — no running code read the content back; its value was entirely
+prospective (analytics + the post-v1 docs-gap flywheel). Data minimization is a GDPR principle, and storing
+nothing identifiable takes the log **out of scope entirely** — no lawful-basis, retention, or DSAR obligations
+attach to anonymous rows, and the public privacy notice can make the strongest possible claim ("we keep no
+message content and nothing that identifies you"), verifiable in the open source. The retention purge stays as
+housekeeping (bounding table growth), not as a privacy control. Accepted trade-off: the docs-gap flywheel
+([BACKLOG](../BACKLOG.md) P-33) will need question text, so it must **re-introduce content behind its own
+decision record** (consent notice + narrow retention) rather than assuming it is already collected. The
+`IInteractionLog` seam is unchanged, so that is an additive change, not a redesign.

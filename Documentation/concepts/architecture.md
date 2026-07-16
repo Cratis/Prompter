@@ -48,5 +48,5 @@ quality technique Prompter commits to from day one.
 
 The model receives only the retrieved excerpts and must answer from them - answers reference the excerpts
 they used, and those pages are attached as source links. When the best passage scores below a confidence
-threshold, Prompter refuses instead of guessing. Every interaction is recorded (with a hashed user identifier)
-so answer quality is measured against a golden question set rather than assumed.
+threshold, Prompter refuses instead of guessing. Every interaction is recorded as anonymous signal (no message
+content, no user identity) so answer quality is measured against a golden question set rather than assumed.

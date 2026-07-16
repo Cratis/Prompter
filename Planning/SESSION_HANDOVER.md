@@ -3,6 +3,28 @@
 Resume state for anyone (human or agent) continuing work in a fresh session. Newest entry first — append,
 don't rewrite history.
 
+## 2026-07-16 — Interaction log minimized to zero personal data (D-13)
+
+**State:** Branch **`privacy/minimal-interaction-log`** off `main`, **not pushed**. Release build **0 warnings**,
+**260 specs green**. The migration chain was live-verified against a fresh Postgres (`docker compose up -d` →
+`dotnet run -- index`): all three migrations apply (1.0.0 → 1.1.0 → 1.2.0) and the `interactions` table ends up
+as exactly `id, occurred_at, source, cited_pages, confidence, was_refusal, feedback` — the run then fails at the
+expected keyless Voyage boundary, confirming schema + DI/startup are intact.
+
+**What changed (decision [D-13](DECISIONS.md), amending D-8):** the interaction log now stores **no personal
+data** — a `v1_2_0` migration drops `question`, `answer`, `user_hash`, and `answer_message_id`, leaving only
+anonymous signal (`source`, `cited_pages`, `confidence`, `was_refusal`, `feedback`). `IAnswers.For` and
+`Interaction` no longer carry user/content; `IInteractionLog.SetAnswerMessage` is gone. Raw Discord user IDs are
+scrubbed from the operational logs. Rate limiting keeps an **in-memory-only** key (the raw id, never persisted or
+logged), so the whole `UserHash`/keyed-hash + mandatory `UserHashKey` from the previous session is removed
+(supersedes that part of the prior entry). Privacy notice (`Documentation/concepts/privacy.md`), FAQ, and
+architecture doc rewritten to "we keep no message content and nothing that identifies you".
+
+**Follow-on:** the docs-gap flywheel (BACKLOG P-33) is now explicitly **blocked** on re-introducing question text
+behind its own consent/retention decision. The retention purge stays as housekeeping (not a privacy control).
+
+**Next:** decide whether to merge/push this branch. Then P-07 calibration when keys land.
+
 ## 2026-07-16 — Fresh whole-project review + two High fixes (branch, not merged)
 
 **State:** Branch **`review/2026-07-16-followups`** off `main` @ `e9f68ad`, **not pushed / not merged**.

@@ -160,7 +160,10 @@ Phase 1 (docs site) is the v1 corpus and is covered by M1/M5 above. These extend
 - **P-32** Phase 3: **GitHub Discussions / answered issues** across product repos (public data, filtered to
   resolved).
 - **P-33** **Docs-gap flywheel** — weekly digest of refusals + 👎 answers to a maintainer channel; later
-  auto-file issues in the owning product repo. Prompter as a docs-coverage instrument.
+  auto-file issues in the owning product repo. Prompter as a docs-coverage instrument. **Blocked on
+  re-introducing question text:** the interaction log is anonymous by [D-13](DECISIONS.md) (no content, no
+  identity), so this needs a decision record extending D-8/D-13 with a consent notice + narrow retention
+  before it can mine question text.
 - **P-34** **Docs MCP server** — expose `IPassages.Search` as an MCP tool alongside Chronicle.Mcp so Claude
   Code/Copilot/Cursor users share the bot's grounded retrieval.
 
