@@ -60,8 +60,8 @@ quality a measured property instead of a hope, and it gates every later prompt/r
 - Answers cite source pages (links) or explicitly refuse; no uncited claims.
 - Eval harness ≥ agreed thresholds on the golden set, wired into CI.
 - Re-index happens automatically within minutes of docs merging to `main`.
-- Interaction data handling matches [`DECISIONS.md`](DECISIONS.md) D-8 (GDPR: hashed user IDs, retention,
-  privacy notice).
+- Interaction data handling matches [`DECISIONS.md`](DECISIONS.md) D-13 (GDPR: no personal data stored — no
+  message content, no user id; anonymous signal only, privacy notice).
 - `dotnet build` zero warnings, specs green, deploy is one documented command.
 
 ## Post-v1 candidates (parked, not promised)

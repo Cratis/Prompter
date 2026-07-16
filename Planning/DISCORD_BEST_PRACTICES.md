@@ -261,11 +261,12 @@ Sources: [Privacy policy for Discord bots (2026)](https://www.legalforge.app/blo
 [EU community bot GDPR guidance](https://sota.io/blog/discord-eu-alternative-gdpr-cloud-act-developer-community-messaging-2026);
 Answer Overflow models **consent-before-indexing** ([AO indexing/consent](https://docs.answeroverflow.com/channel-settings/indexing)).
 
-**Maps to us (already largely decided — do not re-open D-8).**
-- The pinned notice (P-23) should name Prompter, list what it processes (question text, hashed user id),
-  the **Anthropic** subprocessor, the **90-day** default retention, and the **delete-by-hashed-id** DSAR path.
-- Because the repo is public (D-12), the notice can **link to the source** proving hashed ids + purge job — a
-  transparency asset, per D-8.
+**Maps to us (already largely decided — D-8 as amended by D-13).**
+- The pinned notice (P-23) should name Prompter, list what it processes (question text, sent to the
+  **Anthropic** subprocessor and not retained), and state that it stores **no message content and nothing that
+  identifies you** (D-13) — so there is no per-user data to delete.
+- Because the repo is public (D-12), the notice can **link to the source** proving no content or identity is
+  stored — a transparency asset, per D-8/D-13.
 - Reinforce in the `#ask` channel pin (§3) since that's the busiest AI surface.
 - Reminder already in the contract: Discord message content must **not** be used to train models — our
   Anthropic API usage doesn't train by default; keep it documented.

@@ -27,8 +27,8 @@ assumptions that made it look cheap turned out false:
    Putting GDPR-sensitive data on the least-battle-tested backend is the opposite of why we kept the corpus on
    Postgres (D-4).
 
-Our current GDPR posture (D-8: hashed user ids, 90-day purge job, delete-by-hash DSAR) already satisfies the
-launch requirements without any of this.
+Our current GDPR posture (D-8 as amended by D-13: the interaction log stores no personal data at all) already
+satisfies the launch requirements without any of this.
 
 ## What's true and worth knowing if we revisit
 

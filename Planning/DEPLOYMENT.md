@@ -80,7 +80,7 @@ Remember the separation that makes this cheap ([`CONTENT_AND_FRESHNESS.md`](CONT
 | **Backups** | Postgres → UpCloud Object Storage, same wiring as the cluster's MongoDB backups; the corpus is rebuildable from cratis.io, so **interactions** are the only data that matters |
 | **Monitoring** | k8s probes on `/healthz`; logs in Loki/Grafana (already collected); weekly glance at refusal rate + feedback ratio |
 | **Secrets rotation** | k8s secrets via the Pulumi stack (passphrase-encrypted config), rotated with `pulumi config set --secret` + `pulumi up` |
-| **Data subject requests** | Delete by hashed user id: `DELETE FROM interactions WHERE user_hash = …` (hash the requester's Discord id with the scheme in `Discord/UserHash.cs`) |
+| **Data subject requests** | Nothing to action: the interaction log stores no personal data or identifier (D-13), so there is no per-user data to export or delete |
 
 ## Superseded plan
 

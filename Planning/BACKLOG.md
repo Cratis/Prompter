@@ -128,8 +128,10 @@ not to promise live in the parking lot.
   interactions older than `RetentionDays`, default 90, on the existing `occurred_at` column), logging the count
   and swallowing failures so the loop never dies. Registered in bot mode only. Cadence + resilience
   spec-covered (6 facts); the `DELETE` cutoff was live-verified against a throwaway Postgres.
-- **P-23** Privacy notice: pinned Discord message + docs page naming the bot, what it stores (hashed user IDs,
-  questions/answers, 90 days), and the LLM subprocessor. See D-8.
+- **P-23** Privacy notice: pinned Discord message + docs page naming the bot, what it processes (question text,
+  sent to the LLM subprocessor and not retained) and what it stores (nothing identifying — no message content,
+  no user id; only anonymous answer signal), and the LLM subprocessor. See D-13 (amending D-8);
+  `Documentation/concepts/privacy.md` is the docs-page target already written.
 - **P-24** Register Prompter in the `Documentation` repo: `PRODUCTS[]` entry in `web/scripts/sync-content.mjs`
   + sibling-clone list, so `Documentation/` here appears on cratis.io.
 - **P-25** Run the `sync-copilot-instructions` workflow to pull the shared `.ai/` + `.claude/` + `.github`
