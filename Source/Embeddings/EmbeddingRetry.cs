@@ -13,13 +13,16 @@ public static class EmbeddingRetry
 {
     /// <summary>
     /// Determines whether a failed embedding request should be retried, based on its HTTP status. Rate
-    /// limiting (429) and server errors (5xx) are transient; everything else - including client errors like
-    /// a bad request or an invalid key - is not worth retrying.
+    /// limiting (429) and server errors (5xx) are transient, and so is a missing status: a request that never
+    /// got an HTTP response - a connection reset, a DNS blip or a socket timeout - surfaces as an
+    /// <see cref="HttpRequestException"/> with no <see cref="HttpStatusCode"/>, and those network faults are
+    /// common on long index runs and worth retrying. Client errors that did get a status (a bad request or an
+    /// invalid key) are not.
     /// </summary>
-    /// <param name="status">The HTTP status of the failed response, or <see langword="null"/> when unknown.</param>
+    /// <param name="status">The HTTP status of the failed response, or <see langword="null"/> when the request never got one.</param>
     /// <returns><see langword="true"/> when the failure is transient and should be retried; otherwise <see langword="false"/>.</returns>
     public static bool IsTransient(HttpStatusCode? status) =>
-        status is HttpStatusCode.TooManyRequests or (>= HttpStatusCode.InternalServerError and < (HttpStatusCode)600);
+        status is null or HttpStatusCode.TooManyRequests or (>= HttpStatusCode.InternalServerError and < (HttpStatusCode)600);
 
     /// <summary>
     /// Computes the delay before the given retry attempt using exponential backoff, doubling the base delay

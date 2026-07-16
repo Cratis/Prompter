@@ -8,7 +8,7 @@ namespace Cratis.Prompter.Specs.Fakes;
 
 public sealed class TransientlyFailingEmbeddingGenerator(
     int failuresBeforeSuccess,
-    HttpStatusCode status = HttpStatusCode.TooManyRequests) : IEmbeddingGenerator<string, Embedding<float>>
+    HttpStatusCode? status = HttpStatusCode.TooManyRequests) : IEmbeddingGenerator<string, Embedding<float>>
 {
     public int Calls { get; private set; }
 

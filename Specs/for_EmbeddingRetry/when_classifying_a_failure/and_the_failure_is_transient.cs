@@ -12,4 +12,5 @@ public class and_the_failure_is_transient : Specification
     [Fact] void should_retry_on_internal_server_error() => EmbeddingRetry.IsTransient(HttpStatusCode.InternalServerError).ShouldBeTrue();
     [Fact] void should_retry_on_bad_gateway() => EmbeddingRetry.IsTransient(HttpStatusCode.BadGateway).ShouldBeTrue();
     [Fact] void should_retry_on_service_unavailable() => EmbeddingRetry.IsTransient(HttpStatusCode.ServiceUnavailable).ShouldBeTrue();
+    [Fact] void should_retry_when_the_request_never_got_a_status() => EmbeddingRetry.IsTransient(null).ShouldBeTrue();
 }
