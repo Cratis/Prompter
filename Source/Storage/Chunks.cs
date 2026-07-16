@@ -21,17 +21,39 @@ public class Chunks(NpgsqlDataSource dataSource) : IChunks
         )
         """;
 
+    /// <summary>
+    /// A fixed, arbitrary key ("PROMPT" in ASCII) identifying the session-level advisory lock that serializes
+    /// schema migrations across concurrently starting pods/replicas.
+    /// </summary>
+    const long MigrationLockKey = 0x50524F4D5054;
+
     /// <inheritdoc/>
     public async Task EnsureSchema(CancellationToken cancellationToken = default)
     {
-        await EnsureMigrationsTable(cancellationToken);
-
-        var available = EmbeddedMigrations.LoadFrom(typeof(Chunks).Assembly);
-        var applied = await GetAppliedVersions(cancellationToken);
-
-        foreach (var migration in MigrationPlan.Pending(available, applied))
+        // Hold a session-level advisory lock for the whole migration run so concurrently starting pods/replicas
+        // serialize here: the second starter blocks at the lock until the first has created the tracking table
+        // and applied (and recorded) every pending migration, then finds nothing left to do. Without it the two
+        // run the same migration concurrently and the loser's schema_migrations insert hits the primary key,
+        // failing the pod's boot. The lock lives on this dedicated connection (a session lock is released when
+        // its connection returns to the pool, so it must not run on the pooled data source); the migration
+        // statements themselves run on the data source, which is safe because this pod holds the lock throughout.
+        await using var lockConnection = await dataSource.OpenConnectionAsync(cancellationToken);
+        await AcquireMigrationLock(lockConnection, cancellationToken);
+        try
         {
-            await Apply(migration, cancellationToken);
+            await EnsureMigrationsTable(cancellationToken);
+
+            var available = EmbeddedMigrations.LoadFrom(typeof(Chunks).Assembly);
+            var applied = await GetAppliedVersions(cancellationToken);
+
+            foreach (var migration in MigrationPlan.Pending(available, applied))
+            {
+                await Apply(migration, cancellationToken);
+            }
+        }
+        finally
+        {
+            await ReleaseMigrationLock(lockConnection, cancellationToken);
         }
     }
 
@@ -86,6 +108,22 @@ public class Chunks(NpgsqlDataSource dataSource) : IChunks
         return await command.ExecuteNonQueryAsync(cancellationToken);
     }
 
+    static async Task AcquireMigrationLock(NpgsqlConnection connection, CancellationToken cancellationToken)
+    {
+        await using var command = connection.CreateCommand();
+        command.CommandText = "SELECT pg_advisory_lock($1)";
+        command.Parameters.AddWithValue(MigrationLockKey);
+        await command.ExecuteNonQueryAsync(cancellationToken);
+    }
+
+    static async Task ReleaseMigrationLock(NpgsqlConnection connection, CancellationToken cancellationToken)
+    {
+        await using var command = connection.CreateCommand();
+        command.CommandText = "SELECT pg_advisory_unlock($1)";
+        command.Parameters.AddWithValue(MigrationLockKey);
+        await command.ExecuteNonQueryAsync(cancellationToken);
+    }
+
     async Task EnsureMigrationsTable(CancellationToken cancellationToken)
     {
         await using var command = dataSource.CreateCommand(CreateMigrationsTableSql);
@@ -113,7 +151,9 @@ public class Chunks(NpgsqlDataSource dataSource) : IChunks
         // records a version whose migration did not fully apply. The migration body is multiple statements,
         // which rules out parameters (those force the extended, one-statement-per-command protocol); the
         // version is a validated numeric (major.minor.patch), so embedding it as a literal is injection-safe.
-        var sql = $"BEGIN;\n{migration.Sql}\nINSERT INTO schema_migrations (version) VALUES ('{migration.Version}');\nCOMMIT;";
+        // The advisory lock in EnsureSchema already serializes starters; ON CONFLICT DO NOTHING is a cheap
+        // second line of defense so the version insert is idempotent regardless.
+        var sql = $"BEGIN;\n{migration.Sql}\nINSERT INTO schema_migrations (version) VALUES ('{migration.Version}') ON CONFLICT (version) DO NOTHING;\nCOMMIT;";
 
         await using var command = dataSource.CreateCommand(sql);
         await command.ExecuteNonQueryAsync(cancellationToken);
