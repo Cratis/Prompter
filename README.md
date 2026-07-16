@@ -149,6 +149,7 @@ Configuration binds to the `Cratis:Prompter` section (environment variables use 
 | Help forum channel (auto-reply) | `Cratis__Prompter__Discord__HelpForumChannelId` | — |
 | Rate limit — questions per window | `Cratis__Prompter__Discord__RateLimit__MaxQuestions` | `5` |
 | Rate limit — window length (minutes) | `Cratis__Prompter__Discord__RateLimit__WindowMinutes` | `10` |
+| Answer timeout (seconds) | `Cratis__Prompter__Discord__AnswerTimeoutSeconds` | `60` |
 | Anthropic API key | `Cratis__Prompter__Anthropic__ApiKey` (or `ANTHROPIC_API_KEY`) | — |
 | Answer model | `Cratis__Prompter__Anthropic__Model` | `claude-sonnet-5` |
 | Refusal threshold (min top-passage score) | `Cratis__Prompter__Answering__MinScore` | `0.02` |
