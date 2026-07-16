@@ -3,6 +3,34 @@
 Resume state for anyone (human or agent) continuing work in a fresh session. Newest entry first — append,
 don't rewrite history.
 
+## 2026-07-16 — Fresh whole-project review + two High fixes (branch, not merged)
+
+**State:** Branch **`review/2026-07-16-followups`** off `main` @ `e9f68ad`, **not pushed / not merged**.
+Release build **0 warnings**, **263 specs green** (up from 260; +3 for the keyed hash). A fresh whole-project
+review (four independent subsystem passes + a manual core read) is recorded in
+[`REVIEW_2026-07-16.md`](REVIEW_2026-07-16.md).
+
+**Fixed on the branch (two High):**
+- **Reversible user-id hash → keyed HMAC** (`UserHash`): bare `SHA256("prompter:{snowflake}")` over a public,
+  enumerable id in a public repo was reversible by anyone holding the interaction log — defeating D-8. Now
+  **HMAC-SHA256** keyed with `Cratis:Prompter:Discord:UserHashKey`, **required at startup when a Discord token
+  is set** (CLI `index`/`ask` modes without a token are unaffected). New `for_UserHash` specs; documented in the
+  README table + deployment secret list.
+- **Lexical retrieval arm dropped its top matches** (`Passages`): the lexical CTE's `LIMIT` had no
+  statement-level `ORDER BY`, so it kept an arbitrary 20 rows whenever >20 chunks matched. Added
+  `ORDER BY ts_rank_cd(...) DESC` before the `LIMIT`. Not spec-coverable without a live DB; the M2.2
+  calibration run exercises it.
+
+**Logged, not fixed:** the rest of the review is in `REVIEW_2026-07-16.md` and mapped to `BACKLOG.md` — the
+refusal-threshold design concern folds into **P-07**, hybrid tuning into **P-06**, and new items **P-35…P-43**
+cover content-hash coverage, model-`[n]` citations, `Format` dropping sources on long answers, `Voyage:Dimensions`
+validation, migration advisory lock, retry classification, the eval answer-rate gate, startup validation, and
+worktree hygiene. Feedback-button routing under NetCord beta.11 still needs the token-gated test-server check.
+
+**Next:** decide whether to merge/push this branch (a review follow-up, externally visible on public `main`),
+then continue with P-07 calibration once keys land — where the threshold and lexical fixes both get their live
+proof-out.
+
 ## 2026-07-16 — v1 code-complete: full M1–M5 build, two review passes, docs reconciled
 
 **State:** `main` @ `a1159cb`, pushed, **260 specs green, 0 warnings** (Release). The `aspnet`-base Docker

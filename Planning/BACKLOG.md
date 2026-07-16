@@ -164,6 +164,30 @@ Phase 1 (docs site) is the v1 corpus and is covered by M1/M5 above. These extend
 - **P-34** **Docs MCP server** — expose `IPassages.Search` as an MCP tool alongside Chronicle.Mcp so Claude
   Code/Copilot/Cursor users share the bot's grounded retrieval.
 
+## Review follow-ups (2026-07-16)
+
+From the whole-project review in [`REVIEW_2026-07-16.md`](REVIEW_2026-07-16.md) — full detail and file:line
+there. Two High findings were already fixed on branch `review/2026-07-16-followups` (the reversible user-id
+hash → keyed HMAC, and the lexical retrieval arm dropping its top matches). The refusal-threshold finding is
+folded into **P-07**; the hybrid-tuning angle into **P-06**. Remaining actionable items:
+
+- **P-35** Hash the string that is actually embedded (title + heading path + content), not just the body, so a
+  heading/title rename re-embeds instead of being skipped as unchanged.
+- **P-36** Derive answer citations from the model's `[n]` markers (map to `found[n-1].Page`), not the top-4
+  retrieved pages — fixes miscitation and makes the `[n]` markers line up with the "Sources" list.
+- **P-37** Make `DiscordAnswers.Format` reserve room for the sources line and truncate only the body, so long
+  `/ask` and forum answers stop dropping citations / breaking embed-suppression brackets.
+- **P-38** Validate `Voyage:Dimensions` against the `vector(1024)` schema at startup (or make it a constant).
+- **P-39** Guard `EnsureSchema` with a `pg_advisory_lock` (or make the version insert `ON CONFLICT DO NOTHING`)
+  so overlapping starts don't fail to boot.
+- **P-40** Broaden retry classification to status-less transient failures (connection reset, DNS, timeout); add
+  jitter and honor `Retry-After`.
+- **P-41** Enforce an in-scope answer-rate metric in the eval gate and regenerate `Eval/baseline.json` from a
+  keyed run — otherwise over-refusal regressions pass CI.
+- **P-42** Add startup validation for `AnswerTimeoutSeconds > 0` and (bot mode) a non-empty `Discord.Token`;
+  thread `ApplicationStopping` into the background reindex so shutdown cancels it cleanly.
+- **P-43** Prune the 20 stale agent worktrees + 19 `worktree-agent-*` local branches (git hygiene).
+
 ## Open questions
 
 - **Q-1** Chronicle dogfooding for the interaction log — needs a team ruling (D-6, recommendation: post-v1).
