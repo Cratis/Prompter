@@ -66,13 +66,15 @@ you at a human. That honesty is the feature.
 ## ✨ How to summon it
 
 - **@mention** `@Prompter` anywhere it can see — it replies in-thread, right where you asked.
-- **`/ask`** — the slash command, for a clean one-off question.
+- **`/ask`** — the slash command, for a clean one-off question; it shows a "thinking…" indicator while it
+  looks things up, then delivers the cited answer.
 - **`#ask-ai`** — a dedicated channel where every message is treated as a question, no mention needed.
 - **Help forum** — open a new thread in the help forum and Prompter takes the first swing automatically, so
   you're never waiting on the timezone gods for a first answer.
-- **👍 / 👎** — react on any answer; the verdict is logged so the docs (and the bot) get better.
+- **👍 / 👎 buttons** — one click under any answer; the verdict is logged so the docs (and the bot) get better.
 
-> Prompter never barges into normal conversation — it only speaks when spoken to. See
+> Prompter never barges into normal conversation — it only speaks when spoken to, and it rate-limits each
+> person to a handful of questions per window so no one can spam it. See
 > [`DISCORD_INTEGRATION.md`](Planning/DISCORD_INTEGRATION.md) for the full behavior contract.
 
 ## 🧠 How it works
@@ -115,13 +117,20 @@ Index the documentation, then ask a question straight from your terminal:
 ```bash
 cd Source
 dotnet run -- index                                        # ingest cratis.io into the corpus
-dotnet run -- ask "How do I append an event in Chronicle?" # answer from the CLI
+dotnet run -- ask "How do I append an event in Chronicle?" # answer from the CLI (add --verbose for the passages)
 ```
 
-Run it as the Discord bot:
+Run it as the Discord bot — bot mode also serves `GET /healthz` and the shared-secret `POST /reindex` webhook,
+and sweeps expired interactions on a daily retention job:
 
 ```bash
 dotnet run
+```
+
+Measure answer quality against the golden question set (from the repo root; needs the keys plus an indexed corpus):
+
+```bash
+dotnet run --project Eval                                   # groundedness, citation, and refusal scores
 ```
 
 > You'll need a (free) **Voyage** API key to index and an **Anthropic** key to answer — see the table below.
@@ -136,11 +145,16 @@ Configuration binds to the `Cratis:Prompter` section (environment variables use 
 | Docs site to ingest | `Cratis__Prompter__DocsSiteUrl` | `https://cratis.io` |
 | Embedding batch size | `Cratis__Prompter__Voyage__BatchSize` | `128` |
 | Discord bot token | `Cratis__Prompter__Discord__Token` | — |
+| Ask channel (mention-free questions) | `Cratis__Prompter__Discord__AskChannelId` | — |
 | Help forum channel (auto-reply) | `Cratis__Prompter__Discord__HelpForumChannelId` | — |
+| Rate limit — questions per window | `Cratis__Prompter__Discord__RateLimit__MaxQuestions` | `5` |
+| Rate limit — window length (minutes) | `Cratis__Prompter__Discord__RateLimit__WindowMinutes` | `10` |
 | Anthropic API key | `Cratis__Prompter__Anthropic__ApiKey` (or `ANTHROPIC_API_KEY`) | — |
 | Answer model | `Cratis__Prompter__Anthropic__Model` | `claude-sonnet-5` |
+| Refusal threshold (min top-passage score) | `Cratis__Prompter__Answering__MinScore` | `0.02` |
 | Voyage API key | `Cratis__Prompter__Voyage__ApiKey` | — |
 | Interaction retention (days) | `Cratis__Prompter__RetentionDays` | `90` |
+| Re-index webhook secret | `Cratis__Prompter__ReindexSecret` | — |
 
 API keys are never committed — use environment variables or a git-ignored `Source/appsettings.Development.json`.
 
