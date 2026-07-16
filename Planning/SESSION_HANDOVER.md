@@ -23,14 +23,26 @@ review-fix specs). Six commits sit on top of `main`:
   at the expected keyless Voyage 401.
 - `bed7b45` **P-40** — `EmbeddingRetry.IsTransient(null)` now retries status-less network faults (connection
   reset / DNS / socket timeout).
+- `f52a3c8` — planning-doc reconciliation (this entry + BACKLOG).
+- `9638eee` **P-42 residual + a review Low** — the background reindex now runs under
+  `IHostApplicationLifetime.ApplicationStopping` (cancels cleanly on shutdown, logged as its own outcome), and
+  `ReindexAuth` SHA-256-hashes both secrets to a fixed 32 bytes before `FixedTimeEquals` so the compare no
+  longer leaks the secret's length. So **P-42 is now fully done.**
 
-**Deliberately excluded from this pass:** **P-36** (changes citation behavior — needs live validation) and
-**P-41** (eval baseline — needs API keys). **Residual on P-42:** threading `ApplicationStopping` into the
-background reindex is still open. **P-40** optional extras (jitter, `Retry-After`, retrying HttpClient
-`TaskCanceledException` timeouts) were not taken. **P-43** (worktree hygiene) untouched.
+**P-43 (git hygiene) — worktrees cleared, branches preserved:** all 19 `.claude/worktrees/agent-*` worktree
+directories were removed (all clean; nothing dirty discarded) and the registry pruned to the single main
+checkout — no repo commit (that path is gitignored). The 19 `worktree-agent-*` **branches** are intentionally
+kept: they are unmerged by ancestry (cherry-picked onto `main` under new hashes), so removing them needs
+`git branch -D`, held back as a destructive step on branches this session didn't create. Delete them at will
+once you're satisfied `main` carries their content.
+
+**Still excluded (need keys / live / design):** **P-36** (model-`[n]` citations — needs live validation),
+**P-41** (eval answer-rate gate + real baseline — needs API keys). **P-40** optional extras (jitter,
+`Retry-After`, retrying HttpClient `TaskCanceledException` timeouts) were not taken.
 
 **Next:** decide whether to merge `fix/format-preserve-sources` into `main` + push (a review follow-up,
-externally visible on public `main`). Then P-07 calibration once keys land.
+externally visible on public `main`), and whether to force-delete the 19 preserved `worktree-agent-*` branches.
+Then P-07 calibration once keys land.
 
 ## 2026-07-16 — Interaction log minimized to zero personal data (D-13)
 

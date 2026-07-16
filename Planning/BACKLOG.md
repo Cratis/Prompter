@@ -201,12 +201,20 @@ folded into **P-07**; the hybrid-tuning angle into **P-06**. Remaining actionabl
   run shows a need.
 - **P-41** Enforce an in-scope answer-rate metric in the eval gate and regenerate `Eval/baseline.json` from a
   keyed run — otherwise over-refusal regressions pass CI. **Deferred (needs API keys, out of the safe subset.)**
-- **P-42** Add startup validation for `AnswerTimeoutSeconds > 0` and (bot mode) a non-empty `Discord.Token`;
-  thread `ApplicationStopping` into the background reindex so shutdown cancels it cleanly. **Partly done
-  2026-07-16** (branch `fix/format-preserve-sources`): the two startup validations landed
-  (`DiscordOptions.AnswerTimeoutIsValid` in the shared chain; `TokenIsPresent` as a bot-mode-only validator in
-  `Program.cs`). **Residual:** threading `ApplicationStopping` into the background reindex is still open.
-- **P-43** Prune the 20 stale agent worktrees + 19 `worktree-agent-*` local branches (git hygiene).
+- **P-42** ~~Add startup validation for `AnswerTimeoutSeconds > 0` and (bot mode) a non-empty `Discord.Token`;
+  thread `ApplicationStopping` into the background reindex~~ **Done 2026-07-16** (branch
+  `fix/format-preserve-sources`): the two startup validations landed (`DiscordOptions.AnswerTimeoutIsValid` in
+  the shared chain; `TokenIsPresent` as a bot-mode-only validator in `Program.cs`), and the background reindex
+  now runs under `IHostApplicationLifetime.ApplicationStopping` (cancels cleanly on shutdown, logged as a
+  distinct outcome). Bundled the co-located review Low: `ReindexAuth` now SHA-256-hashes both secrets to a
+  fixed 32 bytes before `FixedTimeEquals`, so the constant-time compare no longer leaks the secret's length.
+- **P-43** Prune the stale agent worktrees + `worktree-agent-*` local branches (git hygiene). **Partly done
+  2026-07-16**: all 19 `.claude/worktrees/agent-*` worktree **directories** were removed (all clean — nothing
+  dirty discarded) and the registry pruned back to the single main checkout, clearing the disk clutter and the
+  nested-worktree `MultipleGlobalAnalyzerKeys` hazard. **Left for the user:** the 19 `worktree-agent-*`
+  **branches** are preserved. They are unmerged by ancestry (their work was cherry-picked onto `main` under new
+  hashes, so `main` has the content but ancestry can't prove per-branch equivalence), so deleting them needs a
+  force delete (`git branch -D`) — held back as a destructive step on branches this session didn't create.
 
 ## Open questions
 
