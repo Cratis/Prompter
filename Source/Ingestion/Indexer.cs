@@ -78,7 +78,7 @@ public class Indexer(
                     continue;
                 }
 
-                var input = $"{chunk.Title} — {chunk.HeadingPath}\n\n{chunk.Content}";
+                var input = chunk.EmbeddingInput;
                 if (pending.Count > 0 && (pending.Count >= batchSize || pendingCharacters + input.Length > MaxBatchCharacters))
                 {
                     await Flush();
