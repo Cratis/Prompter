@@ -37,7 +37,11 @@ not to promise live in the parking lot.
   `tsvector`. Measure against the golden set (P-17), don't guess.
 - **P-07** Calibrate the refusal threshold (`Answering:MinScore`) on real questions — the default is a guess.
 - **P-08** Consider a query-rewrite step (cheap model) for conversational questions before retrieval.
-- **P-09** Enable Anthropic prompt caching for the system prompt + excerpt scaffold once traffic justifies it.
+- **P-09** ~~Enable Anthropic prompt caching for the system prompt~~ **Done 2026-07-16**: the pinned
+  `Anthropic` 12.35.1 exposes `AIContent.WithCacheControl(...)` (stored on `AdditionalProperties`, read back by
+  the `AsIChatClient` path), so the system prompt is now built as an ephemeral-cacheable `TextContent`. No DI or
+  config change. Note: at ~350 tokens the system prompt is below the model's minimum cacheable prefix, so it's a
+  no-op today and begins paying off automatically as the prompt grows (D-5's "cents at current volume" holds).
 - **P-10** ~~`prompter ask` should print confidence and passage provenance with a `--verbose` flag~~
   **Done 2026-07-15** (code): `ask --verbose` lists the retrieved passages (score/page/heading, best first)
   before the answer, and `ask` exits non-zero on a refusal (for scripts/CI probes). The parse/render/exit
