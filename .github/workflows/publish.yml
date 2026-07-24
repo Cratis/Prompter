@@ -12,6 +12,10 @@ on:
   pull_request:
     types: [closed]
 
+# Creating the GitHub release needs a write-capable token.
+permissions:
+  contents: write
+
 jobs:
   release:
     runs-on: ubuntu-latest
@@ -25,8 +29,6 @@ jobs:
       - name: Release
         id: release
         uses: cratis/release-action@v1
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         with:
           version: ${{ github.event.inputs.version }}
           release-notes: ${{ github.event.inputs.release-notes }}
