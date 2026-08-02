@@ -5,7 +5,7 @@
   </PropertyGroup>
   <ItemGroup>
     <!-- Cratis -->
-    <PackageVersion Include="Cratis.Fundamentals" Version="7.16.7" />
+    <PackageVersion Include="Cratis.Fundamentals" Version="7.16.8" />
     <!-- Discord -->
     <PackageVersion Include="NetCord" Version="1.0.0-beta.11" />
     <PackageVersion Include="NetCord.Hosting" Version="1.0.0-beta.11" />
