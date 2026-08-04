@@ -7,10 +7,10 @@
     <!-- Cratis -->
     <PackageVersion Include="Cratis.Fundamentals" Version="7.16.8" />
     <!-- Discord -->
-    <PackageVersion Include="NetCord" Version="1.0.0-beta.11" />
-    <PackageVersion Include="NetCord.Hosting" Version="1.0.0-beta.11" />
-    <PackageVersion Include="NetCord.Hosting.Services" Version="1.0.0-beta.11" />
-    <PackageVersion Include="NetCord.Services" Version="1.0.0-beta.11" />
+    <PackageVersion Include="NetCord" Version="1.0.0-beta.12" />
+    <PackageVersion Include="NetCord.Hosting" Version="1.0.0-beta.12" />
+    <PackageVersion Include="NetCord.Hosting.Services" Version="1.0.0-beta.12" />
+    <PackageVersion Include="NetCord.Services" Version="1.0.0-beta.12" />
     <!-- AI -->
     <PackageVersion Include="Anthropic" Version="12.39.0" />
     <PackageVersion Include="Microsoft.Extensions.AI" Version="10.8.3" />
