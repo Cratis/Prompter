@@ -3,6 +3,24 @@
 Resume state for anyone (human or agent) continuing work in a fresh session. Newest entry first — append,
 don't rewrite history.
 
+## 2026-08-06 (end of day) — Stage 0 split out for the org owner
+
+**[`ORG_SETUP.md`](ORG_SETUP.md) + [issue #10](https://github.com/Cratis/Prompter/issues/10)** carve out what
+belongs to whoever owns the Cratis accounts — the Voyage and Anthropic keys and the Discord application —
+from what anyone can then do on a laptop. Stage A (#6) is marked blocked on it, and the playbook's A1/A4 now
+defer to it rather than duplicating the steps.
+
+The reason it is split is durability, not process: a model-provider key on a personal card and a Discord app
+owned by an individual account are both single points of failure — the day that account is unavailable the
+bot cannot be recovered and its token cannot be rotated by anyone else. Hence the two rules the document
+leads with: **keys on the org account**, and **the Discord application inside a Discord Team** that can have
+several owners. The Anthropic step also suggests a capped Workspace, so a misconfiguration costs pennies
+rather than the org's budget.
+
+Everything the owner needs later — `PULUMI_CONFIG_PASSPHRASE`, `UPCLOUD_TOKEN`, the runner check, DNS, the
+issue-filing PAT — is in the same document in a table against the stage that needs it, so none of it has to
+be decided now.
+
 ## 2026-08-06 (end of day) — Readiness recorded: proven vs. never-run, and the gates
 
 **v0.2.0 released** (`cratis/prompter:0.2.0` + `:latest`, amd64/arm64) and the published image was pulled and

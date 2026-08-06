@@ -9,9 +9,14 @@ one calibration, and the cluster. Stage C switches on the tracker bridge, which 
 stays off until its credentials exist.
 
 Each stage has a GitHub issue with the same checklist, so progress can be tracked and split between
-people: [Stage A · #6](https://github.com/Cratis/Prompter/issues/6),
+people: [Stage 0 · #10](https://github.com/Cratis/Prompter/issues/10),
+[Stage A · #6](https://github.com/Cratis/Prompter/issues/6),
 [Stage B · #7](https://github.com/Cratis/Prompter/issues/7),
 [Stage C · #8](https://github.com/Cratis/Prompter/issues/8).
+
+**Stage 0 comes first and belongs to whoever owns the Cratis accounts** — the two model-provider keys and the
+Discord application, which should be org-owned rather than personal.
+[`ORG_SETUP.md`](ORG_SETUP.md) is that checklist, about 30 minutes; everything below assumes it is done.
 
 ## Readiness — what is proven, and what has never run
 
@@ -74,12 +79,10 @@ visible thing this bot does.
 
 ## Stage A — prove it on a laptop
 
-### A1 · Get the two API keys · *Sindre or Einari*
+### A1 · Get the two API keys · *from Stage 0*
 
-| Key | Where | Notes |
-|---|---|---|
-| **Voyage** | <https://dash.voyageai.com> → API keys | Free tier covers our corpus many times over |
-| **Anthropic** | <https://console.anthropic.com> → API keys | Answering costs cents/month at community volume |
+Both keys are created on the org accounts in [`ORG_SETUP.md`](ORG_SETUP.md) steps 1–2 and handed over through
+the password manager. If you have them, export and continue; if not, that checklist is the blocker.
 
 ```bash
 export Cratis__Prompter__Voyage__ApiKey=...
@@ -117,20 +120,14 @@ that cites its sources. This is the first proof that ingestion → retrieval →
 it *refuses* rather than inventing an answer. The command exits non-zero on a refusal, which is what makes
 the next step scriptable.
 
-### A4 · Register the Discord application · *Sindre or Einari (needs Discord admin)*
+### A4 · Get the Discord token and channel ids · *from Stage 0*
 
-Full runbook with the exact permission list is in
+The application, its Team ownership, the privileged intent, the exact permission set and the private test
+server are all [`ORG_SETUP.md`](ORG_SETUP.md) step 3 — done once, by whoever owns the Cratis accounts. The
+behavior contract behind those choices is in
 [`DISCORD_INTEGRATION.md`](DISCORD_INTEGRATION.md#discord-application-setup-runbook--team-action-p-17ap-26).
-In short:
 
-1. <https://discord.com/developers/applications> → **New Application**, name **Prompter**.
-2. **Bot** tab → disable *Public Bot*, enable **Message Content Intent** (privileged; no verification needed
-   under 100 servers). Copy the token.
-3. **Installation** tab → Guild install; scopes `bot` + `applications.commands`; permissions exactly:
-   View Channels, Send Messages, Send Messages in Threads, Create Public Threads, Embed Links,
-   Read Message History. **Nothing more.**
-4. Create a **private test server**, install the bot there with the generated URL.
-5. Turn on Developer Mode in Discord, then right-click → Copy ID for a text channel and a forum channel.
+What you need here is the bot token plus the two channel ids:
 
 ```bash
 export Cratis__Prompter__Discord__Token=...

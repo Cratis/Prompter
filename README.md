@@ -171,6 +171,7 @@ API keys are never committed — use environment variables or a git-ignored `Sou
 ## 🗺️ Start here (for contributors)
 
 - [`Planning/GO_LIVE_PLAYBOOK.md`](Planning/GO_LIVE_PLAYBOOK.md) — every step from the released image to the bot answering on the Cratis Discord. **Start here to get it running.**
+- [`Planning/ORG_SETUP.md`](Planning/ORG_SETUP.md) — the org-owned accounts, keys and Discord app the playbook depends on, for whoever owns them.
 - [`Planning/SESSION_HANDOVER.md`](Planning/SESSION_HANDOVER.md) — current state and next actions. **Start here to pick up work.**
 - [`Planning/V1_PLAN.md`](Planning/V1_PLAN.md) — the roadmap: milestones M0–M5 and the definition of done.
 - [`Planning/IMPLEMENTATION_PLAN.md`](Planning/IMPLEMENTATION_PLAN.md) — the detailed plan to feature-complete v1.
