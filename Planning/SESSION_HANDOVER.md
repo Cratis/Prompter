@@ -25,8 +25,16 @@ repository** because answering is the only step that writes into somebody else's
 ranks what is most likely to bite first (the threshold; slash-command registration and the `/issue`
 interaction flow; the first `pulumi up`; then answering on a real tracker).
 
-**Housekeeping:** verifying the filing path created issue **#9** in this repo. It is closed, but deleting it
-needs repo-admin rights the CLI token does not have — delete it if you would rather it not sit in the history.
+**Housekeeping:** verifying the filing path created issue **#9**. It is closed as not planned, retitled, and
+its labels removed, so it cannot appear when anyone filters for `from-discord` or `bug` — the filters the
+feature itself depends on — and the duplicate search only looks at open issues, so it will never be offered
+as a match either. It is inert where it stands. Deleting it outright needs the **web UI** (Issue → ⋯ →
+Delete issue): GitHub refuses issue deletion for CLI/OAuth tokens regardless of admin rights, which is worth
+knowing before anyone spends time on it.
+
+The probe also left the `from-discord` label behind, which is the one Prompter puts on everything it files —
+now given a description and Discord's blurple so it reads as deliberate rather than auto-generated. Labels
+that do not exist are created on use, so this was never a prerequisite; it just looks better this way.
 
 ## 2026-08-06 (evening) — The tracker bridge is built: P-44, P-45 and P-46 ship
 
