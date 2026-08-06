@@ -72,6 +72,9 @@ you at a human. That honesty is the feature.
 - **Help forum** — open a new thread in the help forum and Prompter takes the first swing automatically, so
   you're never waiting on the timezone gods for a first answer.
 - **👍 / 👎 buttons** — one click under any answer; the verdict is logged so the docs (and the bot) get better.
+- **`/issue`** — turn what you are describing into a GitHub issue on the right Cratis repository: Prompter
+  drafts it, shows it to you privately, and files it only when you say so. Bugs, missing APIs, feature
+  requests, ideas, docs gaps — anything worth tracking.
 
 > Prompter never barges into normal conversation — it only speaks when spoken to, and it rate-limits each
 > person to a handful of questions per window so no one can spam it. See
@@ -156,6 +159,12 @@ Configuration binds to the `Cratis:Prompter` section (environment variables use 
 | Voyage API key | `Cratis__Prompter__Voyage__ApiKey` | — |
 | Interaction retention (days) | `Cratis__Prompter__RetentionDays` | `90` |
 | Re-index webhook secret | `Cratis__Prompter__ReindexSecret` | — |
+| GitHub token (file issues) | `Cratis__Prompter__GitHub__Token` | — |
+| GitHub webhook secret (answer issues) | `Cratis__Prompter__GitHub__WebhookSecret` | — |
+| Repositories whose issues may be answered | `Cratis__Prompter__GitHub__AnsweringRepositories__0` | — (none) |
+| Channel new issues are announced in | `Cratis__Prompter__GitHub__NotifyChannelId` | — |
+| Label put on issues filed from Discord | `Cratis__Prompter__GitHub__IssueLabel` | `from-discord` |
+| Label that opts an issue out of answers | `Cratis__Prompter__GitHub__OptOutLabel` | `no-prompter` |
 
 API keys are never committed — use environment variables or a git-ignored `Source/appsettings.Development.json`.
 

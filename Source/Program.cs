@@ -68,6 +68,7 @@ webBuilder.Services
     .ValidateOnStart();
 
 webBuilder.Services.AddSingleton<ReindexGate>();
+webBuilder.Services.AddSingleton<GitHubWebhook>();
 webBuilder.Services.AddHostedService<RetentionPurge>();
 webBuilder.Services
     .AddDiscordGateway(options =>

@@ -247,7 +247,7 @@ are the two directions plus the notification; P-47 is what happens to an issue o
 
 ## Post-v1 surfaces (2026-08-06)
 
-- **P-44** **GitHub issues surface** — Prompter answers newly-opened issues on the Cratis product repos with
+- **P-44** ~~**GitHub issues surface**~~ **Done 2026-08-06** (code) — Prompter answers newly-opened issues on the Cratis product repos with
   the same grounded retrieval it uses on Discord. `IAnswers.For` is surface-agnostic, so this is a new entry
   point plus a webhook, not new answering logic: add `POST /github/webhook` to the Kestrel host that already
   serves `/healthz` + `/reindex`, verify the `X-Hub-Signature-256` HMAC the same constant-time way
@@ -258,8 +258,13 @@ are the two directions plus the notification; P-47 is what happens to an issue o
   endpoint is the cheaper spike if App registration is slow. Composes with **P-33**: a refusal on an issue
   *is* a docs gap already sitting in a tracker — label it `docs-gap` and the filing problem disappears.
   Distinct from **P-32**, which ingests *answered* issues as a retrieval source; the two compose.
-  Needs the deployed bot to be publicly reachable (M5.3 ingress), so it lands after P-21.
-- **P-45** **File a GitHub issue from Discord** — turn a conversation into tracked work: a bug someone hit, an
+  **Shipped:** `POST /github/webhook` verifies the `X-Hub-Signature-256` HMAC against the raw body, ignores
+  everything that is not `issues.opened` (so a repository can point its whole webhook at it), skips bots and
+  pull requests, honors the `no-prompter` label, and answers only for repositories on the opt-in allowlist —
+  **staying silent on a refusal**, which is reported to the maintainer channel instead. The ingress publishes
+  the path; `WebhookAuth`/`IssueEvents`/`IssueAnswerComment` are spec-covered. Live verification needs the
+  deployed bot and a repository webhook (playbook Stage C3).
+- **P-45** ~~**File a GitHub issue from Discord**~~ **Done 2026-08-06** (code) — turn a conversation into tracked work: a bug someone hit, an
   API that is missing, a feature request, a half-formed idea, or a documentation gap. Two entry points: a
   `/issue` slash command, and a **message context-menu action** ("File as issue") so an existing message or
   thread can be captured without retyping it. Prompter drafts the issue from the conversation — title, body,
@@ -273,15 +278,22 @@ are the two directions plus the notification; P-47 is what happens to an issue o
   recent open issues offers "this looks like #123 — comment there instead?" before opening a duplicate.
   Routing is **Q-7**: the owning product repo, which needs the product classifier P-30 wants anyway; when the
   classifier is unsure, ask in the preview rather than guessing.
-  A refusal or a 👎 additionally offers the same action pre-filled — that is the P-33 flywheel, now one case
-  of the general mechanism rather than its own feature.
-- **P-46** **Tell Discord when a GitHub issue is opened** — maintainers should see tracker activity where they
+  **Shipped as the `/issue` command:** Prompter drafts title/body/kind/product with the model, routes to the
+  owning repository, offers likely duplicates, and shows an ephemeral preview with Create/Cancel; the draft
+  lives in memory for 15 minutes and is taken on click, so a double-click cannot file twice and an abandoned
+  draft leaves no trace. `IssueRouting`/`IssueComposition`/`IssueDraftParsing`/`IssueButton`/`IssuePreview`/
+  `PendingIssues` are spec-covered. **Residue:** the message context-menu entry point ("File as issue" on an
+  existing message) needs NetCord's message-command context registered, which was not compile-verifiable
+  against beta.12 in the same pass — the slash command covers the same ground meanwhile. A refusal or a 👎
+  offering the same action pre-filled (the P-33 flywheel) is likewise still to come.
+- **P-46** ~~**Tell Discord when a GitHub issue is opened**~~ **Done 2026-08-06** (code) — maintainers should see tracker activity where they
   already are. **Do the zero-code version first:** a Discord channel webhook URL with `/github` appended,
   registered as a repo (or org) webhook for `issues` events — no Prompter involvement, working in minutes,
   and it stays useful even if Prompter is down. Build it *into* Prompter (on top of P-44's webhook receiver)
-  only for what the native version cannot do: enriching the notification with Prompter's own read of the
-  issue ("already answered from the docs" / "no docs cover this — likely a real gap") and routing to
-  different channels by product.
+  only for what the native version cannot do — which is what shipped: `IssueNotification` posts to
+  `GitHub:NotifyChannelId` saying whether Prompter answered the issue from the docs or could not, which is the
+  line that turns a notification into triage. Spec-covered. Per-product channel routing is not built; one
+  channel today.
 
 - **P-47** **Auto-implement the easy ones** — an issue that is genuinely mechanical (a typo, a missing null
   guard, a doc page that should exist, a small API addition with an obvious shape) should not wait for a

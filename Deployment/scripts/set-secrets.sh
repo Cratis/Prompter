@@ -12,11 +12,14 @@
 #   export ANTHROPIC_API_KEY=...
 #   export VOYAGE_API_KEY=...
 #   export REINDEX_SECRET=...
+#   export GITHUB_TOKEN=...           # optional: lets Prompter file issues
+#   export GITHUB_WEBHOOK_SECRET=...  # optional: lets Prompter receive issue events
 #   ./scripts/set-secrets.sh
 #
 # Generating the two secrets that are ours to invent:
 #   openssl rand -base64 32     # postgresPassword
 #   openssl rand -hex 32        # reindexSecret (also goes into the Documentation repo's webhook call)
+#   openssl rand -hex 32        # gitHubWebhookSecret (also goes into each repository's webhook settings)
 #
 set -euo pipefail
 
@@ -38,5 +41,9 @@ set_secret discordToken      "${DISCORD_TOKEN:-}"
 set_secret anthropicApiKey   "${ANTHROPIC_API_KEY:-}"
 set_secret voyageApiKey      "${VOYAGE_API_KEY:-}"
 set_secret reindexSecret     "${REINDEX_SECRET:-}"
+
+# Optional - the tracker bridge (D-16). Leaving both unset keeps issue filing and the webhook off.
+set_secret gitHubToken         "${GITHUB_TOKEN:-}"
+set_secret gitHubWebhookSecret "${GITHUB_WEBHOOK_SECRET:-}"
 
 echo "Done. Review Deployment/Pulumi.${STACK}.yaml — secrets are stored as 'secure: v1:...'."

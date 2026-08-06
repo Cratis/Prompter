@@ -1,6 +1,8 @@
 // Copyright (c) Cratis. All rights reserved.
 // Licensed under the MIT license. See LICENSE file in the project root for full license information.
 
+using System.Text;
+using Cratis.Prompter.GitHub;
 using Cratis.Prompter.Ingestion;
 using Microsoft.AspNetCore.Builder;
 using Microsoft.AspNetCore.Http;
@@ -26,6 +28,8 @@ public static class PrompterEndpoints
 
     const string ReindexLogCategory = "Cratis.Prompter.Operations.Reindex";
 
+    const string GitHubLogCategory = "Cratis.Prompter.Operations.GitHub";
+
     /// <summary>
     /// Maps <c>GET /healthz</c> and <c>POST /reindex</c> onto the endpoint routing of the given application.
     /// </summary>
@@ -34,6 +38,65 @@ public static class PrompterEndpoints
     {
         endpoints.MapGet("/healthz", CheckHealthAsync);
         endpoints.MapPost("/reindex", Reindex);
+        endpoints.MapPost("/github/webhook", ReceiveGitHubEvent);
+    }
+
+    static async Task<IResult> ReceiveGitHubEvent(
+        HttpRequest request,
+        IOptions<PrompterOptions> options,
+        GitHubWebhook webhook,
+        IHostApplicationLifetime lifetime,
+        ILoggerFactory loggerFactory,
+        CancellationToken cancellationToken)
+    {
+        var logger = loggerFactory.CreateLogger(GitHubLogCategory);
+
+        // The signature covers the exact bytes GitHub sent, so the body is read raw and verified before
+        // anything parses it.
+        await using var buffer = new MemoryStream();
+        await request.Body.CopyToAsync(buffer, cancellationToken);
+        var payload = buffer.ToArray();
+
+        if (!WebhookAuth.IsAuthentic(
+            request.Headers[WebhookAuth.SignatureHeader].ToString(),
+            payload,
+            options.Value.GitHub.WebhookSecret))
+        {
+            logger.GitHubDeliveryUnauthorized();
+            return Results.Json(new { status = "unauthorized" }, statusCode: StatusCodes.Status401Unauthorized);
+        }
+
+        var issue = IssueEvents.ParseOpened(Encoding.UTF8.GetString(payload));
+        if (issue is null)
+        {
+            // Every other event GitHub sends is accepted and ignored, so a repository can point its whole
+            // webhook here without curating an event list.
+            return Results.Json(new { status = "ignored" }, statusCode: StatusCodes.Status202Accepted);
+        }
+
+        logger.GitHubIssueOpened(issue.Repository, issue.Number);
+
+        // Answering takes seconds and GitHub expects a fast response, so the work runs detached under
+        // ApplicationStopping — a shutdown mid-answer cancels it cleanly instead of being killed abruptly.
+        _ = Task.Run(
+            async () =>
+            {
+                try
+                {
+                    await webhook.Handle(issue, lifetime.ApplicationStopping);
+                }
+                catch (OperationCanceledException)
+                {
+                    logger.GitHubHandlingCancelled(issue.Repository, issue.Number);
+                }
+                catch (Exception exception)
+                {
+                    logger.GitHubHandlingFailed(exception, issue.Repository, issue.Number);
+                }
+            },
+            CancellationToken.None);
+
+        return Results.Json(new { status = "accepted" }, statusCode: StatusCodes.Status202Accepted);
     }
 
     static async Task<IResult> CheckHealthAsync(

@@ -4,6 +4,8 @@
   href: using-prompter.md
 - name: Run Prompter locally
   href: running-locally.md
+- name: Report something with Prompter
+  href: reporting-issues.md
 - name: Set up the Discord app
   href: discord-setup.md
 - name: Deploy Prompter

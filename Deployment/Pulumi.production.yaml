@@ -20,9 +20,16 @@ config:
   # --- Discord channels (non-secret ids; omit to disable that surface) -------
   # prompter-deployment:askChannelId: "000000000000000000"
   # prompter-deployment:helpForumChannelId: "000000000000000000"
+  # --- Tracker bridge (D-16; optional, off until the secrets are set) --------
+  # Repositories whose newly-opened issues Prompter may answer, comma-separated owner/name. Empty answers
+  # nowhere: commenting on a tracker is opt-in per repository.
+  # prompter-deployment:answeringRepositories: "Cratis/Chronicle,Cratis/Arc"
+  # Channel that gets the enriched "new issue, and whether the docs already answer it" announcement.
+  # prompter-deployment:issueNotifyChannelId: "000000000000000000"
   #
   # --- Secrets --------------------------------------------------------------
-  # postgresPassword, discordToken, anthropicApiKey, voyageApiKey and reindexSecret are set with
+  # postgresPassword, discordToken, anthropicApiKey, voyageApiKey and reindexSecret (plus the optional
+  # gitHubToken and gitHubWebhookSecret) are set with
   # `./scripts/set-secrets.sh` and land here as passphrase-encrypted `secure:` values, which is what
   # makes them safe to commit. They are absent until that script runs — `pulumi up` fails fast naming
   # the missing key, which is the intended behavior.

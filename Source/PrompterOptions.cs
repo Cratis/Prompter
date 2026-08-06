@@ -61,4 +61,10 @@ public class PrompterOptions
     /// Gets or sets the answering specific options.
     /// </summary>
     public AnsweringOptions Answering { get; set; } = new();
+
+    /// <summary>
+    /// Gets or sets the GitHub specific options, covering filing issues from Discord and answering
+    /// newly-opened ones. Every capability is off until its credential is configured.
+    /// </summary>
+    public GitHubOptions GitHub { get; set; } = new();
 }
