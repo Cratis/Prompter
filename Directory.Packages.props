@@ -23,6 +23,10 @@
     <!-- Storage -->
     <PackageVersion Include="Npgsql" Version="10.0.3" />
     <PackageVersion Include="Pgvector" Version="0.3.2" />
+    <!-- Deployment / Pulumi (versions kept in step with Studio's Deployment stack) -->
+    <PackageVersion Include="Pulumi" Version="3.107.3" />
+    <PackageVersion Include="Pulumi.Kubernetes" Version="4.33.0" />
+    <PackageVersion Include="UpCloud.Pulumi.UpCloud" Version="0.15.0" />
     <!-- Analysis -->
     <PackageVersion Include="Microsoft.CodeAnalysis.CSharp.CodeStyle" Version="5.6.0" />
     <PackageVersion Include="Microsoft.CodeAnalysis.NetAnalyzers" Version="10.0.302" />

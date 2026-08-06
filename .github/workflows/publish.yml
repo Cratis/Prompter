@@ -65,3 +65,41 @@ jobs:
             cratis/prompter:latest
           build-args: |
             VERSION=${{ needs.release.outputs.version }}
+
+  # Is there anything to deploy to yet? The stack exists in code but has never been applied, and the
+  # secrets it needs may not be set. A `secrets` context cannot be read from a job-level `if`, so the
+  # check happens in a step and the deploy is gated on its output — releasing an image stays green
+  # while the cluster side is still being set up.
+  deployment-configured:
+    if: needs.release.outputs.publish == 'true'
+    needs: [release]
+    runs-on: ubuntu-latest
+    outputs:
+      ready: ${{ steps.check.outputs.ready }}
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Check deployment prerequisites
+        id: check
+        env:
+          PULUMI_CONFIG_PASSPHRASE: ${{ secrets.PULUMI_CONFIG_PASSPHRASE }}
+          UPCLOUD_TOKEN: ${{ secrets.UPCLOUD_TOKEN }}
+        run: |
+          set -euo pipefail
+          if [ -n "${PULUMI_CONFIG_PASSPHRASE}" ] && [ -n "${UPCLOUD_TOKEN}" ] && [ -d Deployment/state ]; then
+            echo "ready=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "ready=false" >> "$GITHUB_OUTPUT"
+            echo "::notice title=Deploy skipped::The image is published. Deployment needs PULUMI_CONFIG_PASSPHRASE, UPCLOUD_TOKEN and an initialized Deployment/state — see Deployment/README.md."
+          fi
+
+  # Roll the version that was just pushed onto the cluster (D-11 / D-15). Runs only after the image
+  # exists, so a failed publish can never deploy a tag that is not there.
+  deploy-production:
+    if: needs.deployment-configured.outputs.ready == 'true'
+    needs: [release, publish-docker, deployment-configured]
+    uses: ./.github/workflows/deploy-production.yml
+    with:
+      version: ${{ needs.release.outputs.version }}
+    secrets: inherit

@@ -11,7 +11,7 @@ RAG decouples the bot from its knowledge. Prompter is three separately-moving pa
 
 | Part | Lives where | Changes when | How it updates |
 |---|---|---|---|
-| **The app** (bot code) | Docker image `cratis/prompter` on the VPS | We change Prompter's code | Release via `publish.yml` → `docker compose pull && up -d` (seconds of downtime, rare) |
+| **The app** (bot code) | Docker image `cratis/prompter` on the UKS cluster | We change Prompter's code | Release via `publish.yml` → `deploy-production.yml` pins the tag → `pulumi up` (seconds of downtime, rare) |
 | **The knowledge** (corpus) | Postgres — chunks + embeddings | Documentation changes | **Re-index, not redeploy**: the indexer upserts only changed chunks; the bot keeps answering throughout — zero downtime, no new image |
 | **The model** (Claude/Voyage) | Anthropic/Voyage APIs | Vendor releases | Config value (`Anthropic:Model`) — nothing to deploy |
 
@@ -75,6 +75,15 @@ drowns retrieval), the generated API reference (already excluded — poor prose 
 - **The docs-gap flywheel** — Prompter's refusals and 👎-reactions are a *measurement of missing docs*.
   Weekly digest (start: a pinned message in a maintainer channel; later: auto-filed issues in the right
   product repo, fitting the existing docs-CI culture). This is how the bot pays the docs team back.
+  **What feeds it is a privacy decision, not a plumbing one:** the interaction log is anonymous by D-13, so
+  there is no question text to mine. The unblocked path is a "this should be documented" button on refusals
+  (BACKLOG P-45) — the click is the consent, the text is forwarded and never stored. Storing question text
+  for aggregates is D-14, deliberately left open.
+- **The GitHub issues surface** — the same grounded answering, on newly-opened issues in the product repos
+  (BACKLOG P-44): a webhook into the host that already serves `/healthz` and `/reindex`, answering with
+  citations and staying **silent on refusal**. It also closes the flywheel loop the cheap way — a refusal on
+  an issue is a docs gap that is already in a tracker, so it just needs a `docs-gap` label rather than a
+  filing pipeline. Note this is the inverse of Phase 3's *ingestion* of answered issues; the two compose.
 - **Docs MCP server** — expose `IPassages.Search` as an MCP tool alongside Chronicle.Mcp, so Claude
   Code/Copilot/Cursor users get the same grounded retrieval the Discord bot uses. One retrieval layer, every
   AI surface in the ecosystem. (Promoted from parking lot to Phase 2–3 roadmap.)
@@ -82,7 +91,8 @@ drowns retrieval), the generated API reference (already excluded — poor prose 
 
 ## What this means for the pipelines (once Cratis/Prompter is on GitHub)
 
-- `publish.yml` (exists): releases the **app** image on merged PRs — unrelated to content.
+- `publish.yml` (exists): releases the **app** image on merged PRs *carrying a release label* — unrelated to
+  content — and then calls `deploy-production.yml` to roll it out.
 - Documentation repo `docs-site.yml`: + one `curl -X POST` step to `/reindex` after deploy (team change, P-20).
 - Prompter repo: nightly `reindex.yml` schedule hitting the same endpoint (safety net, P-05).
 - Product repos: nothing to change — their existing `build-docs` dispatch already feeds the chain.
