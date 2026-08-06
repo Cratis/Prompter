@@ -65,3 +65,13 @@ jobs:
             cratis/prompter:latest
           build-args: |
             VERSION=${{ needs.release.outputs.version }}
+
+  # Roll the version that was just pushed onto the cluster (D-11 / D-15). Runs only after the image
+  # exists, so a failed publish can never deploy a tag that is not there.
+  deploy-production:
+    if: needs.release.outputs.publish == 'true'
+    needs: [release, publish-docker]
+    uses: ./.github/workflows/deploy-production.yml
+    with:
+      version: ${{ needs.release.outputs.version }}
+    secrets: inherit

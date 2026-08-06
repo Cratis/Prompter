@@ -1,0 +1,91 @@
+name: Deploy - Production
+
+# Deploys a released version to the UpCloud Kubernetes cluster (decisions D-11 / D-15). Called
+# automatically by Publish once the image is pushed, and available manually to (re)deploy any version.
+# Modeled on Studio's Deploy - Production workflow, which is the reference implementation for this
+# cluster: same self-managed Pulumi state, same passphrase provider, same commit-state-back step.
+
+on:
+  workflow_call:
+    inputs:
+      version:
+        description: "Version (image tag) to deploy, e.g. 0.1.0"
+        required: true
+        type: string
+  workflow_dispatch:
+    inputs:
+      version:
+        description: "Version (image tag) to deploy, e.g. 0.1.0"
+        required: true
+        type: string
+
+concurrency:
+  group: deploy-production
+  cancel-in-progress: false
+
+# The state commit at the end needs write access to the repository.
+permissions:
+  contents: write
+
+jobs:
+  deploy:
+    name: Deploy to Production
+    runs-on: [self-hosted, linux, cratis]
+    environment: production
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+        with:
+          ref: main
+          fetch-depth: 0
+
+      - name: Setup .NET
+        uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: "10.0.x"
+        env:
+          # The self-hosted runner cannot write to the default /usr/share/dotnet; install into a
+          # writable, runner-scoped location (setup-dotnet adds it to PATH).
+          DOTNET_INSTALL_DIR: ${{ runner.temp }}/dotnet
+
+      - name: Install Pulumi CLI
+        uses: pulumi/actions@v5
+
+      # Deploy the exact released version by pinning the image tag rather than :latest.
+      # `pulumi config set` preserves the config file's comments and structure (a raw YAML edit would not).
+      - name: Pin the image version
+        working-directory: Deployment
+        env:
+          PULUMI_CONFIG_PASSPHRASE: ${{ secrets.PULUMI_CONFIG_PASSPHRASE }}
+          VERSION: ${{ inputs.version }}
+        run: |
+          set -euo pipefail
+          pulumi login "file://$(pwd)/state"
+          pulumi config set --stack production "prompter-deployment:prompterImage" "cratis/prompter:${VERSION}"
+
+      # Self-managed state: Pulumi reads backend.url (file://./state) from Deployment/Pulumi.yaml, so no
+      # Pulumi Cloud login is required. Secrets are decrypted with the passphrase provider.
+      - name: Deploy
+        uses: pulumi/actions@v5
+        with:
+          command: up
+          stack-name: production
+          work-dir: Deployment
+        env:
+          PULUMI_CONFIG_PASSPHRASE: ${{ secrets.PULUMI_CONFIG_PASSPHRASE }}
+          UPCLOUD_TOKEN: ${{ secrets.UPCLOUD_TOKEN }}
+          UPCLOUD_USERNAME: ${{ secrets.UPCLOUD_TOKEN != '' && '' || secrets.UPCLOUD_USERNAME }}
+          UPCLOUD_PASSWORD: ${{ secrets.UPCLOUD_TOKEN != '' && '' || secrets.UPCLOUD_PASSWORD }}
+
+      # Persist the pinned image version and the updated Pulumi state back into the repository so state
+      # travels with Git. [skip ci] prevents the state commit from re-triggering workflows.
+      - name: Commit updated Pulumi state
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          git add Deployment/state Deployment/Pulumi.production.yaml
+          if ! git diff --cached --quiet; then
+            git commit -m "chore(deploy): deploy ${{ inputs.version }} and update production Pulumi state [skip ci]"
+            git push origin HEAD:main
+          fi
