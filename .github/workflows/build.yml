@@ -11,12 +11,14 @@ on:
     paths:
       - "Source/**"
       - "Specs/**"
+      - "Deployment/**"
   pull_request:
     branches:
       - "main"
     paths:
       - "Source/**"
       - "Specs/**"
+      - "Deployment/**"
 
 jobs:
   dotnet-build:

@@ -1,0 +1,28 @@
+config:
+  prompter-deployment:environment: production
+  # --- Target cluster -------------------------------------------------------
+  # The UKS cluster Studio's stack owns. This stack looks it up by id and creates only namespaced
+  # resources inside it (D-15). Find the id with `upctl kubernetes list`, or read it from Studio's
+  # stack output. It is not a secret — it is a UUID that is useless without UpCloud credentials.
+  prompter-deployment:clusterId: "REPLACE-WITH-UKS-CLUSTER-ID"
+  # The cluster-scoped StorageClass Studio's stack declares. Referenced, never created.
+  prompter-deployment:storageClassName: upcloud-maxiops
+  # --- Public host ----------------------------------------------------------
+  # Only POST /reindex is published on it (see Networking/PrompterIngress.cs). A DNS record for this
+  # name must point at the cluster's existing ingress load balancer before cert-manager can issue.
+  prompter-deployment:ingressHost: prompter.cratis.studio
+  # --- Corpus database ------------------------------------------------------
+  prompter-deployment:postgresStorageSizeGb: "10"
+  # --- Image ----------------------------------------------------------------
+  # Pinned by deploy-production.yml to the released version being deployed; the value committed here is
+  # whatever was deployed last. Bootstrap it by hand for the very first `pulumi up`.
+  prompter-deployment:prompterImage: cratis/prompter:0.0.0
+  # --- Discord channels (non-secret ids; omit to disable that surface) -------
+  # prompter-deployment:askChannelId: "000000000000000000"
+  # prompter-deployment:helpForumChannelId: "000000000000000000"
+  #
+  # --- Secrets --------------------------------------------------------------
+  # postgresPassword, discordToken, anthropicApiKey, voyageApiKey and reindexSecret are set with
+  # `./scripts/set-secrets.sh` and land here as passphrase-encrypted `secure:` values, which is what
+  # makes them safe to commit. They are absent until that script runs — `pulumi up` fails fast naming
+  # the missing key, which is the intended behavior.

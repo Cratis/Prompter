@@ -1,0 +1,26 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+    <PropertyGroup>
+        <OutputType>Exe</OutputType>
+        <RootNamespace>Cratis.Prompter.Deployment</RootNamespace>
+        <AssemblyName>Cratis.Prompter.Deployment</AssemblyName>
+        <!-- Infrastructure code, not a shipped library: no symbol/source packaging is wanted here. -->
+        <IncludeSymbols>false</IncludeSymbols>
+        <IncludeSource>false</IncludeSource>
+        <!-- Pulumi instantiates resource wrappers for their side effects, so CA1812 (uninstantiated
+             internal class) does not apply. Everything else stays on. -->
+        <NoWarn>$(NoWarn);CA1812</NoWarn>
+        <!-- Audit direct dependencies only. Pulumi 3.107.3 pulls in OpenTelemetry 1.9.0, which carries
+             two moderate advisories we cannot act on from here (they are the Pulumi SDK's own telemetry
+             dependency, not ours, and this project never runs outside a deploy job). Auditing direct
+             references keeps the signal for packages we actually choose. -->
+        <NuGetAuditMode>direct</NuGetAuditMode>
+    </PropertyGroup>
+
+    <ItemGroup>
+        <PackageReference Include="Pulumi" />
+        <PackageReference Include="Pulumi.Kubernetes" />
+        <PackageReference Include="UpCloud.Pulumi.UpCloud" />
+    </ItemGroup>
+
+</Project>

@@ -1,0 +1,10 @@
+name: prompter-deployment
+description: Prompter's workload on the existing UpCloud Kubernetes cluster
+runtime:
+  name: dotnet
+# Self-managed state, exactly as Studio does it — the state for this project lives in-repo under ./state
+# (a local file backend) and is committed to Git, so no Pulumi Cloud account is involved. Secrets are
+# encrypted with the passphrase provider; export PULUMI_CONFIG_PASSPHRASE before any pulumi command.
+# See README.md in this folder.
+backend:
+  url: file://./state

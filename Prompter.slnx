@@ -17,4 +17,7 @@
   <Folder Name="/Eval/">
     <Project Path="Eval/Prompter.Eval.csproj" />
   </Folder>
+  <Folder Name="/Deployment/">
+    <Project Path="Deployment/Deployment.csproj" />
+  </Folder>
 </Solution>
