@@ -3,6 +3,33 @@
 Resume state for anyone (human or agent) continuing work in a fresh session. Newest entry first — append,
 don't rewrite history.
 
+## 2026-08-06 (later) — Prompter is released: v0.1.0, then v0.1.1 with the image
+
+**State:** `main` @ the PR #4 merge, pushed. Four PRs merged today (#2 deployment stack + planning, #3 the
+runtime image fix, #4 the CI image gate), and Prompter has its **first releases**.
+
+**What happened, in order.** Created the missing `major`/`minor`/`patch` labels — the repo had none, which is
+the direct reason PR #1 released nothing. Merged #2 with `minor` → **v0.1.0** cut automatically. Its
+`publish-docker` job then failed: `mcr.microsoft.com/dotnet/aspnet:10.0-bookworm-slim` does not exist —
+Debian-slim runtime variants stop at .NET 9, so that tag never resolved and the July "image builds
+end-to-end" note in this file was wrong (or the tag was pulled since). Fixed to `10.0-noble`, which is what
+Studio's services run on, verified by building the image locally *and* starting it (it stops exactly at the
+`Discord:Token` startup validation, so the runtime image, publish output and entrypoint are all proven).
+Merged as `patch` → **v0.1.1**, the first version with a pullable image: `cratis/prompter:0.1.1` and
+`:latest` are on Docker Hub for **amd64 and arm64** (391 MB), and the published artifact was verified by
+pulling and running it, not just by trusting the workflow's green tick.
+
+**Gap closed:** nothing built the container until Publish tried to push one. `build.yml` now builds the image
+on pull requests (native arch, no push — Publish still does multi-arch) and triggers on `Docker/**`, which
+previously triggered nothing at all.
+
+**v0.1.0 is annotated** in its release notes as having no image; use v0.1.1 or later.
+
+**Deploy stayed skipped by design** — the `deployment-configured` gate found no `PULUMI_CONFIG_PASSPHRASE` /
+`UPCLOUD_TOKEN` / `Deployment/state`, so it reported a notice instead of failing the release. That is the
+whole remaining list to go from "released" to "running": the two secrets, `clusterId` + `ingressHost`, a DNS
+record, `scripts/set-secrets.sh` with the five runtime secrets, and `pulumi stack init production`.
+
 ## 2026-08-06 — Release readiness assessed; deployment stack built; docs-gap + GitHub-issue surfaces planned
 
 **State:** Branch **`deploy/release-story-and-docs-gap`** off `main` @ `c9ad5ce`, **not pushed**. Release build
