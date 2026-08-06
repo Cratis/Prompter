@@ -24,4 +24,16 @@ internal static partial class OperationsLogging
 
     [LoggerMessage(LogLevel.Warning, "Reindex rejected: missing or invalid secret")]
     internal static partial void ReindexUnauthorized(this ILogger logger);
+
+    [LoggerMessage(LogLevel.Warning, "A GitHub webhook delivery was refused: the signature did not verify")]
+    internal static partial void GitHubDeliveryUnauthorized(this ILogger logger);
+
+    [LoggerMessage(LogLevel.Information, "Issue {Repository}#{Number} was opened")]
+    internal static partial void GitHubIssueOpened(this ILogger logger, string repository, int number);
+
+    [LoggerMessage(LogLevel.Information, "Handling {Repository}#{Number} was cancelled by host shutdown")]
+    internal static partial void GitHubHandlingCancelled(this ILogger logger, string repository, int number);
+
+    [LoggerMessage(LogLevel.Error, "Handling {Repository}#{Number} failed")]
+    internal static partial void GitHubHandlingFailed(this ILogger logger, Exception exception, string repository, int number);
 }

@@ -62,6 +62,29 @@ public sealed class PrompterDeploymentArgs
     public required Output<string> ReindexSecret { get; init; }
 
     /// <summary>
+    /// Gets the token used to file issues and comment on them. Empty leaves issue filing switched off, and
+    /// the <c>/issue</c> command says so rather than failing opaquely.
+    /// </summary>
+    public required Output<string> GitHubToken { get; init; }
+
+    /// <summary>
+    /// Gets the secret GitHub signs webhook deliveries with. Empty makes the webhook endpoint refuse
+    /// everything, which is the safe posture for an unconfigured deployment.
+    /// </summary>
+    public required Output<string> GitHubWebhookSecret { get; init; }
+
+    /// <summary>
+    /// Gets the repositories whose newly-opened issues may be answered, as a comma-separated
+    /// <c>owner/name</c> list. Empty answers nowhere — answering someone's tracker is opt-in.
+    /// </summary>
+    public string? AnsweringRepositories { get; init; }
+
+    /// <summary>
+    /// Gets the channel new issues are announced in, if configured.
+    /// </summary>
+    public string? IssueNotifyChannelId { get; init; }
+
+    /// <summary>
     /// Gets the id of the channel where plain messages are treated as questions, if configured.
     /// </summary>
     public string? AskChannelId { get; init; }

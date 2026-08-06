@@ -13,18 +13,20 @@ namespace Cratis.Prompter.Deployment.Networking;
 /// </summary>
 /// <remarks>
 /// The bot dials out to Discord, so nothing about answering needs to be reachable from the internet. The
-/// one inbound caller is the Documentation build's re-index webhook, so the ingress exposes exactly that
-/// path and nothing else — <c>/healthz</c> stays cluster-internal for the probes to use. The NGINX
+/// inbound callers are the Documentation build's re-index trigger and GitHub's webhook deliveries, so the
+/// ingress exposes exactly those two paths and nothing else — <c>/healthz</c> stays cluster-internal for the
+/// probes to use. Both are authenticated by the application itself (a shared secret and an HMAC signature
+/// respectively), so the ingress is routing, not a security boundary. The NGINX
 /// controller and the <c>letsencrypt-prod</c> ClusterIssuer are cluster-scoped resources owned by Studio's
 /// stack; this only references them by name.
 /// </remarks>
 public sealed class PrompterIngress
 {
     /// <summary>
-    /// The paths published to the internet. Adding the GitHub webhook (BACKLOG P-44) means adding its path
-    /// here — everything else on the host stays unroutable.
+    /// The paths published to the internet: the Documentation build's re-index trigger and GitHub's webhook
+    /// deliveries. Everything else on the host — <c>/healthz</c> included — stays unroutable from outside.
     /// </summary>
-    static readonly string[] _publicPaths = ["/reindex"];
+    static readonly string[] _publicPaths = ["/reindex", "/github/webhook"];
 
     /// <summary>
     /// Initializes a new instance of the <see cref="PrompterIngress"/> class.

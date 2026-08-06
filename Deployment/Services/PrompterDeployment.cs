@@ -63,6 +63,8 @@ public sealed class PrompterDeployment
                     ["Cratis__Prompter__Anthropic__ApiKey"] = args.AnthropicApiKey,
                     ["Cratis__Prompter__Voyage__ApiKey"] = args.VoyageApiKey,
                     ["Cratis__Prompter__ReindexSecret"] = args.ReindexSecret,
+                    ["Cratis__Prompter__GitHub__Token"] = args.GitHubToken,
+                    ["Cratis__Prompter__GitHub__WebhookSecret"] = args.GitHubWebhookSecret,
                 },
             },
             new CustomResourceOptions { Provider = args.Provider, DependsOn = [args.NamespaceResource] });
@@ -80,6 +82,25 @@ public sealed class PrompterDeployment
         if (!string.IsNullOrWhiteSpace(args.HelpForumChannelId))
         {
             env.Add(new EnvVarArgs { Name = "Cratis__Prompter__Discord__HelpForumChannelId", Value = args.HelpForumChannelId });
+        }
+
+        if (!string.IsNullOrWhiteSpace(args.IssueNotifyChannelId))
+        {
+            env.Add(new EnvVarArgs { Name = "Cratis__Prompter__GitHub__NotifyChannelId", Value = args.IssueNotifyChannelId });
+        }
+
+        // The allowlist binds as an indexed list, so each entry gets its own variable. An empty setting
+        // leaves the list empty, which means Prompter answers on no tracker at all.
+        var answering = (args.AnsweringRepositories ?? string.Empty)
+            .Split(',', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries);
+
+        for (var index = 0; index < answering.Length; index++)
+        {
+            env.Add(new EnvVarArgs
+            {
+                Name = $"Cratis__Prompter__GitHub__AnsweringRepositories__{index}",
+                Value = answering[index]
+            });
         }
 
         var container = new ContainerArgs

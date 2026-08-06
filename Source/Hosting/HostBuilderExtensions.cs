@@ -4,6 +4,7 @@
 using Anthropic;
 using Cratis.Prompter.Answering;
 using Cratis.Prompter.Embeddings;
+using Cratis.Prompter.GitHub;
 using Cratis.Prompter.Ingestion;
 using Cratis.Prompter.Retrieval;
 using Cratis.Prompter.Storage;
@@ -85,6 +86,23 @@ public static class HostBuilderExtensions
 
             return client.AsIChatClient(options.Anthropic.Model);
         });
+
+        // GitHub: filing issues from Discord and answering newly-opened ones. The client is registered
+        // regardless of whether a token is configured - the command checks GitHubOptions.FilingEnabled and
+        // says so, which is a better failure than an unresolvable dependency at startup.
+        builder.Services.AddHttpClient<IIssues, Issues>((sp, client) =>
+        {
+            var options = sp.GetRequiredService<IOptions<PrompterOptions>>().Value;
+            client.BaseAddress = new Uri(options.GitHub.ApiUrl.TrimEnd('/') + "/");
+            client.DefaultRequestHeaders.Authorization = new("Bearer", options.GitHub.Token);
+            client.DefaultRequestHeaders.Accept.Add(new("application/vnd.github+json"));
+
+            // GitHub rejects requests without a user agent, and names the caller in rate-limit responses.
+            client.DefaultRequestHeaders.UserAgent.Add(new("Cratis-Prompter", "1.0"));
+        });
+
+        builder.Services.AddSingleton<IIssueDrafting, IssueDrafting>();
+        builder.Services.AddSingleton<PendingIssues>();
 
         builder.Services.AddSingleton<IChunks, Chunks>();
         builder.Services.AddSingleton<IInteractionLog, InteractionLog>();

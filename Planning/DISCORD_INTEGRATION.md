@@ -16,10 +16,12 @@ decisions are D-7 in [`DECISIONS.md`](DECISIONS.md).
 | **Rate limit** | >5 questions / 10 min per user (`Discord:RateLimit`, per user id held in memory only) | Friendly "give me a breather" refusal, no answer — **ephemeral** on `/ask` so it does not clutter the channel, in-channel/in-thread on the other surfaces |
 | **Long answers** | Answer > 2000 chars | On the mention/ask-channel path, split on paragraph/code-fence boundaries across up to 3 messages, sources on the last; `/ask` and the forum reply as a single message truncated with an ellipsis |
 | **Failure** | Model/API error or timeout (`Discord:AnswerTimeoutSeconds`, default 60 s) | Short apology message — never silence, handler never throws |
+| **/issue** | Slash command anywhere (added 2026-08-06, D-16) | Drafts a GitHub issue from the description — title, body, kind, product — and shows it as an **ephemeral** preview with Create/Cancel buttons (`issue:<action>:<token>`). Nothing reaches GitHub until the button is pressed; the draft is held in memory for 15 minutes, taken on click so a double-click cannot file twice, and never persisted. Routes to the owning product repository, offers likely duplicates, and says so in the preview when it could not tell which product. Shares the question rate limit; replies that filing is unconfigured when no token is set |
 
 **Never in v1:** unprompted interjections in channels not listed above (D-7 — every surviving vendor converged
 on mention/dedicated-channel; chime-in is a post-v1 experiment), DMs (not needed, keeps GDPR surface small),
-and answering other bots.
+and answering other bots. **Never at all:** filing an issue without someone pressing the button — D-16 makes
+filing a deliberate act, never an inference from what a message said.
 
 ### Answer format
 

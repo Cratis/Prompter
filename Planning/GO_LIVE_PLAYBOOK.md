@@ -5,18 +5,20 @@ worked through in order by a human — Sindre or Einari — with no reading of t
 required. Each step says who can do it, exactly what to run, and how you know it worked.
 
 Nothing here is code work. The bot is code-complete and released; what remains is credentials, a test run,
-one calibration, and the cluster.
+one calibration, and the cluster. Stage C switches on the tracker bridge, which ships in the same image and
+stays off until its credentials exist.
 
 > Where we are, verified 2026-08-06: **v0.1.1 released**, `cratis/prompter:0.1.1` and `:latest` on Docker Hub
 > (amd64 + arm64), image pulls and starts. The Pulumi stack exists but **has never been applied**. No API
 > keys, no Discord application, no cluster secrets. The corpus has never been indexed for real.
 
-## The two stages, and why in this order
+## The stages, and why in this order
 
 | Stage | What it proves | Time | Cost |
 |---|---|---|---|
 | **A · Laptop + test server** | The whole product actually works — retrieval, answers, citations, every Discord surface | An afternoon | Free tier + a few cents of API |
 | **B · Cluster** | It stays up without a laptop, and the docs stay fresh automatically | An hour, plus DNS propagation | Marginal — the cluster is already paid for |
+| **C · Tracker bridge** | Filing issues from Discord, answering new ones, notifying maintainers | Under an hour | Nothing |
 
 Do not skip A. The bot dials *out* to Discord, so a laptop is a completely legitimate way to run the real
 thing against a test server — and every problem you find there is one you are not debugging through
@@ -238,6 +240,56 @@ visibly.
 
 ---
 
+---
+
+## Stage C — the tracker bridge (optional, any time after A)
+
+The issue features ship in the same image and stay **off** until their credentials exist, so none of this
+blocks going live. Turn them on when the bot is answering reliably.
+
+### C1 · Plain issue notifications in Discord — no code, five minutes · *Sindre or Einari*
+
+Do this one first regardless of the rest; it needs nothing from Prompter and keeps working when Prompter is
+down.
+
+1. In the Discord channel you want them in: **Edit Channel → Integrations → Webhooks → New Webhook**, copy
+   the URL.
+2. **Append `/github` to that URL.**
+3. On each repository: **Settings → Webhooks → Add webhook**, paste the URL, content type
+   `application/json`, and select the **Issues** event.
+
+**Verify:** open a throwaway issue and watch it appear in the channel. Close it again.
+
+### C2 · Let Prompter file issues from Discord · *whoever administers the org*
+
+1. Create the token. A **fine-grained personal access token** is the simplest thing that works: *Settings →
+   Developer settings → Fine-grained tokens*, resource owner **Cratis**, select the repositories issues may
+   be filed in, permission **Issues: Read and write**, nothing else. A GitHub App is the better long-term
+   identity — see the note below — but the token gets you running today and swapping is a config change.
+2. Set it: `export GITHUB_TOKEN=...` then `./scripts/set-secrets.sh` (Stage B4), and `pulumi up`.
+
+**Verify:** `/issue something small and harmless` in Discord → a preview appears → **Create issue** → the link
+works, and the issue carries the `from-discord` label.
+
+> **Token or App?** The token is one secret and no setup, but it acts as *you*: issues will show your name as
+> the author, it expires on the schedule you pick, and its rate limit is your personal one. A GitHub App gets
+> Prompter its own identity ("Prompter filed this"), no expiry, and per-repository installation — worth doing
+> once the volume justifies the hour it costs. The code sends either as a bearer token, so switching is
+> changing one secret.
+
+### C3 · Let Prompter answer new issues · *whoever administers the org*
+
+1. `export GITHUB_WEBHOOK_SECRET=$(openssl rand -hex 32)`, run `./scripts/set-secrets.sh`.
+2. Set `answeringRepositories` in the stack config to the repositories that opt in, and optionally
+   `issueNotifyChannelId` for the enriched announcement (the one that says whether the docs already answer
+   it). `pulumi up`.
+3. On each opted-in repository: **Settings → Webhooks → Add webhook** →
+   `https://<ingressHost>/github/webhook`, content type `application/json`, the same secret, **Issues** event.
+
+**Verify:** open a throwaway issue asking something the docs cover → Prompter comments with citations. Open
+one asking about something they do not → **it stays silent**, and the maintainer channel says so. That
+asymmetry is the design, not a bug.
+
 ## Week one — what to watch
 
 - `kubectl -n prompter-production logs deploy/prompter -f` on the first real day. Answers should take 5–15 s.
@@ -247,8 +299,8 @@ visibly.
 
 ## Then what
 
-Once it is answering reliably, the next features are the tracker bridge decided in
-[D-16](DECISIONS.md#d-16--prompter-bridges-discord-and-the-trackers--2026-08-06): filing issues from Discord
-(**P-45**), answering newly-opened GitHub issues (**P-44**), and notifying Discord when an issue appears
-(**P-46** — whose zero-code version, a Discord webhook URL with `/github` appended registered on the repos,
-can be switched on any time and does not depend on any of this).
+The tracker bridge ([D-16](DECISIONS.md#d-16--prompter-bridges-discord-and-the-trackers--2026-08-06)) is
+built and shipped — Stage C above switches it on. What is left of that idea is **P-47**: handing genuinely
+mechanical issues to a coding agent. That one needs its own decision record before any repository opts in,
+because it puts machine-written pull requests in front of maintainers; the guardrails it must carry are in
+the backlog entry.

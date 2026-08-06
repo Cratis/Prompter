@@ -3,6 +3,44 @@
 Resume state for anyone (human or agent) continuing work in a fresh session. Newest entry first — append,
 don't rewrite history.
 
+## 2026-08-06 (evening) — The tracker bridge is built: P-44, P-45 and P-46 ship
+
+**State:** Release build **0 warnings**, **389 specs green** (up from 278 — 111 new). Everything D-16
+described now exists in code, off by default until its credentials are set, so an existing deployment is
+unaffected.
+
+**What shipped.**
+
+- **P-45 · `/issue`** — describe something in Discord, Prompter drafts the issue (title, body, kind, product)
+  with the model, routes it to the owning product repository, checks for likely duplicates, and shows an
+  **ephemeral** preview with Create/Cancel. Nothing reaches GitHub until the button is pressed. Drafts live in
+  memory for 15 minutes and are *taken* on click, so a double-click cannot file twice and an abandoned draft
+  leaves no trace — filing stays consent-in-the-moment and D-13 is untouched. Issues carry a `from-discord`
+  label, a kind label, and a link back to the thread; no Discord username is written into a public tracker.
+- **P-44 · `POST /github/webhook`** — verifies GitHub's `X-Hub-Signature-256` HMAC against the raw body,
+  ignores everything that is not `issues.opened` (so a repository can point its whole webhook at it), skips
+  bots and pull requests, honors a `no-prompter` label, and answers only for allowlisted repositories.
+  **Silence on refusal** is the rule: an ungrounded answer is never posted.
+- **P-46 · maintainer announcement** — the enriched half only: the message says whether the docs already
+  answer the issue, which is what turns a notification into triage. The plain notification is still better
+  served by GitHub's own Discord webhook, and the playbook says so.
+- Stack, ingress and secrets updated; `Documentation/guides/reporting-issues.md` written for the community;
+  `/issue` added to the Discord behavior contract; playbook gained **Stage C** to switch it all on.
+
+**A spec caught a real bug:** draft eviction ordered by timestamp, which ties when several drafts are held in
+the same clock tick, so "drop the oldest" dropped an arbitrary one. Now ordered by insertion sequence.
+
+**Not built, deliberately.** **P-47** (handing mechanical issues to a coding agent) — Prompter files issues;
+GitHub's own agents act on them, behind a human-applied label, draft PRs only, opt-in repos. It needs its own
+decision record before any repository opts in. Also outstanding: the message context-menu entry point ("File
+as issue" on an existing message) needs NetCord's message-command context, which was not compile-verifiable
+against beta.12 in this pass; the slash command covers the same ground meanwhile.
+
+**On PAT vs GitHub App:** the token is one secret and no setup, so the playbook starts there — but it acts as
+the person who created it (issues show *their* name), expires, and shares that person's rate limit. An App
+gives Prompter its own identity and no expiry for about an hour of setup. The code sends either as a bearer
+token, so switching is changing one secret.
+
 ## 2026-08-06 (later still) — Go-live playbook written; the tracker-bridge scope corrected (D-16)
 
 **A misread worth recording:** the "file issues from Discord" idea was scoped here as a *docs-gap* feature

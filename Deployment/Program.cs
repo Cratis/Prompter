@@ -30,6 +30,14 @@ return await Deployment.RunAsync(() =>
     var voyageApiKey = config.RequireSecret("voyageApiKey");
     var reindexSecret = config.RequireSecret("reindexSecret");
 
+    // The GitHub credentials are optional: an empty token leaves issue filing off and an empty webhook
+    // secret makes the webhook endpoint refuse everything, so a deployment that sets neither behaves
+    // exactly as it did before the tracker bridge existed (decision D-16).
+    var gitHubToken = config.GetSecret("gitHubToken") ?? Output.CreateSecret(string.Empty);
+    var gitHubWebhookSecret = config.GetSecret("gitHubWebhookSecret") ?? Output.CreateSecret(string.Empty);
+    var answeringRepositories = config.Get("answeringRepositories");
+    var issueNotifyChannelId = config.Get("issueNotifyChannelId");
+
     var askChannelId = config.Get("askChannelId");
     var helpForumChannelId = config.Get("helpForumChannelId");
 
@@ -75,6 +83,10 @@ return await Deployment.RunAsync(() =>
         ReindexSecret = reindexSecret,
         AskChannelId = askChannelId,
         HelpForumChannelId = helpForumChannelId,
+        GitHubToken = gitHubToken,
+        GitHubWebhookSecret = gitHubWebhookSecret,
+        AnsweringRepositories = answeringRepositories,
+        IssueNotifyChannelId = issueNotifyChannelId,
         DependsOn = { postgres.Resource },
     });
 
@@ -94,5 +106,6 @@ return await Deployment.RunAsync(() =>
         ["namespace"] = namespaceName,
         ["image"] = image,
         ["reindexUrl"] = $"https://{host}/reindex",
+        ["gitHubWebhookUrl"] = $"https://{host}/github/webhook",
     };
 });
