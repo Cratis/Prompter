@@ -5,6 +5,10 @@ D-11 and D-15), following Studio's deployment conventions. Implementation order 
 [`IMPLEMENTATION_PLAN.md`](IMPLEMENTATION_PLAN.md) M5. `Studio/Deployment/` and
 `Studio/Documentation/deployment/` are the reference implementation — this stack was written from them.
 
+> **Working through this for the first time?** [`GO_LIVE_PLAYBOOK.md`](GO_LIVE_PLAYBOOK.md) sequences every
+> step — laptop proof-out, calibration, then the cluster — with a verification per step. This document is the
+> reference behind it.
+>
 > **Status (2026-08-06):** the infrastructure code exists and compiles — [`Deployment/`](../Deployment/README.md)
 > (Pulumi C#) plus `deploy-production.yml`, called from Publish. **Nothing has been applied yet, and no image
 > has ever been published**: Docker Hub has no `cratis/prompter` repository and the repo has no releases,

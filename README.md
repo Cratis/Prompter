@@ -161,13 +161,14 @@ API keys are never committed — use environment variables or a git-ignored `Sou
 
 ## 🗺️ Start here (for contributors)
 
+- [`Planning/GO_LIVE_PLAYBOOK.md`](Planning/GO_LIVE_PLAYBOOK.md) — every step from the released image to the bot answering on the Cratis Discord. **Start here to get it running.**
 - [`Planning/SESSION_HANDOVER.md`](Planning/SESSION_HANDOVER.md) — current state and next actions. **Start here to pick up work.**
 - [`Planning/V1_PLAN.md`](Planning/V1_PLAN.md) — the roadmap: milestones M0–M5 and the definition of done.
 - [`Planning/IMPLEMENTATION_PLAN.md`](Planning/IMPLEMENTATION_PLAN.md) — the detailed plan to feature-complete v1.
 - [`Planning/DISCORD_INTEGRATION.md`](Planning/DISCORD_INTEGRATION.md) — the Discord behavior contract and app-setup runbook.
 - [`Planning/DECISIONS.md`](Planning/DECISIONS.md) — durable decisions (the name, build-vs-buy, the stack, GDPR posture).
 - [`Deployment/README.md`](Deployment/README.md) — the Pulumi stack that runs Prompter on the Cratis UpCloud cluster; [`Planning/DEPLOYMENT.md`](Planning/DEPLOYMENT.md) is the runbook around it.
-- [`Documentation/architecture.md`](Documentation/architecture.md) — how ingestion, retrieval, and answering fit together.
+- [`Documentation/concepts/architecture.md`](Documentation/concepts/architecture.md) — how ingestion, retrieval, and answering fit together.
 
 ## ✅ Quality gates
 

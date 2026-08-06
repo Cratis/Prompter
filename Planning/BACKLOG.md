@@ -238,6 +238,13 @@ folded into **P-07**; the hybrid-tuning angle into **P-06**. Remaining actionabl
   hashes, so `main` has the content but ancestry can't prove per-branch equivalence), so deleting them needs a
   force delete (`git branch -D`) — held back as a destructive step on branches this session didn't create.
 
+## Prompter as a bridge to the trackers (2026-08-06)
+
+The scope decided in [D-16](DECISIONS.md#d-16--prompter-bridges-discord-and-the-trackers--2026-08-06):
+Prompter does not only *answer* — it moves work between the community and the Cratis issue trackers, in both
+directions, for **every kind of work item** (bug, API gap, feature request, idea, docs gap). P-44/P-45/P-46
+are the two directions plus the notification; P-47 is what happens to an issue once it exists.
+
 ## Post-v1 surfaces (2026-08-06)
 
 - **P-44** **GitHub issues surface** — Prompter answers newly-opened issues on the Cratis product repos with
@@ -252,11 +259,41 @@ folded into **P-07**; the hybrid-tuning angle into **P-06**. Remaining actionabl
   *is* a docs gap already sitting in a tracker — label it `docs-gap` and the filing problem disappears.
   Distinct from **P-32**, which ingests *answered* issues as a retrieval source; the two compose.
   Needs the deployed bot to be publicly reachable (M5.3 ingress), so it lands after P-21.
-- **P-45** **"Should be documented" report button** — a third button next to 👍/👎, shown on refusals and on
-  answers that get a 👎: clicking it forwards the question text to the maintainer channel (later: opens an
-  issue) and persists nothing anywhere. The click *is* the consent, which is why this works under D-13
-  unchanged. This is Feed A of **P-33** and the cheapest path to a real docs-gap signal — build it before
-  touching D-14. Reuses the existing component-interaction handler (`Feedback`) and custom-id scheme.
+- **P-45** **File a GitHub issue from Discord** — turn a conversation into tracked work: a bug someone hit, an
+  API that is missing, a feature request, a half-formed idea, or a documentation gap. Two entry points: a
+  `/issue` slash command, and a **message context-menu action** ("File as issue") so an existing message or
+  thread can be captured without retyping it. Prompter drafts the issue from the conversation — title, body,
+  the type, and which repo it belongs in — shows it back as an **ephemeral preview with Confirm / Edit /
+  Cancel**, and only then opens it. The click is the consent and nothing is persisted here, so
+  [D-13](DECISIONS.md#d-13--interaction-log-stores-no-personal-data--2026-07-16) is untouched and
+  [D-14](DECISIONS.md#d-14--storing-question-text--open--2026-08-06) stays unanswered.
+  Rules: **anyone may file** (see D-16 — current volume does not justify an approval step, and the reporter
+  is the person who knows the problem), issues carry a `from-discord` label and a link back to the thread so
+  maintainers can follow up in context, the per-user cap reuses `RateLimiter`, and a similarity check against
+  recent open issues offers "this looks like #123 — comment there instead?" before opening a duplicate.
+  Routing is **Q-7**: the owning product repo, which needs the product classifier P-30 wants anyway; when the
+  classifier is unsure, ask in the preview rather than guessing.
+  A refusal or a 👎 additionally offers the same action pre-filled — that is the P-33 flywheel, now one case
+  of the general mechanism rather than its own feature.
+- **P-46** **Tell Discord when a GitHub issue is opened** — maintainers should see tracker activity where they
+  already are. **Do the zero-code version first:** a Discord channel webhook URL with `/github` appended,
+  registered as a repo (or org) webhook for `issues` events — no Prompter involvement, working in minutes,
+  and it stays useful even if Prompter is down. Build it *into* Prompter (on top of P-44's webhook receiver)
+  only for what the native version cannot do: enriching the notification with Prompter's own read of the
+  issue ("already answered from the docs" / "no docs cover this — likely a real gap") and routing to
+  different channels by product.
+
+- **P-47** **Auto-implement the easy ones** — an issue that is genuinely mechanical (a typo, a missing null
+  guard, a doc page that should exist, a small API addition with an obvious shape) should not wait for a
+  maintainer's evening. **Prompter does not run coding agents** — GitHub's own do: assign the issue to
+  Copilot's coding agent, or run a Claude Code GitHub Action on `issues.labeled`. Prompter's part is only to
+  file issues good enough to act on, and to carry the label when a human asks for it.
+  Non-negotiable guardrails: a **human applies the label** (never Prompter, never from a Discord message),
+  the agent opens a **draft PR** and never merges, the normal build/spec/eval gates apply unchanged, and it
+  runs only on repos that opt in. Start where a wrong call is cheapest — documentation content and
+  single-file fixes — and widen once the PRs are actually good. The classification is the hard part, not the
+  plumbing: "no-brainer" judged wrong spends maintainer review time, which is the resource this is meant to
+  save. Depends on P-45 (issues worth acting on) and needs a decision record before any repo opts in.
 
 ## Open questions
 
@@ -272,8 +309,10 @@ folded into **P-07**; the hybrid-tuning angle into **P-06**. Remaining actionabl
   resource code ports to Studio's stack nearly verbatim if they disagree.
 - **Q-6** Does UpCloud Managed PostgreSQL support the `vector` extension? Only matters if in-cluster
   Postgres proves annoying (D-11/D-15 default is in-cluster).
-- **Q-7** Where do docs-gap issues get filed — `Cratis/Documentation` (where the docs live) or the owning
-  product repo (where the maintainers are)? Affects P-33/P-45 routing.
+- ~~**Q-7** Where do issues filed from Discord get filed~~ — **answered 2026-08-06: the owning product
+  repo**, routed by the product classifier (Chronicle, Arc, Fundamentals, Components, cli, Documentation).
+  That makes **P-30**'s classifier a dependency of P-45 rather than a nice-to-have, and means the preview
+  step must let the filer correct the repo when the classifier is unsure.
 
 ## Parking lot (post-v1, not promised)
 

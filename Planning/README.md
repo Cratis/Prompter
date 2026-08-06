@@ -9,6 +9,9 @@ open residue into `BACKLOG.md` first).
 
 ## The working set (read in this order)
 
+0. **[`GO_LIVE_PLAYBOOK.md`](GO_LIVE_PLAYBOOK.md)** — every step from the released image to the bot
+   answering on the real Cratis Discord, written to be worked through by a human. **Start here if your
+   goal is getting it live**, rather than continuing development.
 1. **[`SESSION_HANDOVER.md`](SESSION_HANDOVER.md)** — current resume state, next actions, gotchas.
    **Start here in a fresh session.**
 2. **[`V1_PLAN.md`](V1_PLAN.md)** — the one-page v1 roadmap: milestones M0–M5, build order, definition of done.

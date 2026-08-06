@@ -3,6 +3,28 @@
 Resume state for anyone (human or agent) continuing work in a fresh session. Newest entry first — append,
 don't rewrite history.
 
+## 2026-08-06 (later still) — Go-live playbook written; the tracker-bridge scope corrected (D-16)
+
+**A misread worth recording:** the "file issues from Discord" idea was scoped here as a *docs-gap* feature
+(P-33's flywheel). That was too narrow — the intent is bugs, missing APIs, feature requests, ideas **and**
+docs gaps, plus auto-implementing the mechanical ones. [D-16](DECISIONS.md) records the corrected scope:
+Prompter moves work between the community and the trackers in both directions, and answering is only half
+its job. P-45 is rewritten accordingly (a `/issue` command and a message context-menu action, Prompter drafts
+the issue, an ephemeral preview confirms, then it files), **P-46** added (Discord notification when an issue
+opens — the zero-code GitHub→Discord webhook first), and **P-47** added (mechanical issues handed to
+*GitHub's* coding agents behind a human-applied label, draft PRs only; Prompter never runs an agent).
+
+**Q-7 answered:** issues go to the **owning product repo**, routed. That promotes P-30's product classifier
+from nice-to-have to a dependency of P-45. **Filing is open to anyone** — at current community volume an
+approval step would cost more in missed reports than it saves in noise; duplicate detection, a per-user cap
+and a `from-discord` label carry the load instead, and maintainer-approval stays a config flag if that ever
+changes.
+
+**[`GO_LIVE_PLAYBOOK.md`](GO_LIVE_PLAYBOOK.md) is the new front door for anyone whose goal is "get it
+running"** — Stage A (laptop + test server: keys, first index, first grounded answer, the Discord acceptance
+checklist, and the P-07 calibration that is still an open guess) then Stage B (cluster: secrets, DNS, apply,
+index, webhook, invite, privacy pin). Each step names who can do it, what to run, and how to tell it worked.
+
 ## 2026-08-06 (later) — Prompter is released: v0.1.0, then v0.1.1 with the image
 
 **State:** `main` @ the PR #4 merge, pushed. Four PRs merged today (#2 deployment stack + planning, #3 the

@@ -209,3 +209,39 @@ ever replaced under a different name, Prompter's `clusterName` config has to be 
 cheap** and that is the point: every resource class takes a `Provider` + `Namespace` exactly like Studio's own
 services do, so moving them into `Studio/Deployment/Services` later is a `Program.cs` wiring change, not a
 rewrite. **Open** until the team confirms, because it is their cluster.
+
+## D-16 · Prompter bridges Discord and the trackers — 2026-08-06
+
+**Extends [D-7](#d-7--interaction-model-mention--forum-auto-reply--ask--no-auto-chime-in-v1--2026-07-15).**
+Prompter's job is not only answering from the docs. It also **moves work between the community and the Cratis
+issue trackers, in both directions**, for every kind of work item — a bug someone hit, a missing API, a
+feature request, a half-formed idea, a documentation gap. Concretely: filing an issue from a Discord
+conversation ([BACKLOG](BACKLOG.md) P-45), answering newly-opened issues from the docs (P-44), telling Discord
+when an issue appears (P-46), and handing the mechanical ones to a coding agent (P-47).
+
+Grounds: the expensive part of a community question is rarely the answer — it is that the *signal dies in
+chat*. A bug reported in a thread at midnight, an API someone expected to exist, a feature idea that gets
+three "yes please" reactions: none of it reaches the tracker unless a maintainer happens to be reading and
+happens to transcribe it. Prompter is already in every one of those conversations, already has the context,
+and already knows the products well enough to route. The docs-gap flywheel (P-33) was the first instance of
+this, and treating it as the *general* case rather than a special one is what makes the whole thing worth
+building.
+
+**Rules that keep it from becoming noise.**
+
+- **Filing is always a deliberate act by a person** — a slash command or a context-menu action, never an
+  inference from message content. Prompter drafts, a human confirms in an ephemeral preview, and only then is
+  an issue opened. This also keeps [D-13](#d-13--interaction-log-stores-no-personal-data--2026-07-16) intact:
+  the click is the consent, and Prompter persists nothing.
+- **Anyone may file.** At the community's current size, an approval step would cost more in latency and
+  missed reports than it saves in noise, and the person who hit the problem is the one who can describe it.
+  Duplicate suppression, a per-user cap, and a `from-discord` label carry the load instead. If volume ever
+  makes this wrong, a maintainer-approval mode is a config flag, not a redesign.
+- **Prompter never writes code and never runs a coding agent.** It files issues; GitHub's own agents act on
+  them, and only when a **human** applies the label, only as **draft** PRs, only in repos that opt in.
+- **D-7's no-auto-chime rule still holds.** Nothing here lets Prompter interject unprompted; every path
+  starts with someone asking for it.
+
+Accepted trade-off: Prompter gains write access to repositories it did not previously touch, which is a real
+increase in blast radius — bounded by a GitHub App scoped to `issues: write` on named repositories, with no
+contents permission at all.
