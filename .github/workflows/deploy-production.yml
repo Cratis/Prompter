@@ -30,7 +30,13 @@ permissions:
 jobs:
   deploy:
     name: Deploy to Production
+    # The same self-hosted runner Studio deploys from. If that label is not available to this
+    # repository the job queues forever rather than failing — switch to `ubuntu-latest` in that case
+    # (the cluster's control plane accepts connections from anywhere, so a hosted runner reaches it;
+    # the DOTNET_INSTALL_DIR workaround below is then unnecessary but harmless).
     runs-on: [self-hosted, linux, cratis]
+    # If the `production` environment carries required reviewers, the deploy pauses for approval —
+    # which is the desired behavior for a production rollout, but it will not proceed unattended.
     environment: production
 
     steps:
