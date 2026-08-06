@@ -3,6 +3,31 @@
 Resume state for anyone (human or agent) continuing work in a fresh session. Newest entry first — append,
 don't rewrite history.
 
+## 2026-08-06 (end of day) — Readiness recorded: proven vs. never-run, and the gates
+
+**v0.2.0 released** (`cratis/prompter:0.2.0` + `:latest`, amd64/arm64) and the published image was pulled and
+started — it comes up and stops at the `Discord:Token` validation, which is the correct behavior with no
+configuration.
+
+**Three things verified against reality rather than assumed**, all in the outbound GitHub path: the exact
+issue-filing payload works; **GitHub creates a label that does not exist yet** (`from-discord`) on first use,
+so no repository needs preparing — that was a claim written into a code comment and is now checked; and the
+duplicate-search response shape matches what `Issues.FindSimilar` parses.
+
+**The playbook now opens with a readiness section** naming what is proven and what has **never executed** —
+the corpus has never been indexed, no Discord surface has touched a live gateway, `/issue`'s Discord half has
+not run, `MinScore` is still the committed guess, `pulumi up` has never been applied, the deploy workflow has
+never run, and `Eval/baseline.json` is a placeholder. The gap is entirely things not yet *done*.
+
+**The gates are written down, in order:** Stage A in full including the A6 calibration → Stage B → **a week of
+answering only** on the real server → Stage C, with C1 any time, C2 next, and **C3 last on a single
+repository** because answering is the only step that writes into somebody else's tracker. The playbook also
+ranks what is most likely to bite first (the threshold; slash-command registration and the `/issue`
+interaction flow; the first `pulumi up`; then answering on a real tracker).
+
+**Housekeeping:** verifying the filing path created issue **#9** in this repo. It is closed, but deleting it
+needs repo-admin rights the CLI token does not have — delete it if you would rather it not sit in the history.
+
 ## 2026-08-06 (evening) — The tracker bridge is built: P-44, P-45 and P-46 ship
 
 **State:** Release build **0 warnings**, **389 specs green** (up from 278 — 111 new). Everything D-16
