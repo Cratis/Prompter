@@ -5,7 +5,7 @@ description: How Prompter runs in production and where to find the operational r
 
 Prompter runs in production on the Cratis UpCloud Kubernetes cluster that also hosts Studio (decision
 [D-11](https://github.com/Cratis/Prompter/blob/main/Planning/DECISIONS.md)). This page is the map; the
-step-by-step runbook - workflows, Pulumi, secrets, backups - is
+step-by-step runbook - workflows, Pulumi, secrets, operations - is
 [DEPLOYMENT.md](https://github.com/Cratis/Prompter/blob/main/Planning/DEPLOYMENT.md), which is the source of
 truth.
 
@@ -19,7 +19,7 @@ laptop or a cluster. The artifacts are the same at every stage, so nothing is th
 |---|---|---|
 | Laptop | `docker compose up -d` plus `dotnet run` | Trying it end to end on a test server, all bot development |
 | Simple VM (optional) | Smallest UpCloud VM, Docker Compose | An always-on beta before the cluster work lands |
-| Cluster | Studio's UpCloud UKS via Pulumi | Production: automated deploys, observability, backups |
+| Cluster | The Cratis UpCloud UKS via Pulumi | Production: automated deploys and observability |
 
 ## In production
 

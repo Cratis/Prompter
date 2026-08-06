@@ -166,6 +166,7 @@ API keys are never committed — use environment variables or a git-ignored `Sou
 - [`Planning/IMPLEMENTATION_PLAN.md`](Planning/IMPLEMENTATION_PLAN.md) — the detailed plan to feature-complete v1.
 - [`Planning/DISCORD_INTEGRATION.md`](Planning/DISCORD_INTEGRATION.md) — the Discord behavior contract and app-setup runbook.
 - [`Planning/DECISIONS.md`](Planning/DECISIONS.md) — durable decisions (the name, build-vs-buy, the stack, GDPR posture).
+- [`Deployment/README.md`](Deployment/README.md) — the Pulumi stack that runs Prompter on the Cratis UpCloud cluster; [`Planning/DEPLOYMENT.md`](Planning/DEPLOYMENT.md) is the runbook around it.
 - [`Documentation/architecture.md`](Documentation/architecture.md) — how ingestion, retrieval, and answering fit together.
 
 ## ✅ Quality gates

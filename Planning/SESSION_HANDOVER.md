@@ -3,6 +3,53 @@
 Resume state for anyone (human or agent) continuing work in a fresh session. Newest entry first — append,
 don't rewrite history.
 
+## 2026-08-06 — Release readiness assessed; deployment stack built; docs-gap + GitHub-issue surfaces planned
+
+**State:** Branch **`deploy/release-story-and-docs-gap`** off `main` @ `c9ad5ce`, **not pushed**. Release build
+**0 warnings**, **278 specs green**. `main` had moved 11 commits since the last entry (workflow bootstrap,
+Copilot-instruction sync, package bumps) — the local checkout was fast-forwarded before starting.
+
+**Release readiness — the finding that matters:** **nothing has ever been released.** `gh release list` is
+empty and `hub.docker.com/v2/repositories/cratis/prompter` 404s. Cause: `cratis/release-action` only cuts a
+release for a merged PR labeled `major`/`minor`/`patch`; PR #1 carried none, so Publish ran, decided
+`should-publish=false`, and did nothing — successfully. The first release is a `publish.yml`
+`workflow_dispatch` with an explicit version, or the next PR merged with a label. Written up under "Release
+mechanics" in [`DEPLOYMENT.md`](DEPLOYMENT.md). Everything else about v1 is unchanged: code-complete, and
+gated on (1) Voyage + Anthropic keys — which also gate **P-07 threshold calibration**, the one remaining
+quality decision, since `Answering:MinScore` is still a guess; (2) a Discord app + test server; (3) deploy.
+
+**Deployment is no longer a plan — it is code.** New [`Deployment/`](../Deployment/README.md) Pulumi C#
+project (in the solution, builds clean in Release): looks the existing UKS cluster up by id, then creates only
+namespaced resources in `prompter-production` — Postgres/pgvector StatefulSet, the single-replica bot
+Deployment + Service, the two Secrets, and an ingress publishing **only** `POST /reindex`. Plus
+`.github/workflows/deploy-production.yml` (pins the tag with `pulumi config set`, `pulumi up`, commits state
+back with `[skip ci]`) wired as a `workflow_call` from Publish. Studio's `Deployment/` was read properly this
+time and copied where it counts: self-managed `file://./state`, passphrase secrets, `set-secrets.sh`,
+self-hosted `cratis` runner.
+
+**Q-5 answered → [D-15](DECISIONS.md) (OPEN, needs the team's nod):** Prompter's Pulumi code lives **here**,
+not in Studio's stack — reversing D-11's guess. Evidence: Studio's `deploy-production.yml` pins one version
+across every Studio image (so a `prompterImage` entry needs its own workflow + cross-repo dispatch anyway),
+and a shared stack would make every Prompter release re-evaluate MongoDB/Chronicle/AuthProxy. Reversal is
+cheap by construction — every resource class takes `Provider` + `Namespace` exactly like Studio's own.
+
+**Nothing has been applied.** The stack is unrun infrastructure code. Gates: `PULUMI_CONFIG_PASSPHRASE` +
+`UPCLOUD_TOKEN` repo secrets, the `clusterId`/`ingressHost` config values, a DNS record at the cluster load
+balancer, and `scripts/set-secrets.sh` with the five runtime secrets. Backups are deliberately not wired
+(corpus is rebuildable; the interaction log is anonymous rows) — recorded in the operations table.
+
+**Two new surfaces planned (no code):** **P-44** GitHub-issues surface — `POST /github/webhook` on the
+existing Kestrel host, answer `issues.opened` with citations, **silence on refusal**, opt-out label, per-repo
+cap; distinct from P-32 (which *ingests* answered issues). **P-45** a "this should be documented" button next
+to 👍/👎 that forwards the question text and stores nothing — the click is the consent, so it needs no
+privacy-posture change. **P-33** was rewritten around those two feeds, and **[D-14](DECISIONS.md) (OPEN)**
+records the actual open question: does Prompter store question text at all? Recommendation: A (never store;
+consent in the moment) now, B (refusal-only text, consent notice + short retention) only if the button's
+signal proves too thin. **Q-7** added: which repo receives a docs-gap issue.
+
+**Next:** (1) team confirms D-15 and D-14's direction; (2) add the deploy secrets and cut `0.1.0`; (3) keys →
+Stage 0 on a test server → P-07 calibration; (4) then `pulumi up`.
+
 ## 2026-07-16 — Review follow-ups: safe subset (P-35, P-37, P-38, P-39, P-40, P-42) on a branch
 
 **State:** Branch **`fix/format-preserve-sources`** off `main` @ `99ab61f`, **not pushed / not merged**. Release

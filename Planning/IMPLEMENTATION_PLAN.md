@@ -171,10 +171,13 @@ Runbook detail in [`DEPLOYMENT.md`](DEPLOYMENT.md). Build order:
    *Done when:* rows older than `RetentionDays` disappear on schedule (test with a short window). **Shipped as
    `RetentionPurge` (cadence + resilience spec-covered; the `DELETE` cutoff was live-verified against a
    throwaway Postgres).**
-3. **Deploy (P-21, P-26)** — per [`DEPLOYMENT.md`](DEPLOYMENT.md): GitHub repo + secrets, first `publish.yml`
-   release, then a Studio-style `deploy-production.yml` pins the image tag and runs `pulumi up` against the
-   UpCloud UKS cluster (D-11) — bot Deployment + in-cluster Postgres/pgvector — and the bot joins the real
-   server with channels configured.
+3. **Deploy (P-21, P-26)** ✅ **Code shipped 2026-08-06** — per [`DEPLOYMENT.md`](DEPLOYMENT.md) and
+   [`Deployment/README.md`](../Deployment/README.md): a `Deployment/` Pulumi C# project (own stack, deploying
+   into the cluster Studio owns — **D-15** answers Q-5) provisions the namespace, a Postgres/pgvector
+   StatefulSet, the single-replica bot Deployment + Service, and an ingress publishing only `/reindex`;
+   `deploy-production.yml` pins the image tag, runs `pulumi up` and commits state back, called from Publish.
+   Builds clean in the solution. **Unrun:** no release has been cut and nothing has been applied — the gates
+   are the two deploy secrets, DNS, and the five runtime secrets.
    *Done when:* the bot answers on the real Cratis Discord and survives a pod reschedule (single-replica k8s
    Deployment, restarted by the cluster).
 4. **Privacy notice (P-23)** — pinned message in the server + the `Documentation/index.md` privacy section

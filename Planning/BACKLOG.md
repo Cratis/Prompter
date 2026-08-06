@@ -120,9 +120,15 @@ not to promise live in the parking lot.
   options; Dockerfile → `aspnet` base + `EXPOSE 8080`; also added `GatewayIntents.Guilds` so forum
   thread-create (P-13) events arrive. Pure `ReindexAuth`/`ReindexGate` spec-covered (10 facts); endpoints
   runtime-smoke-tested. **Wiring the Documentation build to call `/reindex` (+ ingress + k8s secret) is M5.3.**
-- **P-21** Deploy: join the existing UpCloud UKS cluster per D-11 — Prompter workload + in-cluster
-  Postgres/pgvector + ingress route + `deploy-production.yml` modeled on Studio's (`Studio/Deployment/` is
-  the reference). Resolve Q-5 (Pulumi code in Studio's stack vs. this repo) first.
+- **P-21** Deploy: join the existing UpCloud UKS cluster per D-11/D-15. **Code shipped 2026-08-06** — a
+  `Deployment/` Pulumi C# project (own stack, `file://./state`, passphrase secrets, Studio conventions
+  throughout) provisions namespace + Postgres/pgvector StatefulSet + the bot Deployment/Service + an ingress
+  route for `/reindex`, and `.github/workflows/deploy-production.yml` pins the image tag and runs `pulumi up`,
+  called automatically from `publish.yml`. **What remains is credential/team work, not code:** the
+  `PULUMI_CONFIG_PASSPHRASE`/`UPCLOUD_TOKEN` secrets on this repo, the runtime secrets set via
+  `Deployment/scripts/set-secrets.sh`, a DNS record for the ingress host, and the first
+  `pulumi stack init production` + `pulumi up` (see `Deployment/README.md`). Nothing in the stack has been
+  applied yet — it is unrun infrastructure code.
 - **P-22** ~~Retention purge job~~ **Done 2026-07-15** (code): `RetentionPurge : BackgroundService` sweeps on
   a 1-minute initial delay then daily (`PeriodicTimer`), calling `IInteractionLog.PurgeExpired` (deletes
   interactions older than `RetentionDays`, default 90, on the existing `occurred_at` column), logging the count
@@ -138,8 +144,13 @@ not to promise live in the parking lot.
   config from the AI repo (do not hand-copy rules).
 - **P-26** ~~Repo settings~~ **Mostly done 2026-07-15**: `Cratis/Prompter` created (public, D-12) and pushed;
   secrets are **org-level** and confirmed reaching this repo (live `documentation.yml` dispatch succeeded;
-  Chronicle.Mcp publishes with zero repo secrets). Residue: the Docker Hub `cratis/prompter` repository if
-  the first publish doesn't auto-create it.
+  Chronicle.Mcp publishes with zero repo secrets). Residue, re-checked 2026-08-06: **no image has ever been
+  published** — `hub.docker.com/v2/repositories/cratis/prompter` still 404s and `gh release list` is empty,
+  because `cratis/release-action` only cuts a release for a merged PR labeled `major`/`minor`/`patch` and the
+  one merged PR carried none. The first release is a `publish.yml` `workflow_dispatch` with an explicit
+  version (or the next PR merged with a label) — see the release mechanics in
+  [`DEPLOYMENT.md`](DEPLOYMENT.md). Deploy secrets `PULUMI_CONFIG_PASSPHRASE` + `UPCLOUD_TOKEN` must exist on
+  this repo (or at org level) before `deploy-production.yml` can run.
 
 ## Content roadmap (design owned by [`CONTENT_AND_FRESHNESS.md`](CONTENT_AND_FRESHNESS.md))
 
@@ -161,11 +172,22 @@ Phase 1 (docs site) is the v1 corpus and is covered by M1/M5 above. These extend
   any implementation.
 - **P-32** Phase 3: **GitHub Discussions / answered issues** across product repos (public data, filtered to
   resolved).
-- **P-33** **Docs-gap flywheel** — weekly digest of refusals + 👎 answers to a maintainer channel; later
-  auto-file issues in the owning product repo. Prompter as a docs-coverage instrument. **Blocked on
-  re-introducing question text:** the interaction log is anonymous by [D-13](DECISIONS.md) (no content, no
-  identity), so this needs a decision record extending D-8/D-13 with a consent notice + narrow retention
-  before it can mine question text.
+- **P-33** **Docs-gap flywheel** — turn refusals and 👎 answers into docs work: a digest to a maintainer
+  channel, and from there issues in the owning repo. Prompter as a docs-coverage instrument. There are two
+  possible feeds, and choosing between them is
+  [D-14](DECISIONS.md#d-14--storing-question-text--open--2026-08-06):
+  - **Feed A — consent in the moment (via P-45, unblocked).** The asker clicks "this should be documented" on
+    a refusal; the question text travels straight to the maintainer channel (later: an issue) and is never
+    persisted. Nothing is stored, so [D-13](DECISIONS.md#d-13--interaction-log-stores-no-personal-data--2026-07-16)
+    is untouched and no new decision record is needed.
+  - **Feed B — mined question text (blocked).** Store question text on refusals behind a consent notice and a
+    narrow retention window, which is what makes counting and clustering possible ("12 people asked this
+    week"). Needs D-14 ruled first — today the interaction log holds `was_refusal` and a confidence and
+    nothing else, so there is literally nothing to mine.
+  Whichever feed, before anything is filed automatically it needs: **clustering** (twelve askers on one topic
+  is one issue, not twelve), **product routing** to pick the target repo (the same classifier P-30 wants), a
+  **rate cap**, and a human approval step. Digest-with-one-click-file first; full automation only once the
+  signal proves clean. Which repo receives the issue is **Q-7**.
 - **P-34** **Docs MCP server** — expose `IPassages.Search` as an MCP tool alongside Chronicle.Mcp so Claude
   Code/Copilot/Cursor users share the bot's grounded retrieval.
 
@@ -216,6 +238,26 @@ folded into **P-07**; the hybrid-tuning angle into **P-06**. Remaining actionabl
   hashes, so `main` has the content but ancestry can't prove per-branch equivalence), so deleting them needs a
   force delete (`git branch -D`) — held back as a destructive step on branches this session didn't create.
 
+## Post-v1 surfaces (2026-08-06)
+
+- **P-44** **GitHub issues surface** — Prompter answers newly-opened issues on the Cratis product repos with
+  the same grounded retrieval it uses on Discord. `IAnswers.For` is surface-agnostic, so this is a new entry
+  point plus a webhook, not new answering logic: add `POST /github/webhook` to the Kestrel host that already
+  serves `/healthz` + `/reindex`, verify the `X-Hub-Signature-256` HMAC the same constant-time way
+  `ReindexAuth` does, answer on `issues.opened`, and post a cited comment. Rules: **silence on refusal** (no
+  comment beats a hedging comment on an issue tracker), a visible "answered by Prompter — correct me" line,
+  an opt-out label (`no-prompter`) honored per issue and per repo, and a per-repo rate cap. Start as a GitHub
+  App installed on one repo behind a confidence threshold; a per-repo `issues.opened` workflow calling the
+  endpoint is the cheaper spike if App registration is slow. Composes with **P-33**: a refusal on an issue
+  *is* a docs gap already sitting in a tracker — label it `docs-gap` and the filing problem disappears.
+  Distinct from **P-32**, which ingests *answered* issues as a retrieval source; the two compose.
+  Needs the deployed bot to be publicly reachable (M5.3 ingress), so it lands after P-21.
+- **P-45** **"Should be documented" report button** — a third button next to 👍/👎, shown on refusals and on
+  answers that get a 👎: clicking it forwards the question text to the maintainer channel (later: opens an
+  issue) and persists nothing anywhere. The click *is* the consent, which is why this works under D-13
+  unchanged. This is Feed A of **P-33** and the cheapest path to a real docs-gap signal — build it before
+  touching D-14. Reuses the existing component-interaction handler (`Feedback`) and custom-id scheme.
+
 ## Open questions
 
 - **Q-1** Chronicle dogfooding for the interaction log — needs a team ruling (D-6, recommendation: post-v1).
@@ -223,10 +265,15 @@ folded into **P-07**; the hybrid-tuning angle into **P-06**. Remaining actionabl
   pricing ends 2026-08-31.
 - **Q-3** Is EU-region inference (Vertex/Bedrock) a requirement or a nice-to-have? Affects D-8 wiring only.
 - **Q-4** Adopt Answer Overflow alongside Prompter (indexes solved threads into Google — complementary)?
-- **Q-5** Where does Prompter's Pulumi code live — a workload entry in Studio's `Deployment/` stack
-  (recommended, matches `studio-llm`/Prologue) or its own `Deployment/` project in this repo (D-11)?
+- ~~**Q-5** Where does Prompter's Pulumi code live~~ — **answered 2026-08-06 by
+  [D-15](DECISIONS.md#d-15--prompters-pulumi-stack-lives-in-this-repo--open--2026-08-06)**
+  (own `Deployment/` project here, own stack, deploying into the *existing* cluster). Reading Studio's actual
+  deployment code flipped D-11's recommendation — see D-15 for the evidence. Confirm with the team; the
+  resource code ports to Studio's stack nearly verbatim if they disagree.
 - **Q-6** Does UpCloud Managed PostgreSQL support the `vector` extension? Only matters if in-cluster
-  Postgres proves annoying (D-11 default is in-cluster).
+  Postgres proves annoying (D-11/D-15 default is in-cluster).
+- **Q-7** Where do docs-gap issues get filed — `Cratis/Documentation` (where the docs live) or the owning
+  product repo (where the maintainers are)? Affects P-33/P-45 routing.
 
 ## Parking lot (post-v1, not promised)
 

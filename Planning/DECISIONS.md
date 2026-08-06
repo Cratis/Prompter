@@ -139,6 +139,73 @@ nothing identifiable takes the log **out of scope entirely** — no lawful-basis
 attach to anonymous rows, and the public privacy notice can make the strongest possible claim ("we keep no
 message content and nothing that identifies you"), verifiable in the open source. The retention purge stays as
 housekeeping (bounding table growth), not as a privacy control. Accepted trade-off: the docs-gap flywheel
-([BACKLOG](../BACKLOG.md) P-33) will need question text, so it must **re-introduce content behind its own
+([BACKLOG](BACKLOG.md) P-33) will need question text, so it must **re-introduce content behind its own
 decision record** (consent notice + narrow retention) rather than assuming it is already collected. The
-`IInteractionLog` seam is unchanged, so that is an additive change, not a redesign.
+`IInteractionLog` seam is unchanged, so that is an additive change, not a redesign. That record is
+[D-14](#d-14--storing-question-text--open--2026-08-06).
+
+## D-14 · Storing question text — OPEN — 2026-08-06
+
+**The question [D-13](#d-13--interaction-log-stores-no-personal-data--2026-07-16) deliberately left open.** The
+docs-gap flywheel ([BACKLOG](BACKLOG.md) P-33) wants to know *what* people asked that Prompter could not
+answer. Nothing knows today: a refusal writes `was_refusal` and a confidence, never the question. Re-admitting
+question text is a trivial schema change and a **posture change** — it retires the strongest sentence in the
+privacy notice ("we keep no message content") — so it gets its own record rather than riding in on a feature.
+
+**Options.**
+
+- **A · Never store it; take consent in the moment.** A "this should be documented" button on refusals
+  ([BACKLOG](BACKLOG.md) P-45) forwards the question text straight to a maintainer channel or an issue. The
+  click is the consent and the disclosure; nothing is persisted by us, D-13 stands verbatim, and the signal is
+  self-filtering — someone cared enough to press it. Costs: only volunteered gaps are seen, and there are no
+  aggregates ("how many people hit this?").
+- **B · Store question text on refusals only, behind a consent notice + short retention.** Enables counting
+  and clustering, which is what makes a *weekly digest* better than a stream of one-off reports. Costs: a
+  channel notice and privacy-page rewrite, a lawful-basis line, a retention window that actually purges (the
+  existing `RetentionPurge` becomes a privacy control again, not housekeeping), and the open-source claim
+  weakens from "we keep nothing" to "we keep this, for N days, for this purpose".
+- **C · Store everything again** (questions and answers, all interactions). Rejected — D-13's grounds have
+  not changed; nothing reads it back, and the marginal analytic value over B does not buy back the posture.
+
+**Recommendation: A now, B only on evidence.** Ship the button, run it for a few weeks, and see whether the
+volunteered reports are enough to drive docs work. Reach for B only if the flywheel demonstrably stalls
+without aggregates — and then scope it as narrowly as it will go (refused questions only, 30 days, purpose
+stated in the channel notice and the privacy page). **Not decided:** the team rules on A-vs-B when the button
+has run long enough to argue from data rather than from expectation.
+
+## D-15 · Prompter's Pulumi stack lives in this repo — OPEN — 2026-08-06
+
+**Answers Q-5 and reverses the recommendation in [D-11](#d-11--deploy-on-the-existing-upcloud-cluster-studio-style--2026-07-15)**
+(which is otherwise unchanged: UpCloud UKS `no-svg1`, Pulumi C#, Studio conventions). D-11 guessed that
+Prompter should become a workload entry in Studio's `Deployment/` stack. Reading Studio's deployment code
+(`Studio` @ `4abb7ab7`) rather than describing it from memory turned up three facts that point the other way:
+
+1. **Studio's deploy workflow pins one version for the whole platform.** `deploy-production.yml` takes a
+   single `version` input and loops it over `studioImage`/`studioAdminImage`/`studioLobbyImage`/
+   `studioCatalogImage`/`llmImage`. There is no per-workload release path, so a `prompterImage` entry would
+   still need its own workflow in Studio's repo *plus* a cross-repo dispatch (and a PAT) from Prompter's
+   Publish. The "one place pins every image" benefit D-11 assumed is not actually available to a repo with its
+   own release cadence.
+2. **A shared stack means a shared blast radius.** `pulumi up` there re-evaluates the UKS cluster and node
+   group, Percona MongoDB with its PBM backups, Chronicle, Core/Admin/Lobby/Catalog, two AuthProxies, the
+   OAuth2 proxy, Vault, Loki/Grafana/Promtail/OTel and the ingresses. Releasing a Discord bot should not be
+   able to move any of that, and a Studio release should not carry Prompter's database.
+3. **Nothing forces co-location.** Prompter needs no cluster-scoped resources: it looks the existing cluster
+   up by name through the UpCloud provider's `GetKubernetesCluster` invoke (the same call Studio uses
+   internally to get its kubeconfig) and creates only namespaced objects inside `prompter-production`. The
+   shared pieces — NGINX ingress controller, the cert-manager `ClusterIssuer`, Promtail's all-namespace log
+   shipping — stay owned by Studio and are consumed by reference, which is also how Prompter gets logs in
+   Grafana for free.
+
+**So:** a `Deployment/` Pulumi project in *this* repo, project `prompter-deployment`, stack `production`,
+deploying into the cluster Studio owns. Everything else follows Studio verbatim, deliberately: self-managed
+`file://./state` committed to Git, the passphrase secrets provider, a `scripts/set-secrets.sh`, and a
+`deploy-production.yml` that pins the image tag with `pulumi config set`, runs `pulumi up` on the self-hosted
+`cratis` runner, and commits the updated state back with `[skip ci]`.
+
+**Accepted trade-offs:** two stacks now touch one cluster (bounded by the namespace rule above — Prompter
+creates nothing cluster-scoped); a second passphrase and state directory to look after; and if the cluster is
+ever replaced under a different name, Prompter's `clusterName` config has to be re-pointed. **Reversal is
+cheap** and that is the point: every resource class takes a `Provider` + `Namespace` exactly like Studio's own
+services do, so moving them into `Studio/Deployment/Services` later is a `Program.cs` wiring change, not a
+rewrite. **Open** until the team confirms, because it is their cluster.
