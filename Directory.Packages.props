@@ -13,30 +13,30 @@
     <PackageVersion Include="NetCord.Services" Version="1.0.0-beta.12" />
     <!-- AI -->
     <PackageVersion Include="Anthropic" Version="12.40.0" />
-    <PackageVersion Include="Microsoft.Extensions.AI" Version="10.8.3" />
+    <PackageVersion Include="Microsoft.Extensions.AI" Version="10.9.0" />
     <!-- Evaluation (dev-only Eval harness) -->
-    <PackageVersion Include="Microsoft.Extensions.AI.Evaluation" Version="10.8.0" />
+    <PackageVersion Include="Microsoft.Extensions.AI.Evaluation" Version="10.9.0" />
     <PackageVersion Include="YamlDotNet" Version="18.1.0" />
     <!-- Hosting -->
-    <PackageVersion Include="Microsoft.Extensions.Hosting" Version="10.0.10" />
-    <PackageVersion Include="Microsoft.Extensions.Http" Version="10.0.10" />
+    <PackageVersion Include="Microsoft.Extensions.Hosting" Version="10.0.11" />
+    <PackageVersion Include="Microsoft.Extensions.Http" Version="10.0.11" />
     <!-- Storage -->
     <PackageVersion Include="Npgsql" Version="10.0.3" />
     <PackageVersion Include="Pgvector" Version="0.3.2" />
     <!-- Deployment / Pulumi (versions kept in step with Studio's Deployment stack) -->
-    <PackageVersion Include="Pulumi" Version="3.111.0" />
+    <PackageVersion Include="Pulumi" Version="3.111.1" />
     <PackageVersion Include="Pulumi.Kubernetes" Version="4.33.0" />
     <PackageVersion Include="UpCloud.Pulumi.UpCloud" Version="0.17.0" />
     <!-- Analysis -->
     <PackageVersion Include="Microsoft.CodeAnalysis.CSharp.CodeStyle" Version="5.6.0" />
-    <PackageVersion Include="Microsoft.CodeAnalysis.NetAnalyzers" Version="10.0.302" />
+    <PackageVersion Include="Microsoft.CodeAnalysis.NetAnalyzers" Version="10.0.400" />
     <PackageVersion Include="StyleCop.Analyzers" Version="1.2.0-beta.556" NoWarn="NU5104" />
     <PackageVersion Include="Roslynator.Analyzers" Version="4.16.0" />
-    <PackageVersion Include="Meziantou.Analyzer" Version="3.0.141" />
+    <PackageVersion Include="Meziantou.Analyzer" Version="3.0.147" />
     <!-- Testing -->
     <PackageVersion Include="Cratis.Specifications" Version="4.0.0" />
     <PackageVersion Include="Cratis.Specifications.XUnit" Version="4.0.0" />
-    <PackageVersion Include="NSubstitute" Version="6.1.0" />
+    <PackageVersion Include="NSubstitute" Version="6.2.0" />
     <PackageVersion Include="xunit" Version="2.9.3" />
     <PackageVersion Include="xunit.runner.visualstudio" Version="3.1.5" />
     <PackageVersion Include="Microsoft.NET.Test.Sdk" Version="18.8.1" />
