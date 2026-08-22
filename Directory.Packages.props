@@ -7,10 +7,10 @@
     <!-- Cratis -->
     <PackageVersion Include="Cratis.Fundamentals" Version="7.18.1" />
     <!-- Discord -->
-    <PackageVersion Include="NetCord" Version="1.0.0-beta.15" />
-    <PackageVersion Include="NetCord.Hosting" Version="1.0.0-beta.15" />
-    <PackageVersion Include="NetCord.Hosting.Services" Version="1.0.0-beta.15" />
-    <PackageVersion Include="NetCord.Services" Version="1.0.0-beta.15" />
+    <PackageVersion Include="NetCord" Version="1.0.0-beta.16" />
+    <PackageVersion Include="NetCord.Hosting" Version="1.0.0-beta.16" />
+    <PackageVersion Include="NetCord.Hosting.Services" Version="1.0.0-beta.16" />
+    <PackageVersion Include="NetCord.Services" Version="1.0.0-beta.16" />
     <!-- AI -->
     <PackageVersion Include="Anthropic" Version="12.42.0" />
     <PackageVersion Include="Microsoft.Extensions.AI" Version="10.9.0" />
@@ -31,7 +31,7 @@
     <PackageVersion Include="Microsoft.CodeAnalysis.CSharp.CodeStyle" Version="5.9.0" />
     <PackageVersion Include="Microsoft.CodeAnalysis.NetAnalyzers" Version="10.0.400" />
     <PackageVersion Include="StyleCop.Analyzers" Version="1.2.0-beta.556" NoWarn="NU5104" />
-    <PackageVersion Include="Roslynator.Analyzers" Version="4.16.1" />
+    <PackageVersion Include="Roslynator.Analyzers" Version="5.0.0" />
     <PackageVersion Include="Meziantou.Analyzer" Version="3.0.177" />
     <!-- Testing -->
     <PackageVersion Include="Cratis.Specifications" Version="4.0.0" />
