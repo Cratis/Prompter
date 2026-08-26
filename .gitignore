@@ -304,3 +304,6 @@ Eval/results/*
 
 # Transient agent worktrees created by tooling under the checkout.
 .claude/worktrees/
+
+# Local AI work artifacts (plans, handovers, session notes) — never tracked
+.ai-work/

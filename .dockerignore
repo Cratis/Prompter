@@ -20,7 +20,7 @@
 # Content the bot image does not need (Source/ is the only project it publishes)
 Specs/
 Eval/
-Planning/
+.ai-work/
 Documentation/
 Deployment/
 docker-compose.yml

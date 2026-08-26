@@ -4,16 +4,12 @@ Prompter is the Cratis community's Discord documentation assistant — a RAG bot
 Microsoft.Extensions.AI + Anthropic, Postgres/pgvector hybrid retrieval) that answers questions grounded in
 the published docs at https://cratis.io, with citations, or refuses honestly.
 
-## Start every session here
+## Working artifacts
 
-1. Read `Planning/SESSION_HANDOVER.md` — current state, next actions, gotchas.
-2. Read `Planning/IMPLEMENTATION_PLAN.md` — the milestone you are in and its acceptance criteria.
-3. `Planning/DECISIONS.md` holds settled rulings (D-1…D-10) — do not re-litigate them; append new ones.
-4. `Planning/DISCORD_INTEGRATION.md` is the Discord behavior contract; `Planning/DEPLOYMENT.md` the ops runbook.
-
-Work milestone-by-milestone in plan order. Every task ends verified: build, specs, and the task's own
-"done when" check. Update `Planning/SESSION_HANDOVER.md` (append a dated entry) before ending a work session,
-and keep `BACKLOG.md` in sync as items complete.
+Session handovers, plans, decision logs, and other AI work records are **local-only**: they live in
+the gitignored `.ai-work/` folder at the repository root and must never be committed or pushed. See
+`.ai/rules/local-work-artifacts.md`. Work milestone-by-milestone; every task ends verified: build,
+specs, and the task's own "done when" check.
 
 ## Conventions
 

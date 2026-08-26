@@ -34,8 +34,6 @@ Three reasons, and they all line up:
 - **The Cratis storytelling family** — Cratis names its products after telling a story: **Chronicle** records
   what happened, **Arc** shapes the plot, **Narrator**, **Lens**, **Studio**… **Prompter** joins the cast.
 
-See decision [D-1](Planning/DECISIONS.md) for the full rationale.
-
 ## 💬 What a scene looks like
 
 ```text
@@ -77,8 +75,7 @@ you at a human. That honesty is the feature.
   requests, ideas, docs gaps — anything worth tracking.
 
 > Prompter never barges into normal conversation — it only speaks when spoken to, and it rate-limits each
-> person to a handful of questions per window so no one can spam it. See
-> [`DISCORD_INTEGRATION.md`](Planning/DISCORD_INTEGRATION.md) for the full behavior contract.
+> person to a handful of questions per window so no one can spam it..
 
 ## 🧠 How it works
 
@@ -104,8 +101,7 @@ flowchart LR
 
 Built with **C# / .NET 10**, [NetCord](https://netcord.dev),
 [Microsoft.Extensions.AI](https://learn.microsoft.com/en-us/dotnet/ai/), **Claude** (Anthropic), **Voyage AI**
-embeddings, and **Postgres + pgvector**. Why these? The receipts are in
-[`Planning/DECISIONS.md`](Planning/DECISIONS.md).
+embeddings, and **Postgres + pgvector**.
 
 ## 🚀 Quick start
 
@@ -170,14 +166,7 @@ API keys are never committed — use environment variables or a git-ignored `Sou
 
 ## 🗺️ Start here (for contributors)
 
-- [`Planning/GO_LIVE_PLAYBOOK.md`](Planning/GO_LIVE_PLAYBOOK.md) — every step from the released image to the bot answering on the Cratis Discord. **Start here to get it running.**
-- [`Planning/ORG_SETUP.md`](Planning/ORG_SETUP.md) — the org-owned accounts, keys and Discord app the playbook depends on, for whoever owns them.
-- [`Planning/SESSION_HANDOVER.md`](Planning/SESSION_HANDOVER.md) — current state and next actions. **Start here to pick up work.**
-- [`Planning/V1_PLAN.md`](Planning/V1_PLAN.md) — the roadmap: milestones M0–M5 and the definition of done.
-- [`Planning/IMPLEMENTATION_PLAN.md`](Planning/IMPLEMENTATION_PLAN.md) — the detailed plan to feature-complete v1.
-- [`Planning/DISCORD_INTEGRATION.md`](Planning/DISCORD_INTEGRATION.md) — the Discord behavior contract and app-setup runbook.
-- [`Planning/DECISIONS.md`](Planning/DECISIONS.md) — durable decisions (the name, build-vs-buy, the stack, GDPR posture).
-- [`Deployment/README.md`](Deployment/README.md) — the Pulumi stack that runs Prompter on the Cratis UpCloud cluster; [`Planning/DEPLOYMENT.md`](Planning/DEPLOYMENT.md) is the runbook around it.
+- [`Deployment/README.md`](Deployment/README.md) — the Pulumi stack that runs Prompter on the Cratis UpCloud cluster.
 - [`Documentation/concepts/architecture.md`](Documentation/concepts/architecture.md) — how ingestion, retrieval, and answering fit together.
 
 ## ✅ Quality gates
