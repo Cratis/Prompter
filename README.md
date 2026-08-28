@@ -19,8 +19,8 @@ mid-scene. That's the whole idea. The script is the published documentation at
 *"wait, how do I append an event again?"* — Prompter whispers the answer, **with citations**, or admits
 honestly when the docs don't cover it.
 
-No hallucinated APIs. No confidently-wrong snippets. Just the docs, retrieved and read back to you where you
-already are.
+It is built to stick to the script: answers come from the retrieved docs, with citations — and when the docs
+don't cover something, it says so instead of improvising.
 
 ## 🎭 Why "Prompter"?
 
@@ -75,7 +75,7 @@ you at a human. That honesty is the feature.
   requests, ideas, docs gaps — anything worth tracking.
 
 > Prompter never barges into normal conversation — it only speaks when spoken to, and it rate-limits each
-> person to a handful of questions per window so no one can spam it..
+> person to a handful of questions per window so no one can spam it.
 
 ## 🧠 How it works
 
@@ -95,7 +95,7 @@ flowchart LR
 - **Ingest** — walk cratis.io's sitemap, fetch each page's markdown mirror, strip the MDX noise, and split
   into heading-aware chunks. Only changed chunks are re-embedded, so re-indexing is cheap.
 - **Retrieve** — one SQL query fuses lexical (BM25 via `tsvector`) and semantic (cosine over pgvector) hits
-  with Reciprocal Rank Fusion. Anthropic's own benchmarks show hybrid roughly halves retrieval misses.
+  with Reciprocal Rank Fusion.
 - **Answer** — Claude gets the top passages and a system prompt that demands grounding and citations, and
   refuses when the score says the docs don't have it.
 
@@ -179,6 +179,21 @@ dotnet test  --configuration Release   # all specs green
 And one more gate that's unusual for a bot: **answer quality is measured, not vibed.** A golden-question eval
 harness (milestone M4) scores groundedness, citation accuracy, and refusal behavior — and gates prompt and
 retrieval changes the same way specs gate code.
+
+## The Cratis ecosystem
+
+This project is part of [Cratis](https://www.cratis.io) — free, MIT-licensed tools for building event-sourced and CQRS applications.
+
+- **[Chronicle](https://github.com/Cratis/Chronicle)** — event-sourcing database and runtime. Orleans-based kernel, pluggable storage (MongoDB default; PostgreSQL, SQL Server, SQLite, in-memory), language-agnostic gRPC contracts. [Docs](https://www.cratis.io/chronicle/)
+- **Chronicle clients** — first-class [.NET SDK](https://github.com/Cratis/Chronicle), plus [TypeScript](https://github.com/Cratis/Chronicle.TypeScript), [Kotlin/Java](https://github.com/Cratis/Chronicle.Kotlin), and [Elixir](https://github.com/Cratis/Chronicle.Elixir); [Python](https://github.com/Cratis/Chronicle.Python) coming soon (pre-alpha). AI agents connect through the [Chronicle MCP server](https://github.com/Cratis/Chronicle.Mcp).
+- **[Arc](https://github.com/Cratis/Arc)** — opinionated CQRS framework for ASP.NET Core with commands, queries, validation, authorization, and TypeScript proxy generation. Works without event sourcing. [Docs](https://www.cratis.io/arc/)
+- **[Components](https://github.com/Cratis/Components)** — React components aligned with Arc patterns. [Docs](https://www.cratis.io/components/)
+- **[CLI](https://github.com/Cratis/cli) + Workbench** — inspect and diagnose Chronicle from the terminal or the browser. [Docs](https://www.cratis.io/cli/)
+- **Model-first layer (experimental)** — [Studio](https://github.com/Cratis/Studio), [Screenplay](https://github.com/Cratis/Screenplay), [Stage](https://github.com/Cratis/Stage), [Scene](https://github.com/Cratis/Scene), [Prologue](https://github.com/Cratis/Prologue)
+- **Supporting** — [Fundamentals](https://github.com/Cratis/Fundamentals), [Specifications](https://github.com/Cratis/Specifications), [Synopsis](https://github.com/Cratis/Synopsis), [Lens](https://github.com/Cratis/Lens), [Narrator](https://github.com/Cratis/Narrator), and free [AI tooling](https://github.com/Cratis/AI) (preview); [Ensemble](https://github.com/Cratis/Ensemble) coming soon (pre-release)
+- **[Samples](https://github.com/Cratis/Samples)** — runnable event sourcing and CQRS samples for the whole stack
+
+Everything Cratis publishes today is MIT licensed and free to use.
 
 ---
 
