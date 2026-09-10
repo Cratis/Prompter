@@ -5,40 +5,40 @@
   </PropertyGroup>
   <ItemGroup>
     <!-- Cratis -->
-    <PackageVersion Include="Cratis.Fundamentals" Version="7.18.1" />
+    <PackageVersion Include="Cratis.Fundamentals" Version="7.19.2" />
     <!-- Discord -->
-    <PackageVersion Include="NetCord" Version="1.0.0-beta.16" />
-    <PackageVersion Include="NetCord.Hosting" Version="1.0.0-beta.16" />
-    <PackageVersion Include="NetCord.Hosting.Services" Version="1.0.0-beta.16" />
-    <PackageVersion Include="NetCord.Services" Version="1.0.0-beta.16" />
+    <PackageVersion Include="NetCord" Version="1.0.0-beta.19" />
+    <PackageVersion Include="NetCord.Hosting" Version="1.0.0-beta.19" />
+    <PackageVersion Include="NetCord.Hosting.Services" Version="1.0.0-beta.19" />
+    <PackageVersion Include="NetCord.Services" Version="1.0.0-beta.19" />
     <!-- AI -->
-    <PackageVersion Include="Anthropic" Version="12.42.1" />
-    <PackageVersion Include="Microsoft.Extensions.AI" Version="10.9.0" />
+    <PackageVersion Include="Anthropic" Version="12.46.0" />
+    <PackageVersion Include="Microsoft.Extensions.AI" Version="10.10.0" />
     <!-- Evaluation (dev-only Eval harness) -->
-    <PackageVersion Include="Microsoft.Extensions.AI.Evaluation" Version="10.9.0" />
+    <PackageVersion Include="Microsoft.Extensions.AI.Evaluation" Version="10.10.0" />
     <PackageVersion Include="YamlDotNet" Version="18.1.0" />
     <!-- Hosting -->
-    <PackageVersion Include="Microsoft.Extensions.Hosting" Version="10.0.11" />
-    <PackageVersion Include="Microsoft.Extensions.Http" Version="10.0.11" />
+    <PackageVersion Include="Microsoft.Extensions.Hosting" Version="10.0.12" />
+    <PackageVersion Include="Microsoft.Extensions.Http" Version="10.0.12" />
     <!-- Storage -->
     <PackageVersion Include="Npgsql" Version="10.0.3" />
     <PackageVersion Include="Pgvector" Version="0.3.2" />
     <!-- Deployment / Pulumi (versions kept in step with Studio's Deployment stack) -->
-    <PackageVersion Include="Pulumi" Version="3.113.0" />
-    <PackageVersion Include="Pulumi.Kubernetes" Version="4.33.0" />
-    <PackageVersion Include="UpCloud.Pulumi.UpCloud" Version="0.18.1" />
+    <PackageVersion Include="Pulumi" Version="3.113.2" />
+    <PackageVersion Include="Pulumi.Kubernetes" Version="4.34.1" />
+    <PackageVersion Include="UpCloud.Pulumi.UpCloud" Version="0.19.0" />
     <!-- Analysis -->
     <PackageVersion Include="Microsoft.CodeAnalysis.CSharp.CodeStyle" Version="5.9.0" />
-    <PackageVersion Include="Microsoft.CodeAnalysis.NetAnalyzers" Version="10.0.400" />
+    <PackageVersion Include="Microsoft.CodeAnalysis.NetAnalyzers" Version="10.0.401" />
     <PackageVersion Include="StyleCop.Analyzers" Version="1.2.0-beta.556" NoWarn="NU5104" />
     <PackageVersion Include="Roslynator.Analyzers" Version="5.0.0" />
-    <PackageVersion Include="Meziantou.Analyzer" Version="3.0.177" />
+    <PackageVersion Include="Meziantou.Analyzer" Version="3.0.235" />
     <!-- Testing -->
-    <PackageVersion Include="Cratis.Specifications" Version="4.0.0" />
-    <PackageVersion Include="Cratis.Specifications.XUnit" Version="4.0.0" />
+    <PackageVersion Include="Cratis.Specifications" Version="4.1.0" />
+    <PackageVersion Include="Cratis.Specifications.XUnit" Version="4.1.0" />
     <PackageVersion Include="NSubstitute" Version="6.2.0" />
     <PackageVersion Include="xunit" Version="2.9.3" />
     <PackageVersion Include="xunit.runner.visualstudio" Version="4.0.0" />
-    <PackageVersion Include="Microsoft.NET.Test.Sdk" Version="18.9.0" />
+    <PackageVersion Include="Microsoft.NET.Test.Sdk" Version="18.10.0" />
   </ItemGroup>
 </Project>
