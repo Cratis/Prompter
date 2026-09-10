@@ -9,7 +9,7 @@ namespace Cratis.Prompter;
 public class AnthropicOptions
 {
     /// <summary>
-    /// Gets or sets the API key. Falls back to the <c>ANTHROPIC_API_KEY</c> environment variable when empty.
+    /// Gets or sets the API key. Falls back to the <c language="csharp">ANTHROPIC_API_KEY</c> environment variable when empty.
     /// </summary>
     public string ApiKey { get; set; } = string.Empty;
 

@@ -59,7 +59,7 @@ public static class IssueDraftParsing
     }
 
     /// <summary>
-    /// Maps the model's <c>kind</c> value onto <see cref="IssueKind"/>.
+    /// Maps the model's <c language="csharp">kind</c> value onto <see cref="IssueKind"/>.
     /// </summary>
     /// <param name="kind">The value from the reply.</param>
     /// <returns>

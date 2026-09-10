@@ -47,10 +47,10 @@ public class Mentions(
     /// The configured dedicated ask channel, or <see langword="null"/> when the feature is unset.
     /// </param>
     /// <returns>
-    /// A tuple whose <c>ShouldAnswer</c> is <see langword="true"/> when the author is human and either the bot
-    /// is mentioned (via <c>&lt;@id&gt;</c> or the nickname form <c>&lt;@!id&gt;</c>) or the message lives in
-    /// the ask channel, and the remaining text is a non-empty <c>Question</c> with the mention stripped. Role
-    /// mentions (<c>&lt;@&amp;id&gt;</c>), <c>@everyone</c>, and <c>@here</c> never trigger an answer on their own.
+    /// A tuple whose <c language="csharp">ShouldAnswer</c> is <see langword="true"/> when the author is human and either the bot
+    /// is mentioned (via <c language="csharp">&lt;@id&gt;</c> or the nickname form <c language="csharp">&lt;@!id&gt;</c>) or the message lives in
+    /// the ask channel, and the remaining text is a non-empty <c language="csharp">Question</c> with the mention stripped. Role
+    /// mentions (<c language="csharp">&lt;@&amp;id&gt;</c>), <c language="csharp">@everyone</c>, and <c language="csharp">@here</c> never trigger an answer on their own.
     /// </returns>
     public static (bool ShouldAnswer, string Question) ResolveQuestion(string content, ulong botId, bool authorIsBot, ulong channelId, ulong? askChannelId)
     {

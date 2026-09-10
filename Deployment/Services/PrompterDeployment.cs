@@ -15,7 +15,7 @@ namespace Cratis.Prompter.Deployment.Services;
 /// </summary>
 /// <remarks>
 /// Single replica is a requirement, not a sizing choice — the Discord gateway wants exactly one connection
-/// per bot, so a second pod would double every answer. <c>Recreate</c> makes the rollout hand the gateway
+/// per bot, so a second pod would double every answer. <c language="csharp">Recreate</c> makes the rollout hand the gateway
 /// over cleanly instead of briefly running two.
 /// </remarks>
 public sealed class PrompterDeployment
@@ -26,7 +26,7 @@ public sealed class PrompterDeployment
     public const string Name = "prompter";
 
     /// <summary>
-    /// The port Kestrel serves <c>/healthz</c> and <c>/reindex</c> on (the Dockerfile's EXPOSE).
+    /// The port Kestrel serves <c language="csharp">/healthz</c> and <c language="csharp">/reindex</c> on (the Dockerfile's EXPOSE).
     /// </summary>
     public const int Port = 8080;
 

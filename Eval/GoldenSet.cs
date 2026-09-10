@@ -7,8 +7,8 @@ using YamlDotNet.Serialization.NamingConventions;
 namespace Cratis.Prompter.Eval;
 
 /// <summary>
-/// Represents the parsed golden Q&amp;A set - the top-level <c>questions:</c> list of
-/// <c>Eval/golden-questions.yaml</c>.
+/// Represents the parsed golden Q&amp;A set - the top-level <c language="csharp">questions:</c> list of
+/// <c language="csharp">Eval/golden-questions.yaml</c>.
 /// </summary>
 public record GoldenSet
 {
@@ -16,8 +16,8 @@ public record GoldenSet
     public IEnumerable<GoldenQuestion> Questions { get; init; } = [];
 
     /// <summary>
-    /// Parses a golden set from its YAML representation. Unknown keys (such as <c>tags</c> and
-    /// <c>rationale</c>) are ignored, and <c>expected_pages</c> maps to <see cref="GoldenQuestion.ExpectedPages"/>
+    /// Parses a golden set from its YAML representation. Unknown keys (such as <c language="csharp">tags</c> and
+    /// <c language="csharp">rationale</c>) are ignored, and <c language="csharp">expected_pages</c> maps to <see cref="GoldenQuestion.ExpectedPages"/>
     /// via the underscored naming convention.
     /// </summary>
     /// <param name="yaml">The YAML content of the golden set.</param>

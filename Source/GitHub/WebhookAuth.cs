@@ -12,7 +12,7 @@ namespace Cratis.Prompter.GitHub;
 /// </summary>
 /// <remarks>
 /// GitHub signs the raw request body with the configured secret and sends the result as
-/// <c>X-Hub-Signature-256: sha256=&lt;hex&gt;</c>. Verifying that signature — rather than checking a shared
+/// <c language="csharp">X-Hub-Signature-256: sha256=&lt;hex&gt;</c>. Verifying that signature — rather than checking a shared
 /// secret in a header — is what proves the delivery came from GitHub and that the body was not altered on the
 /// way. An unset secret refuses everything, the same posture the re-index endpoint takes.
 /// </remarks>

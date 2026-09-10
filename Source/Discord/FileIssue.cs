@@ -12,7 +12,7 @@ using NetCord.Services.ApplicationCommands;
 namespace Cratis.Prompter.Discord;
 
 /// <summary>
-/// The <c>/issue</c> slash command: turns what someone is describing in Discord into a GitHub issue.
+/// The <c language="csharp">/issue</c> slash command: turns what someone is describing in Discord into a GitHub issue.
 /// </summary>
 /// <param name="drafting">Drafts the issue from the description.</param>
 /// <param name="issues">Looks for likely duplicates before the preview is shown.</param>

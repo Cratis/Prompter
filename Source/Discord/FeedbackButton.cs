@@ -8,10 +8,10 @@ namespace Cratis.Prompter.Discord;
 
 /// <summary>
 /// Encodes and decodes the custom id carried by a feedback button. The custom id is
-/// <c>feedback:&lt;verdict&gt;:&lt;interaction-id&gt;</c> - the <see cref="Prefix"/> routes the click to the
+/// <c language="csharp">feedback:&lt;verdict&gt;:&lt;interaction-id&gt;</c> - the <see cref="Prefix"/> routes the click to the
 /// feedback handler, and the verdict and interaction id let the handler write the verdict back to the right
 /// row without any per-message state. The separator matches NetCord's component-interaction parameter
-/// separator, so a click on <c>feedback:up:42</c> is routed by its <see cref="Prefix"/>.
+/// separator, so a click on <c language="csharp">feedback:up:42</c> is routed by its <see cref="Prefix"/>.
 /// </summary>
 public static class FeedbackButton
 {

@@ -9,9 +9,9 @@ namespace Cratis.Prompter;
 public class VoyageOptions
 {
     /// <summary>
-    /// The embedding dimensionality the database schema is fixed to - the <c>embedding vector(1024)</c> column
-    /// declared in <c>Storage/Migrations/v1_0_0.sql</c>. <see cref="Dimensions"/> is sent to Voyage as the
-    /// requested <c>output_dimension</c>, so any value other than this makes every upsert fail at runtime with
+    /// The embedding dimensionality the database schema is fixed to - the <c language="csharp">embedding vector(1024)</c> column
+    /// declared in <c language="csharp">Storage/Migrations/v1_0_0.sql</c>. <see cref="Dimensions"/> is sent to Voyage as the
+    /// requested <c language="csharp">output_dimension</c>, so any value other than this makes every upsert fail at runtime with
     /// a vector-size mismatch; <see cref="DimensionsMatchSchema"/> guards it at startup.
     /// </summary>
     public const int SchemaDimensions = 1024;
@@ -46,7 +46,7 @@ public class VoyageOptions
 
     /// <summary>
     /// Gets or sets the maximum number of inputs sent in a single embeddings request. Voyage accepts up to
-    /// 1,000 inputs and 320K tokens per request for <c>voyage-4</c>; the default of 128 stays well under both
+    /// 1,000 inputs and 320K tokens per request for <c language="csharp">voyage-4</c>; the default of 128 stays well under both
     /// caps while keeping individual requests small and resilient (verified against the Voyage docs).
     /// </summary>
     public int BatchSize { get; set; } = 128;

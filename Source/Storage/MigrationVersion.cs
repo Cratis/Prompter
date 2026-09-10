@@ -7,7 +7,7 @@ namespace Cratis.Prompter.Storage;
 
 /// <summary>
 /// Represents the parsed semantic version of a database migration. Versions order the migrations and
-/// identify which ones have already been applied in the <c>schema_migrations</c> tracking table.
+/// identify which ones have already been applied in the <c language="csharp">schema_migrations</c> tracking table.
 /// </summary>
 /// <param name="Major">The major version component.</param>
 /// <param name="Minor">The minor version component.</param>
@@ -15,9 +15,9 @@ namespace Cratis.Prompter.Storage;
 public record MigrationVersion(int Major, int Minor, int Patch)
 {
     /// <summary>
-    /// Parses a version from its textual form. Both the migration file form (<c>v1_2_0</c>) and the dotted
-    /// canonical form (<c>1.2.0</c>) are accepted; a leading <c>v</c> is optional, components are separated
-    /// by either <c>.</c> or <c>_</c>, and any omitted component defaults to zero.
+    /// Parses a version from its textual form. Both the migration file form (<c language="csharp">v1_2_0</c>) and the dotted
+    /// canonical form (<c language="csharp">1.2.0</c>) are accepted; a leading <c language="csharp">v</c> is optional, components are separated
+    /// by either <c language="csharp">.</c> or <c language="csharp">_</c>, and any omitted component defaults to zero.
     /// </summary>
     /// <param name="value">The version text to parse.</param>
     /// <returns>The parsed <see cref="MigrationVersion"/>.</returns>
@@ -49,8 +49,8 @@ public record MigrationVersion(int Major, int Minor, int Patch)
     }
 
     /// <summary>
-    /// Gets the canonical dotted text form of the version, e.g. <c>1.2.0</c>. This is the exact form
-    /// stored in the <c>schema_migrations</c> tracking table.
+    /// Gets the canonical dotted text form of the version, e.g. <c language="csharp">1.2.0</c>. This is the exact form
+    /// stored in the <c language="csharp">schema_migrations</c> tracking table.
     /// </summary>
     /// <returns>The canonical version text.</returns>
     public override string ToString() => string.Create(CultureInfo.InvariantCulture, $"{Major}.{Minor}.{Patch}");

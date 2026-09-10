@@ -24,8 +24,8 @@ namespace Cratis.Prompter.Eval;
 internal static class EvalHost
 {
     /// <summary>
-    /// Builds the configured host. Configuration binds to <c>Cratis:Prompter</c> (env vars
-    /// <c>Cratis__Prompter__…</c>), so the Voyage and Anthropic API keys are supplied the same way as for the
+    /// Builds the configured host. Configuration binds to <c language="csharp">Cratis:Prompter</c> (env vars
+    /// <c language="csharp">Cratis__Prompter__…</c>), so the Voyage and Anthropic API keys are supplied the same way as for the
     /// bot.
     /// </summary>
     /// <param name="args">The process arguments (forwarded to configuration).</param>

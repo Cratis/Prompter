@@ -9,7 +9,7 @@ namespace Cratis.Prompter.Eval.Scoring;
 /// <summary>
 /// An <see cref="IEvaluator"/> that uses an <see cref="IChatClient"/> judge to score how well an answer is
 /// grounded in the retrieved documentation passages. Cribbed from dotnet/eShopSupport's
-/// <c>AnswerScoringEvaluator</c>, but scoring groundedness (is the answer supported by the retrieved context,
+/// <c language="csharp">AnswerScoringEvaluator</c>, but scoring groundedness (is the answer supported by the retrieved context,
 /// with no fabrication) rather than closeness to a reference answer - the metric that matters for a RAG bot.
 /// </summary>
 internal sealed class GroundednessEvaluator : IEvaluator

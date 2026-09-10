@@ -5,7 +5,7 @@ namespace Cratis.Prompter.Eval;
 
 /// <summary>
 /// Resolves where the harness reads the golden set and writes its reports, so
-/// <c>dotnet run --project Eval</c> works regardless of the current directory.
+/// <c language="csharp">dotnet run --project Eval</c> works regardless of the current directory.
 /// </summary>
 internal static class EvalWorkspace
 {
@@ -15,8 +15,8 @@ internal static class EvalWorkspace
 
     /// <summary>
     /// Resolves the golden-set path and the results directory. Both can be overridden with
-    /// <c>--golden &lt;path&gt;</c> and <c>--out &lt;dir&gt;</c>; otherwise the harness walks up from the
-    /// running assembly to locate the <c>Eval</c> directory.
+    /// <c language="csharp">--golden &lt;path&gt;</c> and <c language="csharp">--out &lt;dir&gt;</c>; otherwise the harness walks up from the
+    /// running assembly to locate the <c language="csharp">Eval</c> directory.
     /// </summary>
     /// <param name="args">The process arguments.</param>
     /// <returns>The resolved golden-set path and results directory.</returns>

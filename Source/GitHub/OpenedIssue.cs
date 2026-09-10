@@ -6,7 +6,7 @@ namespace Cratis.Prompter.GitHub;
 /// <summary>
 /// A newly-opened issue, as read from a webhook delivery.
 /// </summary>
-/// <param name="Repository">The full name of the repository, as <c>owner/name</c>.</param>
+/// <param name="Repository">The full name of the repository, as <c language="csharp">owner/name</c>.</param>
 /// <param name="Number">The issue number.</param>
 /// <param name="Title">The issue title.</param>
 /// <param name="Body">The issue body, which may be empty.</param>

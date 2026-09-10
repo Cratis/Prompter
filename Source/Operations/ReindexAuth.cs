@@ -24,7 +24,7 @@ public static class ReindexAuth
     /// <remarks>
     /// Both secrets are SHA-256 hashed to a fixed 32-byte length before being compared with
     /// <see cref="CryptographicOperations.FixedTimeEquals(ReadOnlySpan{byte}, ReadOnlySpan{byte})"/>. Comparing
-    /// the raw UTF-8 bytes would let <c>FixedTimeEquals</c> short-circuit on a length mismatch, leaking the
+    /// the raw UTF-8 bytes would let <c language="csharp">FixedTimeEquals</c> short-circuit on a length mismatch, leaking the
     /// configured secret's length through timing; equal-length hashes run in constant time and leak neither the
     /// length nor how much of the secret matched.
     /// </remarks>

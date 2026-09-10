@@ -57,13 +57,13 @@ public sealed class PrompterDeploymentArgs
     public required Output<string> VoyageApiKey { get; init; }
 
     /// <summary>
-    /// Gets the shared secret that authorizes <c>POST /reindex</c>.
+    /// Gets the shared secret that authorizes <c language="csharp">POST /reindex</c>.
     /// </summary>
     public required Output<string> ReindexSecret { get; init; }
 
     /// <summary>
     /// Gets the token used to file issues and comment on them. Empty leaves issue filing switched off, and
-    /// the <c>/issue</c> command says so rather than failing opaquely.
+    /// the <c language="csharp">/issue</c> command says so rather than failing opaquely.
     /// </summary>
     public required Output<string> GitHubToken { get; init; }
 
@@ -75,7 +75,7 @@ public sealed class PrompterDeploymentArgs
 
     /// <summary>
     /// Gets the repositories whose newly-opened issues may be answered, as a comma-separated
-    /// <c>owner/name</c> list. Empty answers nowhere — answering someone's tracker is opt-in.
+    /// <c language="csharp">owner/name</c> list. Empty answers nowhere — answering someone's tracker is opt-in.
     /// </summary>
     public string? AnsweringRepositories { get; init; }
 

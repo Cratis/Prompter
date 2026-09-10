@@ -79,11 +79,11 @@ public static class MarkdownChunker
 
     /// <summary>
     /// Removes the MDX noise that survives in the markdown mirrors - module imports, JSX expression comments
-    /// (<c>{/* ... */}</c>) and block-level component tags (<c>&lt;CardGrid&gt;</c>, <c>&lt;TopicHero …&gt;</c>,
-    /// self-closing <c>&lt;SimpleCard … /&gt;</c>, including multi-line forms) - while keeping the prose
+    /// (<c language="csharp">{/* ... */}</c>) and block-level component tags (<c language="csharp">&lt;CardGrid&gt;</c>, <c language="csharp">&lt;TopicHero …&gt;</c>,
+    /// self-closing <c language="csharp">&lt;SimpleCard … /&gt;</c>, including multi-line forms) - while keeping the prose
     /// children of paired component tags (e.g. hero text). Everything inside fenced code blocks is left
     /// untouched. Component tags are recognized as elements whose name starts with an uppercase letter, the
-    /// MDX convention, so lowercase HTML and inline generics such as <c>List&lt;T&gt;</c> are left alone.
+    /// MDX convention, so lowercase HTML and inline generics such as <c language="csharp">List&lt;T&gt;</c> are left alone.
     /// </summary>
     /// <param name="content">The markdown content to clean.</param>
     /// <returns>The markdown with MDX noise removed.</returns>
@@ -174,7 +174,7 @@ public static class MarkdownChunker
     }
 
     /// <summary>
-    /// Removes every complete <c>{/* ... */}</c> comment on the line; a comment left open sets
+    /// Removes every complete <c language="csharp">{/* ... */}</c> comment on the line; a comment left open sets
     /// <paramref name="inComment"/> and truncates the line at its start.
     /// </summary>
     /// <param name="line">The line to clean.</param>

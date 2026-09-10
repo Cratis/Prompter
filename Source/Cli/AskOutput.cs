@@ -8,7 +8,7 @@ using Cratis.Prompter.Retrieval;
 namespace Cratis.Prompter.Cli;
 
 /// <summary>
-/// Renders an <see cref="Answer"/> for the terminal <c>ask</c> command.
+/// Renders an <see cref="Answer"/> for the terminal <c language="csharp">ask</c> command.
 /// </summary>
 public static class AskOutput
 {
@@ -50,7 +50,7 @@ public static class AskOutput
     /// The process exit code for an answer - non-zero on a refusal so scripts and CI probes can detect it.
     /// </summary>
     /// <param name="answer">The answer to derive the exit code from.</param>
-    /// <returns><c>1</c> when the answer is a refusal, otherwise <c>0</c>.</returns>
+    /// <returns><c language="csharp">1</c> when the answer is a refusal, otherwise <c language="csharp">0</c>.</returns>
     public static int ExitCode(Answer answer) => answer.IsRefusal ? 1 : 0;
 
     static string Score(double score) => score.ToString("F3", CultureInfo.InvariantCulture);

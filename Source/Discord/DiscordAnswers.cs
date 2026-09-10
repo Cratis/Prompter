@@ -23,7 +23,7 @@ public static class DiscordAnswers
     /// <param name="answer">The answer to format.</param>
     /// <returns>The formatted message content.</returns>
     /// <remarks>
-    /// Kept for the <c>/ask</c> slash command, which still replies with a single message. Mentions use
+    /// Kept for the <c language="csharp">/ask</c> slash command, which still replies with a single message. Mentions use
     /// <see cref="Split(Answer)"/> to spread long answers across successive messages instead of truncating.
     /// </remarks>
     public static string Format(Answer answer)

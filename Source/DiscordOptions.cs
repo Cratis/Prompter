@@ -15,7 +15,7 @@ public class DiscordOptions
 
     /// <summary>
     /// Gets a value indicating whether a bot token is configured. Validated at startup in bot mode only (the
-    /// console <c>index</c>/<c>ask</c> modes never open a gateway), so an empty token fails fast at startup
+    /// console <c language="csharp">index</c>/<c language="csharp">ask</c> modes never open a gateway), so an empty token fails fast at startup
     /// instead of surfacing later as an opaque Discord gateway authentication failure.
     /// </summary>
     public bool TokenIsPresent => Token.Length > 0;

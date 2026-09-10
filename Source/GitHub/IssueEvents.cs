@@ -20,7 +20,7 @@ public static class IssueEvents
     /// </summary>
     /// <param name="payload">The raw delivery body.</param>
     /// <returns>
-    /// The opened issue, or <see langword="null"/> when the payload is not a well-formed <c>issues.opened</c>
+    /// The opened issue, or <see langword="null"/> when the payload is not a well-formed <c language="csharp">issues.opened</c>
     /// delivery. Everything else GitHub sends — edits, comments, labels, pull requests — is ignored silently,
     /// which is what lets a repository point its whole webhook here rather than a narrow event selection.
     /// </returns>

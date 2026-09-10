@@ -12,7 +12,7 @@ using NetCord.Services.ApplicationCommands;
 namespace Cratis.Prompter.Discord;
 
 /// <summary>
-/// The <c>/ask</c> slash command.
+/// The <c language="csharp">/ask</c> slash command.
 /// </summary>
 /// <param name="answers">The answers Prompter can give.</param>
 /// <param name="rateLimiter">The per-user question throttle, checked before deferring.</param>

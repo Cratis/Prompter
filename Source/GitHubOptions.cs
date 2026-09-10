@@ -15,7 +15,7 @@ public class GitHubOptions
 {
     /// <summary>
     /// Gets or sets the token used to file issues and post comments. A fine-grained personal access token
-    /// with <c>Issues: Read and write</c> on the target repositories is enough; a GitHub App installation
+    /// with <c language="csharp">Issues: Read and write</c> on the target repositories is enough; a GitHub App installation
     /// token works identically because both are sent as a bearer token.
     /// </summary>
     public string Token { get; set; } = string.Empty;
@@ -70,7 +70,7 @@ public class GitHubOptions
     public string WebhookSecret { get; set; } = string.Empty;
 
     /// <summary>
-    /// Gets or sets the repositories whose newly-opened issues Prompter may answer, as <c>owner/name</c>.
+    /// Gets or sets the repositories whose newly-opened issues Prompter may answer, as <c language="csharp">owner/name</c>.
     /// Empty means answer nowhere: answering is opt-in per repository, because a comment on someone else's
     /// tracker is the most visible thing this bot does.
     /// </summary>
@@ -85,7 +85,7 @@ public class GitHubOptions
 
     /// <summary>
     /// Gets a value indicating whether issues can be filed. Filing needs a token; without one the
-    /// <c>/issue</c> command tells the user it is not configured instead of failing opaquely.
+    /// <c language="csharp">/issue</c> command tells the user it is not configured instead of failing opaquely.
     /// </summary>
     public bool FilingEnabled => Token.Length > 0;
 

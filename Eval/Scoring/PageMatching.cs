@@ -8,9 +8,9 @@ namespace Cratis.Prompter.Eval.Scoring;
 /// the golden set compare equal.
 /// </summary>
 /// <remarks>
-/// Ingestion stores each page as its per-page markdown mirror - a trailing <c>.md</c> suffix, and the site
-/// root as <c>/index.md</c> (see <c>DocsSite.ToMarkdownMirror</c>) - while the golden set lists the canonical
-/// URL without the <c>.md</c> suffix and usually with a trailing slash. Normalizing both sides to the same
+/// Ingestion stores each page as its per-page markdown mirror - a trailing <c language="csharp">.md</c> suffix, and the site
+/// root as <c language="csharp">/index.md</c> (see <c language="csharp">DocsSite.ToMarkdownMirror</c>) - while the golden set lists the canonical
+/// URL without the <c language="csharp">.md</c> suffix and usually with a trailing slash. Normalizing both sides to the same
 /// key lets citation-hit scoring intersect them reliably.
 /// </remarks>
 public static class PageMatching
@@ -20,7 +20,7 @@ public static class PageMatching
 
     /// <summary>
     /// Normalizes a documentation page URL to a canonical comparison key by stripping a trailing
-    /// <c>.md</c> mirror suffix, a trailing <c>/index</c> segment (the ingested form of the site root), and
+    /// <c language="csharp">.md</c> mirror suffix, a trailing <c language="csharp">/index</c> segment (the ingested form of the site root), and
     /// any trailing slash.
     /// </summary>
     /// <param name="url">The page URL to normalize.</param>

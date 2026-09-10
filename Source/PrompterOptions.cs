@@ -4,7 +4,7 @@
 namespace Cratis.Prompter;
 
 /// <summary>
-/// Options for Prompter, bound to the <c>Cratis:Prompter</c> configuration section.
+/// Options for Prompter, bound to the <c language="csharp">Cratis:Prompter</c> configuration section.
 /// </summary>
 public class PrompterOptions
 {
@@ -25,14 +25,14 @@ public class PrompterOptions
 
     /// <summary>
     /// Gets a value indicating whether the retention window is usable: it must be strictly positive, because
-    /// a value of zero (or less) makes the purge's <c>occurred_at &lt; now() - make_interval(days =&gt; N)</c>
+    /// a value of zero (or less) makes the purge's <c language="csharp">occurred_at &lt; now() - make_interval(days =&gt; N)</c>
     /// predicate match every row, deleting the whole interactions table on the first sweep. Validated at
     /// startup so the misconfiguration fails fast rather than silently erasing history.
     /// </summary>
     public bool RetentionIsValid => RetentionDays > 0;
 
     /// <summary>
-    /// Gets or sets the shared secret that authorizes <c>POST /reindex</c> calls. When empty, the endpoint
+    /// Gets or sets the shared secret that authorizes <c language="csharp">POST /reindex</c> calls. When empty, the endpoint
     /// refuses every request rather than allowing an unauthenticated re-index.
     /// </summary>
     public string ReindexSecret { get; set; } = string.Empty;

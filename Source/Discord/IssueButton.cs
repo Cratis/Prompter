@@ -5,7 +5,7 @@ namespace Cratis.Prompter.Discord;
 
 /// <summary>
 /// Encodes and decodes the custom id carried by the buttons under an issue preview. The custom id is
-/// <c>issue:&lt;action&gt;:&lt;token&gt;</c> — the <see cref="Prefix"/> routes the click to the confirmation
+/// <c language="csharp">issue:&lt;action&gt;:&lt;token&gt;</c> — the <see cref="Prefix"/> routes the click to the confirmation
 /// handler, and the token resolves back to the held draft, which is what keeps the issue body out of a custom
 /// id that Discord caps at 100 characters.
 /// </summary>

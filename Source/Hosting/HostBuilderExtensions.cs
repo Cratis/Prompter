@@ -19,7 +19,7 @@ using Npgsql;
 namespace Cratis.Prompter.Hosting;
 
 /// <summary>
-/// Registers Prompter's shared services onto a host builder, so the console modes (<c>index</c>, <c>ask</c>)
+/// Registers Prompter's shared services onto a host builder, so the console modes (<c language="csharp">index</c>, <c language="csharp">ask</c>)
 /// and the bot's web application compose from exactly the same configuration and dependency graph.
 /// </summary>
 public static class HostBuilderExtensions

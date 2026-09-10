@@ -11,7 +11,7 @@ public static class CitationHit
 {
     /// <summary>
     /// Determines whether retrieval surfaced at least one of the expected grounding pages. Both sides are
-    /// normalized with <see cref="PageMatching.Normalize"/> so the ingested <c>.md</c> mirror form and the
+    /// normalized with <see cref="PageMatching.Normalize"/> so the ingested <c language="csharp">.md</c> mirror form and the
     /// canonical golden-set form intersect.
     /// </summary>
     /// <param name="expectedPages">The candidate grounding pages from the golden set (canonical form).</param>

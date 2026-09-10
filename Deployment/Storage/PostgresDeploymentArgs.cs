@@ -32,19 +32,19 @@ public sealed class PostgresDeploymentArgs
     public required Resource NamespaceResource { get; init; }
 
     /// <summary>
-    /// Gets the password for the <c>prompter</c> database role.
+    /// Gets the password for the <c language="csharp">prompter</c> database role.
     /// </summary>
     public required Output<string> Password { get; init; }
 
     /// <summary>
     /// Gets the name of the storage class volumes are provisioned from. This references a cluster-scoped
-    /// StorageClass owned by Studio's stack (<c>upcloud-maxiops</c>) — it is never created here.
+    /// StorageClass owned by Studio's stack (<c language="csharp">upcloud-maxiops</c>) — it is never created here.
     /// </summary>
     public required string StorageClassName { get; init; }
 
     /// <summary>
-    /// Gets the image to run. The corpus needs the <c>vector</c> extension, so this is a pgvector build
-    /// rather than stock Postgres — the same image the local <c>docker-compose.yml</c> and the eval
+    /// Gets the image to run. The corpus needs the <c language="csharp">vector</c> extension, so this is a pgvector build
+    /// rather than stock Postgres — the same image the local <c language="csharp">docker-compose.yml</c> and the eval
     /// workflow use, so all three environments agree.
     /// </summary>
     public string Image { get; init; } = "pgvector/pgvector:pg17";

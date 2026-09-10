@@ -5,7 +5,7 @@ namespace Cratis.Prompter.Storage;
 
 /// <summary>
 /// Maps a <see cref="FeedbackVerdict"/> to and from its canonical text form. The same short tokens are
-/// stored in the <c>interactions.feedback</c> column and carried in a feedback button's custom id, so both
+/// stored in the <c language="csharp">interactions.feedback</c> column and carried in a feedback button's custom id, so both
 /// the storage layer and the Discord layer agree on the vocabulary from this single place.
 /// </summary>
 public static class FeedbackVerdicts
@@ -17,7 +17,7 @@ public static class FeedbackVerdicts
     /// Gets the canonical text form of a verdict.
     /// </summary>
     /// <param name="verdict">The verdict to render.</param>
-    /// <returns>The text token, <c>"up"</c> or <c>"down"</c>.</returns>
+    /// <returns>The text token, <c language="csharp">"up"</c> or <c language="csharp">"down"</c>.</returns>
     public static string ToText(this FeedbackVerdict verdict) => verdict == FeedbackVerdict.Up ? UpText : DownText;
 
     /// <summary>

@@ -9,7 +9,7 @@ namespace Cratis.Prompter.Ingestion;
 public interface IDocsSite
 {
     /// <summary>
-    /// Gets all documentation pages from the site by walking its <c>llms.txt</c> index and fetching
+    /// Gets all documentation pages from the site by walking its <c language="csharp">llms.txt</c> index and fetching
     /// the markdown mirror of every page.
     /// </summary>
     /// <param name="cancellationToken">Token for cancelling the operation.</param>

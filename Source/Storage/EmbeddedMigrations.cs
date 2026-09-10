@@ -7,8 +7,8 @@ namespace Cratis.Prompter.Storage;
 
 /// <summary>
 /// Discovers the SQL migrations embedded in an assembly. Migration files live under
-/// <c>Storage/Migrations</c> and are embedded with manifest names such as
-/// <c>Cratis.Prompter.Storage.Migrations.v1_0_0.sql</c>; the version is parsed from the file portion.
+/// <c language="csharp">Storage/Migrations</c> and are embedded with manifest names such as
+/// <c language="csharp">Cratis.Prompter.Storage.Migrations.v1_0_0.sql</c>; the version is parsed from the file portion.
 /// </summary>
 public static class EmbeddedMigrations
 {

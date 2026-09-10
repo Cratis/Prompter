@@ -31,7 +31,7 @@ public static class PrompterEndpoints
     const string GitHubLogCategory = "Cratis.Prompter.Operations.GitHub";
 
     /// <summary>
-    /// Maps <c>GET /healthz</c> and <c>POST /reindex</c> onto the endpoint routing of the given application.
+    /// Maps <c language="csharp">GET /healthz</c> and <c language="csharp">POST /reindex</c> onto the endpoint routing of the given application.
     /// </summary>
     /// <param name="endpoints">The endpoint route builder to map onto.</param>
     public static void MapPrompterEndpoints(this IEndpointRouteBuilder endpoints)
