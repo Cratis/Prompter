@@ -7,12 +7,12 @@
     <!-- Cratis -->
     <PackageVersion Include="Cratis.Fundamentals" Version="7.19.2" />
     <!-- Discord -->
-    <PackageVersion Include="NetCord" Version="1.0.0-beta.19" />
-    <PackageVersion Include="NetCord.Hosting" Version="1.0.0-beta.19" />
-    <PackageVersion Include="NetCord.Hosting.Services" Version="1.0.0-beta.19" />
-    <PackageVersion Include="NetCord.Services" Version="1.0.0-beta.19" />
+    <PackageVersion Include="NetCord" Version="1.0.0-beta.20" />
+    <PackageVersion Include="NetCord.Hosting" Version="1.0.0-beta.20" />
+    <PackageVersion Include="NetCord.Hosting.Services" Version="1.0.0-beta.20" />
+    <PackageVersion Include="NetCord.Services" Version="1.0.0-beta.20" />
     <!-- AI -->
-    <PackageVersion Include="Anthropic" Version="12.46.0" />
+    <PackageVersion Include="Anthropic" Version="12.47.0" />
     <PackageVersion Include="Microsoft.Extensions.AI" Version="10.10.0" />
     <!-- Evaluation (dev-only Eval harness) -->
     <PackageVersion Include="Microsoft.Extensions.AI.Evaluation" Version="10.10.0" />
@@ -26,7 +26,7 @@
     <!-- Deployment / Pulumi (versions kept in step with Studio's Deployment stack) -->
     <PackageVersion Include="Pulumi" Version="3.113.2" />
     <PackageVersion Include="Pulumi.Kubernetes" Version="4.34.1" />
-    <PackageVersion Include="UpCloud.Pulumi.UpCloud" Version="0.19.0" />
+    <PackageVersion Include="UpCloud.Pulumi.UpCloud" Version="0.19.1" />
     <!-- Analysis -->
     <PackageVersion Include="Microsoft.CodeAnalysis.CSharp.CodeStyle" Version="5.9.0" />
     <PackageVersion Include="Microsoft.CodeAnalysis.NetAnalyzers" Version="10.0.401" />
