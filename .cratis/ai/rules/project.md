@@ -10,7 +10,7 @@ structural template for this repository.
 
 Read every concern below before working in this repository. Together they are the project-owned instructions and override conflicting shared guidance.
 
-- [Conventions](project/conventions.md)
-- [Quality gates (all must pass before any task is "done")](project/quality-gates-all-must-pass-before-any-task-is-done.md)
-- [Commands](project/commands.md)
-- [AI-assisted development](project/ai-assisted-development.md)
+- [Conventions](.cratis/ai/rules/project/conventions.md)
+- [Quality gates (all must pass before any task is "done")](.cratis/ai/rules/project/quality-gates-all-must-pass-before-any-task-is-done.md)
+- [Commands](.cratis/ai/rules/project/commands.md)
+- [AI-assisted development](.cratis/ai/rules/project/ai-assisted-development.md)
