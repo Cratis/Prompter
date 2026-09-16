@@ -56,8 +56,8 @@ retrieval quality. The command exits non-zero when Prompter refuses, so it works
 
 ## Run the Discord bot
 
-Create a bot application on a private test server first - the setup steps live in the repository's
-[Discord integration runbook](https://github.com/Cratis/Prompter/blob/main/Planning/DISCORD_INTEGRATION.md).
+Create a bot application on a private test server first - follow
+[Set up the Discord app](discord-setup.md).
 Then:
 
 ```bash

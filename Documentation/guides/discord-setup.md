@@ -5,9 +5,8 @@ description: Register Prompter's Discord application, enable the Message Content
 
 This runbook registers Prompter's Discord application, invites the bot into a server, and points it at the
 right channels. Prompter **dials out** to Discord over a gateway connection, so no inbound ports or public IP
-are needed - only a bot token and the channel IDs. The behavior these steps enable is specified in the
-[Discord integration contract](https://github.com/Cratis/Prompter/blob/main/Planning/DISCORD_INTEGRATION.md),
-which is the authoritative runbook; this page is its published summary.
+are needed - only a bot token and the channel IDs. For the supported ways to ask questions and read the
+answers, see [Use Prompter on Discord](using-prompter.md).
 
 ## Before you begin
 
@@ -72,5 +71,6 @@ to match. NetCord registers the `/ask` slash command on startup; global registra
 propagate the first time, while guild-scoped registration is instant - prefer guild-scoped while iterating on a
 test server.
 
-For the full behavior contract - every surface, the answer format, rate limiting, and refusals - see the
-[Discord integration contract](https://github.com/Cratis/Prompter/blob/main/Planning/DISCORD_INTEGRATION.md).
+For the supported surfaces, answer format, rate limiting, and refusals, see
+[Use Prompter on Discord](using-prompter.md). [Grounded answers](../concepts/grounded-answers.md) explains
+how citations and refusals keep answers tied to the documentation.
