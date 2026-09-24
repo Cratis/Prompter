@@ -20,6 +20,7 @@ on:
 
 # Creating the GitHub release needs a write-capable token.
 permissions:
+  issues: write
   contents: write
 
 jobs:
