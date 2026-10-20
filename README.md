@@ -2,6 +2,8 @@
 
 # 🎭 Prompter
 
+Cratis Prompter is a Discord docs assistant that answers Cratis community questions with citations.
+
 **The Cratis community's docs assistant — living on Discord, grounded in the docs, allergic to making things up.**
 
 [![Discord](https://img.shields.io/discord/1182595891576717413?label=Discord&logo=discord&logoColor=white)](https://discord.gg/kt4AMpV8WV)
@@ -15,7 +17,7 @@
 
 In theater, the **prompter** sits just offstage with the script and quietly feeds the line to anyone who blanks
 mid-scene. That's the whole idea. The script is the published documentation at
-[cratis.io](https://cratis.io); the stage is the Cratis Discord; and when someone forgets their line —
+[cratis.io](https://www.cratis.io); the stage is the Cratis Discord; and when someone forgets their line —
 *"wait, how do I append an event again?"* — Prompter whispers the answer, **with citations**, or admits
 honestly when the docs don't cover it.
 
@@ -199,6 +201,6 @@ Everything Cratis publishes today is MIT licensed and free to use.
 
 <div align="center">
 
-*Part of the [Cratis](https://cratis.io) platform · Licensed under the [MIT license](LICENSE)*
+*Part of the [Cratis](https://www.cratis.io) platform · Licensed under the [MIT license](LICENSE)*
 
 </div>
