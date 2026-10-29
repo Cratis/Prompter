@@ -47,7 +47,7 @@ public sealed class PostgresDeploymentArgs
     /// rather than stock Postgres — the same image the local <c language="csharp">docker-compose.yml</c> and the eval
     /// workflow use, so all three environments agree.
     /// </summary>
-    public string Image { get; init; } = "pgvector/pgvector:pg17";
+    public string Image { get; init; } = "pgvector/pgvector:0.8.7-pg17";
 
     /// <summary>
     /// Gets the size of the data volume in gigabytes. The corpus is ~20k chunks with 1024-dimension
