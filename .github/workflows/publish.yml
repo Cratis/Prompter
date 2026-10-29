@@ -108,27 +108,156 @@ jobs:
         id: check
         env:
           PULUMI_CONFIG_PASSPHRASE: ${{ secrets.PULUMI_CONFIG_PASSPHRASE }}
-          UPCLOUD_TOKEN: ${{ secrets.UPCLOUD_TOKEN }}
+          STATE_BACKEND_ACCESS_KEY_ID: ${{ secrets.STATE_BACKEND_ACCESS_KEY_ID }}
+          STATE_BACKEND_SECRET_ACCESS_KEY: ${{ secrets.STATE_BACKEND_SECRET_ACCESS_KEY }}
+          KUBECONFIG_CONTENT: ${{ secrets.KUBECONFIG }}
         run: |
           set -euo pipefail
-          if [ -n "${PULUMI_CONFIG_PASSPHRASE}" ] && [ -n "${UPCLOUD_TOKEN}" ] && [ -d Deployment/state ]; then
+          if [ -n "${PULUMI_CONFIG_PASSPHRASE}" ] && [ -n "${STATE_BACKEND_ACCESS_KEY_ID}" ] \
+            && [ -n "${STATE_BACKEND_SECRET_ACCESS_KEY}" ] && [ -n "${KUBECONFIG_CONTENT}" ] \
+            && grep -q '^encryptionsalt:' Deployment/Pulumi.production.yaml; then
             echo "ready=true" >> "$GITHUB_OUTPUT"
           else
             echo "ready=false" >> "$GITHUB_OUTPUT"
-            echo "::notice title=Deploy skipped::The image is published. Deployment needs PULUMI_CONFIG_PASSPHRASE, UPCLOUD_TOKEN and an initialized Deployment/state — see Deployment/README.md."
+            echo "::notice title=Deploy skipped::The image is published. Deployment needs PULUMI_CONFIG_PASSPHRASE, STATE_BACKEND_ACCESS_KEY_ID, STATE_BACKEND_SECRET_ACCESS_KEY, KUBECONFIG and an initialized stack (encryptionsalt in Deployment/Pulumi.production.yaml) — see Deployment/README.md."
           fi
 
-  # Roll the version that was just pushed onto the cluster (D-11 / D-15). Runs only after the image
-  # exists, so a failed publish can never deploy a tag that is not there.
-  deploy-production:
-    permissions:
-      contents: write
+  # Deploys the just-published image by running `pulumi up` directly against this repo's own Deployment/
+  # project: Prompter's Deployment, Postgres and Ingress in the `prompter` namespace on the shared cluster,
+  # reached through the namespace-scoped KUBECONFIG secret. Mirrors Cratis/Direct's deploy job step-for-step.
+  # See Deployment/README.md. Runs only after the image exists, so a failed publish can never deploy a tag
+  # that is not there.
+  deploy:
+    name: Deploy
+    environment: production
     if: needs.deployment-configured.outputs.ready == 'true'
     needs: [release, publish-docker, deployment-configured]
-    uses: ./.github/workflows/deploy-production.yml
-    with:
-      version: ${{ needs.release.outputs.version }}
-    secrets: inherit
+    runs-on: ${{ vars.RUNNER_FORCE || 'cratis-arc' }}
+    timeout-minutes: 60
+    concurrency:
+      group: deploy-prompter-production
+      cancel-in-progress: false
+    permissions:
+      contents: read
+
+    steps:
+      # The version comes from the release job, but it still reaches shell only through the environment and
+      # is validated before any use.
+      - name: Validate the version
+        env:
+          VERSION: ${{ needs.release.outputs.version }}
+        run: |
+          set -euo pipefail
+          semver='^[0-9]+\.[0-9]+\.[0-9]+(-[0-9A-Za-z][0-9A-Za-z.-]*)?$'
+          if ! [[ "${VERSION}" =~ ${semver} ]]; then
+            echo "::error::The released version is not a SemVer."
+            exit 1
+          fi
+
+      - name: Checkout code
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          ref: main
+          fetch-depth: 0
+
+      # Keep NuGet packages on the runner's scratch volume beside the checkout, not on the node's small
+      # ephemeral storage, where the kubelet evicts the runner under disk pressure.
+      - name: Keep NuGet packages on the scratch volume
+        shell: bash
+        run: echo "NUGET_PACKAGES=$(dirname "$GITHUB_WORKSPACE")/.nuget-packages" >> "$GITHUB_ENV"
+
+      - name: Setup kubectl
+        uses: azure/setup-kubectl@bda439f5f36b99b262ebdcd3613869bddb064c8e # v5.2.0
+
+      # Never roll production back. The deployed version is the image tag of the live Deployment, and every
+      # release tag points at the commit that was released, so "older" is an ancestry question. Unknown is
+      # not pass: anything other than a missing Deployment (nothing deployed yet, which a deploy must be able
+      # to repair) fails the job.
+      - name: Refuse to deploy a release older than the one in production
+        env:
+          KUBECONFIG_CONTENT: ${{ secrets.KUBECONFIG }}
+          VERSION: ${{ needs.release.outputs.version }}
+        run: |
+          set -euo pipefail
+          export KUBECONFIG="$RUNNER_TEMP/kubeconfig-guard"
+          printf '%s' "$KUBECONFIG_CONTENT" > "$KUBECONFIG"
+          chmod 600 "$KUBECONFIG"
+          if ! image="$(kubectl -n prompter get deployment prompter -o jsonpath='{.spec.template.spec.containers[0].image}' 2>"$RUNNER_TEMP/guard.err")"; then
+            if grep -q NotFound "$RUNNER_TEMP/guard.err"; then
+              echo "No prompter Deployment is deployed yet; nothing to roll back."
+              exit 0
+            fi
+            echo "::error title=Deploy guard::Could not read the deployed image: $(cat "$RUNNER_TEMP/guard.err")"
+            exit 1
+          fi
+          deployed="${image##*:}"
+          echo "Deployed: $deployed, deploying: $VERSION"
+          if [ "$deployed" = "$VERSION" ]; then
+            exit 0
+          fi
+          git fetch --tags --quiet
+          if ! git rev-parse -q --verify "refs/tags/v${deployed}^{commit}" >/dev/null; then
+            echo "::error title=Deploy guard::The deployed image tag '${deployed}' has no matching release tag v${deployed}, so it cannot be compared with v${VERSION}."
+            exit 1
+          fi
+          if ! git merge-base --is-ancestor "v${deployed}" "v${VERSION}"; then
+            echo "::error title=Deploy guard::Production runs ${deployed}, which is not an ancestor of ${VERSION}. Refusing to roll production back to an older commit."
+            exit 1
+          fi
+          echo "v${deployed} is an ancestor of v${VERSION}; deploying."
+
+      - name: Setup .NET (hosted fallback only - baked into the shared runner image)
+        if: runner.environment != 'self-hosted'
+        uses: actions/setup-dotnet@a98b56852c35b8e3190ac28c8c2271da59106c68 # v6.0.0
+        with:
+          dotnet-version: "10.0.x"
+
+      - name: Install Pulumi CLI (hosted fallback only - baked into the shared runner image)
+        if: runner.environment != 'self-hosted'
+        uses: pulumi/actions@8e5e406f4007fca908480587cb9893c07090f58d # v7.0.0
+
+      # `pulumi config set` preserves the config file's comments/structure (a raw YAML edit would not).
+      # State is self-managed on UpCloud Object Storage (S3-compatible); Deployment/Pulumi.yaml's backend.url
+      # points there, so every pulumi command needs the state bucket's access key as AWS_ACCESS_KEY_ID and
+      # AWS_SECRET_ACCESS_KEY. The checksum env vars work around a known aws-sdk-go-v2 regression against
+      # non-AWS S3-compatible endpoints on Pulumi < 3.261.0.
+      - name: Pin image version
+        working-directory: Deployment
+        env:
+          PULUMI_CONFIG_PASSPHRASE: ${{ secrets.PULUMI_CONFIG_PASSPHRASE }}
+          AWS_ACCESS_KEY_ID: ${{ secrets.STATE_BACKEND_ACCESS_KEY_ID }}
+          AWS_SECRET_ACCESS_KEY: ${{ secrets.STATE_BACKEND_SECRET_ACCESS_KEY }}
+          AWS_REQUEST_CHECKSUM_CALCULATION: when_required
+          AWS_RESPONSE_CHECKSUM_VALIDATION: when_required
+          VERSION: ${{ needs.release.outputs.version }}
+        run: |
+          set -euo pipefail
+          # The full Docker Hub reference: Prompter's image is public, so there is no registry to resolve against.
+          pulumi config set --stack production "prompter-deployment:prompterImage" "docker.io/cratis/prompter:${VERSION}"
+
+      # `refresh: true` reads the cluster before planning. Without it Pulumi plans against state alone, so a
+      # resource that no longer exists in the cluster is planned as already correct and `up` reports success
+      # while production stays down.
+      - name: Deploy Prompter stack
+        uses: pulumi/actions@8e5e406f4007fca908480587cb9893c07090f58d # v7.0.0
+        with:
+          command: up
+          refresh: true
+          stack-name: production
+          work-dir: Deployment
+        env:
+          PULUMI_CONFIG_PASSPHRASE: ${{ secrets.PULUMI_CONFIG_PASSPHRASE }}
+          AWS_ACCESS_KEY_ID: ${{ secrets.STATE_BACKEND_ACCESS_KEY_ID }}
+          AWS_SECRET_ACCESS_KEY: ${{ secrets.STATE_BACKEND_SECRET_ACCESS_KEY }}
+          AWS_REQUEST_CHECKSUM_CALCULATION: when_required
+          AWS_RESPONSE_CHECKSUM_VALIDATION: when_required
+          PROMPTER_KUBECONFIG: ${{ secrets.KUBECONFIG }}
+          PROMPTER_DISCORD_TOKEN: ${{ secrets.DISCORD_TOKEN }}
+          PROMPTER_ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
+          PROMPTER_VOYAGE_API_KEY: ${{ secrets.VOYAGE_API_KEY }}
+          PROMPTER_REINDEX_SECRET: ${{ secrets.REINDEX_SECRET }}
+          PROMPTER_GITHUB_TOKEN: ${{ secrets.PROMPTER_GITHUB_TOKEN }}
+          PROMPTER_GITHUB_WEBHOOK_SECRET: ${{ secrets.PROMPTER_GITHUB_WEBHOOK_SECRET }}
 
   verify-published:
     permissions: {}

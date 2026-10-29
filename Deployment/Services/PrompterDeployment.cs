@@ -67,7 +67,7 @@ public sealed class PrompterDeployment
                     ["Cratis__Prompter__GitHub__WebhookSecret"] = args.GitHubWebhookSecret,
                 },
             },
-            new CustomResourceOptions { Provider = args.Provider, DependsOn = [args.NamespaceResource] });
+            new CustomResourceOptions { Provider = args.Provider });
 
         var env = new List<EnvVarArgs>
         {
@@ -162,7 +162,7 @@ public sealed class PrompterDeployment
             new CustomResourceOptions
             {
                 Provider = args.Provider,
-                DependsOn = args.DependsOn.Concat([secret, args.NamespaceResource]),
+                DependsOn = args.DependsOn.Concat([secret]),
             });
 
         Service = new Service(

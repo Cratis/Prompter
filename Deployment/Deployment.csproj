@@ -20,7 +20,7 @@
     <ItemGroup>
         <PackageReference Include="Pulumi" />
         <PackageReference Include="Pulumi.Kubernetes" />
-        <PackageReference Include="UpCloud.Pulumi.UpCloud" />
+        <PackageReference Include="Pulumi.Random" />
     </ItemGroup>
 
 </Project>

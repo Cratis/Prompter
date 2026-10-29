@@ -27,11 +27,6 @@ public sealed class PrompterDeploymentArgs
     public required string Environment { get; init; }
 
     /// <summary>
-    /// Gets the resource the namespace is created by.
-    /// </summary>
-    public required Resource NamespaceResource { get; init; }
-
-    /// <summary>
     /// Gets the image to run, pinned to a released version by the deploy workflow.
     /// </summary>
     public required string Image { get; init; }

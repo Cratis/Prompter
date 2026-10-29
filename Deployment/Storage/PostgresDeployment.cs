@@ -2,22 +2,30 @@
 // Licensed under the MIT license. See LICENSE file in the project root for full license information.
 
 using Pulumi;
-using Pulumi.Kubernetes.Apps.V1;
 using Pulumi.Kubernetes.Core.V1;
 using Pulumi.Kubernetes.Types.Inputs.Apps.V1;
 using Pulumi.Kubernetes.Types.Inputs.Core.V1;
 using Pulumi.Kubernetes.Types.Inputs.Meta.V1;
+using K8sDeployment = Pulumi.Kubernetes.Apps.V1.Deployment;
 
 namespace Cratis.Prompter.Deployment.Storage;
 
 /// <summary>
-/// Postgres with pgvector, as a single-replica StatefulSet with a persistent volume.
+/// Postgres with pgvector, as a single-replica Deployment with a persistent volume claim.
 /// </summary>
 /// <remarks>
+/// <para>
 /// In-cluster rather than managed, per D-11: it mirrors the MongoDB precedent on this cluster, and the
 /// corpus is fully rebuildable from cratis.io, so the only data worth protecting is the (anonymous)
 /// interaction log. Backups are therefore deliberately out of scope for the first cut — see the
 /// operations table in <c language="csharp">Planning/DEPLOYMENT.md</c>.
+/// </para>
+/// <para>
+/// It is a Deployment rather than a StatefulSet because the deploy identity Cratis/Infrastructure's Core
+/// stack grants every app has no <c language="csharp">statefulsets</c> permission. A single replica on a
+/// ReadWriteOnce volume with the <c language="csharp">Recreate</c> strategy gives the same single-writer
+/// guarantee: the old pod is gone before the new one mounts the volume.
+/// </para>
 /// </remarks>
 public sealed class PostgresDeployment
 {
@@ -35,6 +43,7 @@ public sealed class PostgresDeployment
     const string UserName = "prompter";
     const string SecretName = "prompter-postgres";
     const string PasswordKey = "password";
+    const string ClaimName = "postgres-data";
 
     /// <summary>
     /// Initializes a new instance of the <see cref="PostgresDeployment"/> class.
@@ -60,10 +69,10 @@ public sealed class PostgresDeployment
                 },
                 StringData = new InputMap<string> { [PasswordKey] = args.Password },
             },
-            new CustomResourceOptions { Provider = args.Provider, DependsOn = [args.NamespaceResource] });
+            new CustomResourceOptions { Provider = args.Provider });
 
-        // Headless: a single-replica StatefulSet needs a governing Service, and clients resolve the pod
-        // through the same name. There is no load balancing to do with one replica.
+        // A plain ClusterIP Service: clients resolve the pod through the `postgres` name, and there is no
+        // load balancing to do with one replica.
         var service = new Service(
             $"{Name}-service-{args.Environment}",
             new ServiceArgs
@@ -76,12 +85,11 @@ public sealed class PostgresDeployment
                 },
                 Spec = new ServiceSpecArgs
                 {
-                    ClusterIP = "None",
                     Selector = labels,
                     Ports = [new ServicePortArgs { Port = Port, TargetPort = Port, Name = "postgres" }],
                 },
             },
-            new CustomResourceOptions { Provider = args.Provider, DependsOn = [args.NamespaceResource] });
+            new CustomResourceOptions { Provider = args.Provider, DependsOn = [] });
 
         var container = new ContainerArgs
         {
@@ -126,9 +134,34 @@ public sealed class PostgresDeployment
             },
         };
 
-        Resource = new StatefulSet(
+        // Created ahead of the Deployment. A volume that binds only when its first consumer is scheduled
+        // would otherwise leave Pulumi waiting on a claim that nothing is using yet.
+        var claim = new PersistentVolumeClaim(
+            $"{ClaimName}-{args.Environment}",
+            new PersistentVolumeClaimArgs
+            {
+                Metadata = new ObjectMetaArgs
+                {
+                    Name = ClaimName,
+                    Namespace = args.Namespace,
+                    Labels = labels,
+                    Annotations = { ["pulumi.com/skipAwait"] = "true" },
+                },
+                Spec = new PersistentVolumeClaimSpecArgs
+                {
+                    AccessModes = ["ReadWriteOnce"],
+                    StorageClassName = args.StorageClassName,
+                    Resources = new VolumeResourceRequirementsArgs
+                    {
+                        Requests = { ["storage"] = $"{args.StorageSizeGb}Gi" },
+                    },
+                },
+            },
+            new CustomResourceOptions { Provider = args.Provider });
+
+        Resource = new K8sDeployment(
             $"{Name}-{args.Environment}",
-            new StatefulSetArgs
+            new DeploymentArgs
             {
                 Metadata = new ObjectMetaArgs
                 {
@@ -136,44 +169,39 @@ public sealed class PostgresDeployment
                     Namespace = args.Namespace,
                     Labels = labels,
                 },
-                Spec = new StatefulSetSpecArgs
+                Spec = new DeploymentSpecArgs
                 {
-                    ServiceName = Name,
                     Replicas = 1,
+                    Strategy = new DeploymentStrategyArgs { Type = "Recreate" },
                     Selector = new LabelSelectorArgs { MatchLabels = labels },
                     Template = new PodTemplateSpecArgs
                     {
                         Metadata = new ObjectMetaArgs { Labels = labels },
-                        Spec = new PodSpecArgs { Containers = [container] },
-                    },
-                    VolumeClaimTemplates =
-                    [
-                        new PersistentVolumeClaimArgs
+                        Spec = new PodSpecArgs
                         {
-                            Metadata = new ObjectMetaArgs { Name = "data", Namespace = args.Namespace },
-                            Spec = new PersistentVolumeClaimSpecArgs
-                            {
-                                AccessModes = ["ReadWriteOnce"],
-                                StorageClassName = args.StorageClassName,
-                                Resources = new VolumeResourceRequirementsArgs
+                            Containers = [container],
+                            Volumes =
+                            [
+                                new VolumeArgs
                                 {
-                                    Requests = { ["storage"] = $"{args.StorageSizeGb}Gi" },
+                                    Name = "data",
+                                    PersistentVolumeClaim = new PersistentVolumeClaimVolumeSourceArgs { ClaimName = ClaimName },
                                 },
-                            },
+                            ],
                         },
-                    ],
+                    },
                 },
             },
-            new CustomResourceOptions { Provider = args.Provider, DependsOn = [secret, service] });
+            new CustomResourceOptions { Provider = args.Provider, DependsOn = [secret, service, claim] });
 
         ConnectionString = args.Password.Apply(password =>
             $"Host={Name};Port={Port};Database={DatabaseName};Username={UserName};Password={password}");
     }
 
     /// <summary>
-    /// Gets the StatefulSet, so dependents can order themselves after it.
+    /// Gets the Deployment, so dependents can order themselves after it.
     /// </summary>
-    public StatefulSet Resource { get; }
+    public K8sDeployment Resource { get; }
 
     /// <summary>
     /// Gets the Npgsql connection string the bot connects with.

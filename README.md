@@ -168,7 +168,7 @@ API keys are never committed — use environment variables or a git-ignored `Sou
 
 ## 🗺️ Start here (for contributors)
 
-- [`Deployment/README.md`](Deployment/README.md) — the Pulumi stack that runs Prompter on the Cratis UpCloud cluster.
+- [`Deployment/README.md`](Deployment/README.md) — the Pulumi stack that runs Prompter on the shared Cratis UpCloud cluster.
 - [`Documentation/concepts/architecture.md`](Documentation/concepts/architecture.md) — how ingestion, retrieval, and answering fit together.
 
 ## ✅ Quality gates

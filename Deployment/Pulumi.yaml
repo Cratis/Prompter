@@ -1,10 +1,13 @@
 name: prompter-deployment
-description: Prompter's workload on the existing UpCloud Kubernetes cluster
+description: Prompter's workload in its own namespace on the shared UpCloud Kubernetes cluster
 runtime:
   name: dotnet
-# Self-managed state, exactly as Studio does it — the state for this project lives in-repo under ./state
-# (a local file backend) and is committed to Git, so no Pulumi Cloud account is involved. Secrets are
-# encrypted with the passphrase provider; export PULUMI_CONFIG_PASSPHRASE before any pulumi command.
-# See README.md in this folder.
+# Self-managed state in UpCloud Object Storage (S3-compatible): the cratis-pulumi-state-production bucket
+# that Cratis/Infrastructure's Core stack provisions and the Studio and Direct stacks also use. Secrets are
+# encrypted with the passphrase secrets provider; set PULUMI_CONFIG_PASSPHRASE before running any pulumi
+# command. Requires AWS_ACCESS_KEY_ID and AWS_SECRET_ACCESS_KEY set to Core's stateBackendAccessKeyId and
+# stateBackendSecretAccessKey outputs, and (on Pulumi < 3.261.0, a known aws-sdk-go-v2 S3-compatible-endpoint
+# regression) AWS_REQUEST_CHECKSUM_CALCULATION=when_required and AWS_RESPONSE_CHECKSUM_VALIDATION=when_required.
+# The deploy workflow sets all of these from GitHub secrets; see README.md in this folder.
 backend:
-  url: file://./state
+  url: s3://cratis-pulumi-state-production?endpoint=3401k.upcloudobjects.com&region=europe-1&s3ForcePathStyle=true

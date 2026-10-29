@@ -1,70 +1,71 @@
 // Copyright (c) Cratis. All rights reserved.
 // Licensed under the MIT license. See LICENSE file in the project root for full license information.
 
-using Cratis.Prompter.Deployment.Cluster;
 using Cratis.Prompter.Deployment.Networking;
 using Cratis.Prompter.Deployment.Services;
 using Cratis.Prompter.Deployment.Storage;
 using Pulumi;
-using Pulumi.Kubernetes.Core.V1;
-using Pulumi.Kubernetes.Types.Inputs.Core.V1;
-using Pulumi.Kubernetes.Types.Inputs.Meta.V1;
+using Pulumi.Random;
+using K8sProviderArgs = Pulumi.Kubernetes.ProviderArgs;
+using KubernetesProvider = Pulumi.Kubernetes.Provider;
 
-// Prompter's slice of the UpCloud UKS cluster Studio's stack owns (decisions D-11 and D-15). Everything
-// created here is namespaced: the cluster, its node group, the NGINX ingress controller, cert-manager and
-// the `upcloud-maxiops` StorageClass all belong to Studio's stack and are referenced, never declared.
+// Prompter's slice of the shared UpCloud UKS cluster. The cluster, the `prompter` namespace, the baseline
+// network policy and the namespace-scoped deploy identity this stack runs as all belong to
+// Cratis/Infrastructure's Core stack (AppAccess). This stack holds only resources inside that namespace:
+// it never creates the namespace, and the ingress controller, cert-manager and the `upcloud-maxiops`
+// StorageClass are referenced, never declared.
 return await Deployment.RunAsync(() =>
 {
     var config = new Config("prompter-deployment");
 
     var environment = config.Require("environment");
-    var clusterId = config.Require("clusterId");
     var image = config.Require("prompterImage");
     var host = config.Require("ingressHost");
     var storageClassName = config.Get("storageClassName") ?? "upcloud-maxiops";
     var storageSizeGb = config.GetInt32("postgresStorageSizeGb") ?? 10;
 
-    var postgresPassword = config.RequireSecret("postgresPassword");
-    var discordToken = config.RequireSecret("discordToken");
-    var anthropicApiKey = config.RequireSecret("anthropicApiKey");
-    var voyageApiKey = config.RequireSecret("voyageApiKey");
-    var reindexSecret = config.RequireSecret("reindexSecret");
+    // Secrets arrive as environment variables from GitHub secrets, never from stack config, so nobody has to
+    // run `pulumi config set` locally. GitHub secret names cannot start with GITHUB_, hence the PROMPTER_ prefix.
+    var discordToken = Output.CreateSecret(RequireEnv("PROMPTER_DISCORD_TOKEN"));
+    var anthropicApiKey = Output.CreateSecret(RequireEnv("PROMPTER_ANTHROPIC_API_KEY"));
+    var voyageApiKey = Output.CreateSecret(RequireEnv("PROMPTER_VOYAGE_API_KEY"));
+    var reindexSecret = Output.CreateSecret(RequireEnv("PROMPTER_REINDEX_SECRET"));
 
     // The GitHub credentials are optional: an empty token leaves issue filing off and an empty webhook
     // secret makes the webhook endpoint refuse everything, so a deployment that sets neither behaves
     // exactly as it did before the tracker bridge existed (decision D-16).
-    var gitHubToken = config.GetSecret("gitHubToken") ?? Output.CreateSecret(string.Empty);
-    var gitHubWebhookSecret = config.GetSecret("gitHubWebhookSecret") ?? Output.CreateSecret(string.Empty);
+    var gitHubToken = OptionalSecretEnv("PROMPTER_GITHUB_TOKEN");
+    var gitHubWebhookSecret = OptionalSecretEnv("PROMPTER_GITHUB_WEBHOOK_SECRET");
     var answeringRepositories = config.Get("answeringRepositories");
     var issueNotifyChannelId = config.Get("issueNotifyChannelId");
 
     var askChannelId = config.Get("askChannelId");
     var helpForumChannelId = config.Get("helpForumChannelId");
 
-    var namespaceName = $"prompter-{environment}";
+    // The namespace is owned by Core. The name is a constant, and the Core output is read as a guard that
+    // fails the deployment when Infrastructure has not onboarded Prompter yet.
+    const string namespaceName = "prompter";
+    var core = new StackReference($"organization/core-deployment/{environment}");
+    var coreNamespace = core.RequireOutput("prompterNamespace").Apply(value =>
+        $"{value}" == namespaceName
+            ? namespaceName
+            : throw new InvalidOperationException($"Core reports the Prompter namespace as '{value}', expected '{namespaceName}'."));
 
-    var cluster = new ExistingCluster(clusterId);
-    var provider = cluster.CreateProvider(environment);
+    var provider = new KubernetesProvider(
+        "k8s",
+        new K8sProviderArgs { KubeConfig = Output.CreateSecret(RequireEnv("PROMPTER_KUBECONFIG")) });
 
-    var ns = new Namespace(
-        $"namespace-{environment}",
-        new NamespaceArgs
-        {
-            Metadata = new ObjectMetaArgs
-            {
-                Name = namespaceName,
-                Labels = { ["environment"] = environment },
-            },
-        },
-        new CustomResourceOptions { Provider = provider });
+    // Generated once and then stable in state, so no person ever has to choose or hand over this password.
+    var postgresPassword = new RandomPassword(
+        $"postgres-password-{environment}",
+        new RandomPasswordArgs { Length = 32, Special = false });
 
     var postgres = new PostgresDeployment(new PostgresDeploymentArgs
     {
         Provider = provider,
         Namespace = namespaceName,
         Environment = environment,
-        NamespaceResource = ns,
-        Password = postgresPassword,
+        Password = postgresPassword.Result,
         StorageClassName = storageClassName,
         StorageSizeGb = storageSizeGb,
     });
@@ -74,7 +75,6 @@ return await Deployment.RunAsync(() =>
         Provider = provider,
         Namespace = namespaceName,
         Environment = environment,
-        NamespaceResource = ns,
         Image = image,
         ConnectionString = postgres.ConnectionString,
         DiscordToken = discordToken,
@@ -101,11 +101,28 @@ return await Deployment.RunAsync(() =>
         DependsOn = { prompter.Service },
     });
 
+    _ = new PrompterEgress(new PrompterEgressArgs
+    {
+        Provider = provider,
+        Namespace = namespaceName,
+        Environment = environment,
+    });
+
     return new Dictionary<string, object?>
     {
-        ["namespace"] = namespaceName,
+        ["namespace"] = coreNamespace,
         ["image"] = image,
         ["reindexUrl"] = $"https://{host}/reindex",
         ["gitHubWebhookUrl"] = $"https://{host}/github/webhook",
+
+        // The CNAME target for the ingress host; created by hand at the DNS provider.
+        ["ingressDnsTarget"] = core.RequireOutput("ingressLoadBalancerEndpoint"),
     };
 });
+
+static string RequireEnv(string name) =>
+    Environment.GetEnvironmentVariable(name)
+    ?? throw new InvalidOperationException($"Required environment variable '{name}' is not set. See Deployment/README.md.");
+
+static Output<string> OptionalSecretEnv(string name) =>
+    Output.CreateSecret(Environment.GetEnvironmentVariable(name) ?? string.Empty);
