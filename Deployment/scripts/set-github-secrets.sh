@@ -1,0 +1,84 @@
+#!/usr/bin/env bash
+# Copyright (c) Cratis. All rights reserved.
+# Licensed under the MIT license. See LICENSE file in the project root for full license information.
+#
+# Sets the GitHub Actions secrets the Prompter deploy workflow needs on Cratis/Prompter, taking the values
+# from Bitwarden and from files on disk. Every value goes to `gh secret set` on stdin; none is printed,
+# and none is placed on a command line.
+#
+#   Deployment/scripts/set-github-secrets.sh [--dry-run] [--rotate-reindex]
+#
+#   --dry-run          Resolve every value and list the secret names that would be set, setting nothing.
+#   --rotate-reindex   Generate a new PROMPTER_REINDEX_SECRET (openssl rand -hex 32). Without this flag the
+#                      reindex secret is left alone, because whether it is already set is not knowable here
+#                      and replacing it breaks the Documentation build's trigger until that is updated too.
+#
+# Prerequisites: gh (authenticated with access to Cratis/Prompter), bw, jq, an unlocked Bitwarden
+# (cratis-bw-unlock), and the kubeconfig from generate-prompter-kubeconfig.sh. PROMPTER_DISCORD_TOKEN is read
+# from the environment and set only when present.
+set -euo pipefail
+
+repo="Cratis/Prompter"
+dry_run=0
+rotate_reindex=0
+for argument in "$@"; do
+  case "${argument}" in
+    --dry-run) dry_run=1 ;;
+    --rotate-reindex) rotate_reindex=1 ;;
+    *) echo "Unknown option: ${argument}" >&2; exit 1 ;;
+  esac
+done
+
+script_dir="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+# shellcheck source=/dev/null
+source "${script_dir}/load-credentials.sh"
+
+for tool in gh bw jq; do
+  command -v "${tool}" > /dev/null || { echo "${tool} is required." >&2; exit 1; }
+done
+
+kubeconfig_file="${PROMPTER_KUBE_DIR:-$HOME/.prompter-kube}/config"
+if [ ! -r "${kubeconfig_file}" ]; then
+  echo "${kubeconfig_file} not found. Run generate-prompter-kubeconfig.sh first." >&2
+  exit 1
+fi
+
+bw_item() { bw list items --search "$1" | jq -r --arg n "$1" '.[] | select(.name == $n)'; }
+
+anthropic_name="Anthropic - Prompter - API Key"
+voyage_name="Voyage AI - Cratis"
+anthropic_key="$(bw_item "${anthropic_name}" | jq -r '.notes // empty' | tr -d '\r\n')"
+voyage_key="$(bw_item "${voyage_name}" | jq -r '.login.password // empty')"
+if [ -z "${anthropic_key}" ]; then echo "Bitwarden item '${anthropic_name}' has no notes." >&2; exit 1; fi
+if [ -z "${voyage_key}" ]; then echo "Bitwarden item '${voyage_name}' has no password." >&2; exit 1; fi
+
+# Sets one secret from stdin. The name is reported; the value never is.
+set_secret() {
+  local name="$1"
+  if [ "${dry_run}" = 1 ]; then
+    echo "would set ${name}"
+    cat > /dev/null
+  else
+    gh secret set "${name}" --repo "${repo}" > /dev/null
+    echo "set ${name}"
+  fi
+}
+
+printf '%s' "${AWS_ACCESS_KEY_ID}" | set_secret STATE_BACKEND_ACCESS_KEY_ID
+printf '%s' "${AWS_SECRET_ACCESS_KEY}" | set_secret STATE_BACKEND_SECRET_ACCESS_KEY
+printf '%s' "${PULUMI_CONFIG_PASSPHRASE}" | set_secret PULUMI_CONFIG_PASSPHRASE
+printf '%s' "${anthropic_key}" | set_secret PROMPTER_ANTHROPIC_API_KEY
+printf '%s' "${voyage_key}" | set_secret PROMPTER_VOYAGE_API_KEY
+set_secret PROMPTER_KUBECONFIG < "${kubeconfig_file}"
+
+if [ "${rotate_reindex}" = 1 ]; then
+  openssl rand -hex 32 | tr -d '\n' | set_secret PROMPTER_REINDEX_SECRET
+else
+  echo "skipped PROMPTER_REINDEX_SECRET (pass --rotate-reindex to generate it)"
+fi
+
+if [ -n "${PROMPTER_DISCORD_TOKEN:-}" ]; then
+  printf '%s' "${PROMPTER_DISCORD_TOKEN}" | set_secret PROMPTER_DISCORD_TOKEN
+else
+  echo "skipped PROMPTER_DISCORD_TOKEN (not set in the environment)"
+fi

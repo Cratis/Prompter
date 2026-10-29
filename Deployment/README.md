@@ -101,15 +101,19 @@ Production `preview`, `up` and `refresh` run only in CI. From a workstation you 
 Bitwarden loaded into one shell, with no file holding the values:
 
 ```bash
-export BW_SESSION="$(bw unlock --raw)"      # and `bw sync` once
+cratis-bw-unlock                            # writes ~/.config/bitwarden/session
 source Deployment/scripts/load-credentials.sh
 (cd Deployment && pulumi stack output --stack production)
 kubectl --kubeconfig "$PROMPTER_KUBECONFIG_PATH" -n prompter get pods
 prompter_credentials_clear
 ```
 
-Bitwarden item names are placeholders you can override; see the header of
-[`scripts/load-credentials.sh`](scripts/load-credentials.sh).
+The loader reads one Bitwarden secure note (override its name with `PROMPTER_BW_ENV_ITEM`) and takes only the
+five whitelisted names; see the header of [`scripts/load-credentials.sh`](scripts/load-credentials.sh).
+
+To hand the GitHub secrets over from Bitwarden, run `scripts/set-github-secrets.sh --dry-run` and then without
+`--dry-run`. Values go to `gh secret set` on stdin only. The reindex secret is generated only with
+`--rotate-reindex`, and `PROMPTER_DISCORD_TOKEN` is set only when it is in the environment.
 
 ## CI/CD
 

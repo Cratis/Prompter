@@ -10,7 +10,7 @@
 # a kubeconfig. Run it with Infrastructure's admin access, once, then hand the result to GitHub as the
 # PROMPTER_KUBECONFIG secret.
 #
-# Requires: kubectl, and INFRASTRUCTURE_KUBECONFIG pointing at the admin kubeconfig that Infrastructure's
+# Requires: kubectl, and INFRASTRUCTURE_KUBECONFIG (default ~/.studio-kube/config) as the admin kubeconfig Infrastructure's
 # scripts/setup-local-env.sh writes. Nothing secret is printed, and nothing is written inside this repository.
 #
 #   INFRASTRUCTURE_KUBECONFIG=~/.studio-kube/config Deployment/scripts/generate-prompter-kubeconfig.sh
@@ -26,6 +26,7 @@ if ! command -v kubectl > /dev/null; then
   echo "kubectl is required." >&2
   exit 1
 fi
+INFRASTRUCTURE_KUBECONFIG="${INFRASTRUCTURE_KUBECONFIG:-$HOME/.studio-kube/config}"
 if [ -z "${INFRASTRUCTURE_KUBECONFIG:-}" ] || [ ! -r "${INFRASTRUCTURE_KUBECONFIG}" ]; then
   echo "Set INFRASTRUCTURE_KUBECONFIG to the admin kubeconfig written by Infrastructure's scripts/setup-local-env.sh." >&2
   exit 1
