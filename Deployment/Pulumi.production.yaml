@@ -20,7 +20,7 @@ config:
   prompter-deployment:prompterImage: docker.io/cratis/prompter:0.0.0
   # --- Discord channels (non-secret ids; omit to disable that surface) -------
   # prompter-deployment:askChannelId: "000000000000000000"
-  # prompter-deployment:helpForumChannelId: "000000000000000000"
+  prompter-deployment:helpForumChannelId: "1251463249845817465"
   # --- Tracker bridge (D-16; optional, off until the secrets are set) --------
   # Repositories whose newly-opened issues Prompter may answer, comma-separated owner/name. Empty answers
   # nowhere: commenting on a tracker is opt-in per repository.
