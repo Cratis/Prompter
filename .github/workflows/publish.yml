@@ -94,6 +94,9 @@ jobs:
   deployment-configured:
     permissions:
       contents: read
+    # The deployment credentials are production environment secrets, so the readiness check runs in that
+    # environment too; outside it they read as empty and the deploy is skipped.
+    environment: production
     if: needs.release.outputs.publish == 'true'
     needs: [release]
     runs-on: ubuntu-latest

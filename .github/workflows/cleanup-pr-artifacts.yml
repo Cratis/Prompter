@@ -6,7 +6,11 @@ on:
 
 jobs:
   cleanup:
-    uses: Cratis/Workflows/.github/workflows/cleanup-pr-artifacts.yml@main
+    uses: Cratis/Workflows/.github/workflows/cleanup-pr-artifacts.yml@f4832abe8091ccff5883521544fa9d2caad3f39a # main 2026-10-29
     with:
       pull_request: ${{ github.event.pull_request.number }}
-    secrets: inherit
+    # Only the cleanup credentials; never `secrets: inherit`, which would hand every repository secret to
+    # the reusable workflow.
+    secrets:
+      PAT_WORKFLOWS: ${{ secrets.PAT_WORKFLOWS }}
+      PACKAGE_CLEANUP_TOKEN: ${{ secrets.PACKAGE_CLEANUP_TOKEN }}
