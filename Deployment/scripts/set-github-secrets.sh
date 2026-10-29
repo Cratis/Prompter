@@ -2,31 +2,34 @@
 # Copyright (c) Cratis. All rights reserved.
 # Licensed under the MIT license. See LICENSE file in the project root for full license information.
 #
-# Sets the GitHub Actions secrets the Prompter deploy workflow needs on Cratis/Prompter, taking the values
-# from Bitwarden and from files on disk. Every value goes to `gh secret set` on stdin; none is printed,
-# and none is placed on a command line.
+# Sets the `production` environment secrets the Prompter deploy workflows need on Cratis/Prompter, taking
+# the values from Bitwarden and from files on disk. Every value goes to `gh secret set` on stdin; none is
+# printed, and none is placed on a command line.
 #
-#   Deployment/scripts/set-github-secrets.sh [--dry-run] [--rotate-reindex]
+#   Deployment/scripts/set-github-secrets.sh [--dry-run]
 #
-#   --dry-run          Resolve every value and list the secret names that would be set, setting nothing.
-#   --rotate-reindex   Generate a new REINDEX_SECRET (openssl rand -hex 32). Without this flag the
-#                      reindex secret is left alone, because whether it is already set is not knowable here
-#                      and replacing it breaks the Documentation build's trigger until that is updated too.
+#   --dry-run   Resolve every value and list the secret names that would be set, setting nothing.
+#
+# Bitwarden items read: the note named by PROMPTER_BW_ENV_ITEM (state backend keys and passphrase, see
+# load-credentials.sh), "Anthropic - Prompter - API Key" (note), "Voyage AI - Cratis" (login password),
+# "Prompter - Reindex Secret" (note, `openssl rand -hex 32`) and "Discord - Prompter - Bot token" (note).
+# To rotate the reindex secret, replace the note's value and rerun; the Documentation build's copy must be
+# updated at the same time.
 #
 # Prerequisites: gh (authenticated with access to Cratis/Prompter), bw, jq, an unlocked Bitwarden
-# (cratis-bw-unlock), and the kubeconfig from generate-prompter-kubeconfig.sh. PROMPTER_DISCORD_TOKEN is read
-# from the environment and set only when present.
+# (cratis-bw-unlock), and the kubeconfig from generate-prompter-kubeconfig.sh.
 set -euo pipefail
 # Never trace: tracing (for example from SHELLOPTS or bash -x) would print the values.
 { set +x; } 2> /dev/null
 
 repo="Cratis/Prompter"
+# Production credentials are environment secrets: only jobs in the `production` environment, which only
+# runs from main, can read them. Repository secrets would reach every workflow, including pull requests.
+environment="production"
 dry_run=0
-rotate_reindex=0
 for argument in "$@"; do
   case "${argument}" in
     --dry-run) dry_run=1 ;;
-    --rotate-reindex) rotate_reindex=1 ;;
     *) echo "Unknown option: ${argument}" >&2; exit 1 ;;
   esac
 done
@@ -61,8 +64,8 @@ set_secret() {
     echo "would set ${name}"
     cat > /dev/null
   else
-    gh secret set "${name}" --repo "${repo}" > /dev/null
-    echo "set ${name}"
+    gh secret set "${name}" --env "${environment}" --repo "${repo}" > /dev/null
+    echo "set ${name} (environment ${environment})"
   fi
 }
 
@@ -73,14 +76,19 @@ printf '%s' "${anthropic_key}" | set_secret ANTHROPIC_API_KEY
 printf '%s' "${voyage_key}" | set_secret VOYAGE_API_KEY
 set_secret KUBECONFIG < "${kubeconfig_file}"
 
-if [ "${rotate_reindex}" = 1 ]; then
-  openssl rand -hex 32 | tr -d '\n' | set_secret REINDEX_SECRET
+reindex_name="Prompter - Reindex Secret"
+reindex_secret="$(bw_item "${reindex_name}" | jq -r '.notes // empty' | tr -d '\r\n')"
+if [ -n "${reindex_secret}" ]; then
+  printf '%s' "${reindex_secret}" | set_secret REINDEX_SECRET
 else
-  echo "skipped REINDEX_SECRET (pass --rotate-reindex to generate it)"
+  echo "skipped REINDEX_SECRET (Bitwarden note '${reindex_name}' not found)"
 fi
 
-if [ -n "${PROMPTER_DISCORD_TOKEN:-}" ]; then
-  printf '%s' "${PROMPTER_DISCORD_TOKEN}" | set_secret DISCORD_TOKEN
+discord_name="Discord - Prompter - Bot token"
+discord_token="$(bw_item "${discord_name}" | jq -r '.notes // empty' | tr -d '\r\n ')"
+if [ -n "${discord_token}" ]; then
+  printf '%s' "${discord_token}" | set_secret DISCORD_TOKEN
 else
-  echo "skipped DISCORD_TOKEN (PROMPTER_DISCORD_TOKEN is not set in the environment)"
+  echo "skipped DISCORD_TOKEN (Bitwarden note '${discord_name}' not found)"
 fi
+unset anthropic_key voyage_key reindex_secret discord_token

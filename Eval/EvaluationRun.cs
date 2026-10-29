@@ -66,7 +66,7 @@ internal sealed class EvaluationRun(IAnswers answers, GroundednessEvaluator eval
                 Groundedness: null,
                 Confidence: 0,
                 Citations: [],
-                Error: exception.Message);
+                Error: EvalError.Describe(exception));
         }
     }
 
