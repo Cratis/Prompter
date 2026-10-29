@@ -29,6 +29,8 @@ permissions:
 
 jobs:
   deploy:
+    permissions:
+      contents: write
     name: Deploy to Production
     # Runs on the Cratis self-hosted `cratis-arc` runner scale set, like the other Cratis repositories.
     # Set the repository or organization variable RUNNER_FORCE (for example to `ubuntu-latest`) to move
@@ -42,13 +44,13 @@ jobs:
 
     steps:
       - name: Checkout code
-        uses: actions/checkout@v4
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
           ref: main
           fetch-depth: 0
 
       - name: Setup .NET
-        uses: actions/setup-dotnet@v4
+        uses: actions/setup-dotnet@a98b56852c35b8e3190ac28c8c2271da59106c68 # v6.0.0
         with:
           dotnet-version: "10.0.x"
         env:
@@ -57,7 +59,7 @@ jobs:
           DOTNET_INSTALL_DIR: ${{ runner.temp }}/dotnet
 
       - name: Install Pulumi CLI
-        uses: pulumi/actions@v5
+        uses: pulumi/actions@8e5e406f4007fca908480587cb9893c07090f58d # v7.0.0
 
       # Deploy the exact released version by pinning the image tag rather than :latest.
       # `pulumi config set` preserves the config file's comments and structure (a raw YAML edit would not).
@@ -74,7 +76,7 @@ jobs:
       # Self-managed state: Pulumi reads backend.url (file://./state) from Deployment/Pulumi.yaml, so no
       # Pulumi Cloud login is required. Secrets are decrypted with the passphrase provider.
       - name: Deploy
-        uses: pulumi/actions@v5
+        uses: pulumi/actions@8e5e406f4007fca908480587cb9893c07090f58d # v7.0.0
         with:
           command: up
           stack-name: production

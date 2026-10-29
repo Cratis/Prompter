@@ -1,10 +1,10 @@
-# syntax=docker/dockerfile:1
+# syntax=docker/dockerfile:1.28.0
 
 ####################################
 # Cratis Prompter
 # Multi-stage build
 ####################################
-FROM mcr.microsoft.com/dotnet/sdk:10.0 AS build
+FROM mcr.microsoft.com/dotnet/sdk:10.0.403 AS build
 ARG CONFIGURATION=Release
 ARG VERSION=0.0.0
 
@@ -20,7 +20,7 @@ RUN dotnet publish Source/Prompter.csproj --configuration ${CONFIGURATION} -p:Ve
 # shared framework. EXPOSE 8080 is Kestrel's default container port for the /healthz and /reindex routes.
 # 10.0-noble is the tag Studio's services run on; the bookworm-slim variant this used to name does not
 # exist for .NET 10 (Debian slim images stop at 9.0), which is why the first publish failed to pull.
-FROM mcr.microsoft.com/dotnet/aspnet:10.0-noble
+FROM mcr.microsoft.com/dotnet/aspnet:10.0.14-noble
 
 WORKDIR /app
 COPY --from=build /app/publish .

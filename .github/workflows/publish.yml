@@ -31,6 +31,9 @@ permissions:
 
 jobs:
   release:
+    permissions:
+      contents: write
+      issues: write
     runs-on: ubuntu-latest
     timeout-minutes: 60
     outputs:
@@ -39,38 +42,40 @@ jobs:
       reason: ${{ steps.release.outputs.reason }}
 
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
 
       - name: Release
         id: release
-        uses: cratis/release-action@v1
+        uses: cratis/release-action@26976c4c37ac8c0454077c0f41abb31650e36405 # v1.5.1
         with:
           version: ${{ github.event.inputs.version }}
           release-notes: ${{ github.event.inputs.release-notes }}
 
   publish-docker:
+    permissions:
+      contents: read
     if: needs.release.outputs.publish == 'true'
     needs: [release]
     runs-on: ubuntu-latest
     timeout-minutes: 60
 
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
 
       - name: Set up QEMU
-        uses: docker/setup-qemu-action@v3
+        uses: docker/setup-qemu-action@99012661954931238ded8c8b007157a8430204e1 # v4.4.0
 
       - name: Set up Docker Buildx
-        uses: docker/setup-buildx-action@v3
+        uses: docker/setup-buildx-action@f87e5991a6d7451dcb8d9637bfbc97413f497069 # v4.4.1
 
       - name: Login to Docker Hub
-        uses: docker/login-action@v3
+        uses: docker/login-action@81c6f93d4bc991e510b342a00b419b3bb4efc5c6 # v4.7.0
         with:
           username: ${{ secrets.DOCKER_USERNAME }}
           password: ${{ secrets.DOCKER_PASSWORD }}
 
       - name: Build and push
-        uses: docker/build-push-action@v5
+        uses: docker/build-push-action@c3c9e263c25d99ce0380d002d59b67737d91b0dc # v7.4.0
         with:
           context: .
           file: ./Docker/Dockerfile
@@ -87,6 +92,8 @@ jobs:
   # check happens in a step and the deploy is gated on its output — releasing an image stays green
   # while the cluster side is still being set up.
   deployment-configured:
+    permissions:
+      contents: read
     if: needs.release.outputs.publish == 'true'
     needs: [release]
     runs-on: ubuntu-latest
@@ -95,7 +102,7 @@ jobs:
       ready: ${{ steps.check.outputs.ready }}
 
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
 
       - name: Check deployment prerequisites
         id: check
@@ -114,6 +121,8 @@ jobs:
   # Roll the version that was just pushed onto the cluster (D-11 / D-15). Runs only after the image
   # exists, so a failed publish can never deploy a tag that is not there.
   deploy-production:
+    permissions:
+      contents: write
     if: needs.deployment-configured.outputs.ready == 'true'
     needs: [release, publish-docker, deployment-configured]
     uses: ./.github/workflows/deploy-production.yml
@@ -122,6 +131,7 @@ jobs:
     secrets: inherit
 
   verify-published:
+    permissions: {}
     # A merge that publishes nothing is the failure mode that silently costs a release: the release job
     # succeeds, every publish job is skipped for want of should-publish, and the whole run reports green. Fail
     # instead, so a release that did not happen cannot be mistaken for one that did.
