@@ -8,7 +8,7 @@
 # `prompter-deploy-token` Secret in the `prompter` namespace. The token controller fills that Secret
 # asynchronously, so Core only declares it; this script reads the populated values afterwards and writes
 # a kubeconfig. Run it with Infrastructure's admin access, once, then hand the result to GitHub as the
-# PROMPTER_KUBECONFIG secret.
+# KUBECONFIG secret.
 #
 # Requires: kubectl, and INFRASTRUCTURE_KUBECONFIG (default ~/.studio-kube/config) as the admin kubeconfig Infrastructure's
 # scripts/setup-local-env.sh writes. Nothing secret is printed, and nothing is written inside this repository.
@@ -85,4 +85,4 @@ fi
 
 echo "Wrote ${output_file} (mode 600). The identity can deploy into ${namespace} and cannot read nodes."
 echo "Next, hand it to GitHub (not run for you):"
-echo "  gh secret set PROMPTER_KUBECONFIG --repo Cratis/Prompter < ${output_file}"
+echo "  gh secret set KUBECONFIG --repo Cratis/Prompter < ${output_file}"

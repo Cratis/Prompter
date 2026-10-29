@@ -9,7 +9,7 @@
 #   Deployment/scripts/set-github-secrets.sh [--dry-run] [--rotate-reindex]
 #
 #   --dry-run          Resolve every value and list the secret names that would be set, setting nothing.
-#   --rotate-reindex   Generate a new PROMPTER_REINDEX_SECRET (openssl rand -hex 32). Without this flag the
+#   --rotate-reindex   Generate a new REINDEX_SECRET (openssl rand -hex 32). Without this flag the
 #                      reindex secret is left alone, because whether it is already set is not knowable here
 #                      and replacing it breaks the Documentation build's trigger until that is updated too.
 #
@@ -67,18 +67,18 @@ set_secret() {
 printf '%s' "${AWS_ACCESS_KEY_ID}" | set_secret STATE_BACKEND_ACCESS_KEY_ID
 printf '%s' "${AWS_SECRET_ACCESS_KEY}" | set_secret STATE_BACKEND_SECRET_ACCESS_KEY
 printf '%s' "${PULUMI_CONFIG_PASSPHRASE}" | set_secret PULUMI_CONFIG_PASSPHRASE
-printf '%s' "${anthropic_key}" | set_secret PROMPTER_ANTHROPIC_API_KEY
-printf '%s' "${voyage_key}" | set_secret PROMPTER_VOYAGE_API_KEY
-set_secret PROMPTER_KUBECONFIG < "${kubeconfig_file}"
+printf '%s' "${anthropic_key}" | set_secret ANTHROPIC_API_KEY
+printf '%s' "${voyage_key}" | set_secret VOYAGE_API_KEY
+set_secret KUBECONFIG < "${kubeconfig_file}"
 
 if [ "${rotate_reindex}" = 1 ]; then
-  openssl rand -hex 32 | tr -d '\n' | set_secret PROMPTER_REINDEX_SECRET
+  openssl rand -hex 32 | tr -d '\n' | set_secret REINDEX_SECRET
 else
-  echo "skipped PROMPTER_REINDEX_SECRET (pass --rotate-reindex to generate it)"
+  echo "skipped REINDEX_SECRET (pass --rotate-reindex to generate it)"
 fi
 
 if [ -n "${PROMPTER_DISCORD_TOKEN:-}" ]; then
-  printf '%s' "${PROMPTER_DISCORD_TOKEN}" | set_secret PROMPTER_DISCORD_TOKEN
+  printf '%s' "${PROMPTER_DISCORD_TOKEN}" | set_secret DISCORD_TOKEN
 else
-  echo "skipped PROMPTER_DISCORD_TOKEN (not set in the environment)"
+  echo "skipped DISCORD_TOKEN (PROMPTER_DISCORD_TOKEN is not set in the environment)"
 fi

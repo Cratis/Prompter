@@ -1,124 +1,104 @@
 name: Deploy - Production
 
-# Deploys a released version of Prompter to the shared UpCloud Kubernetes cluster (decisions D-11 / D-15).
-# Called automatically by Publish once the image is pushed, and available manually.
+# Manual (re)deploy of an already published Prompter version, the same shape as Cratis/Direct's
+# Deploy - Production. The release deploy itself is the `deploy` job in publish.yml. The cluster, the
+# `prompter` namespace and the namespace-scoped deploy identity belong to Cratis/Infrastructure's Core stack.
 #
-# The cluster, the `prompter` namespace, the baseline network policy and the namespace-scoped deploy
-# identity belong to Cratis/Infrastructure's Core stack. Pulumi state lives in the shared S3 bucket, and
-# only Deployment/Pulumi.production.yaml (image pin and encryption salt) is committed back to main.
-#
-#   preview  Show the plan; changes nothing. The default for a manual run.
-#   init     Create the Pulumi stack once and commit the generated encryption salt.
-#   up       Deploy the given version.
+#   deploy              Pin the image to `version` and run `pulumi up`.
+#   release-stack-lock  Cancel an interrupted update and release its lock.
+#   init                Prompter only: create the Pulumi stack once and commit its encryption salt.
 
 on:
-  workflow_call:
-    inputs:
-      version:
-        description: "Version (image tag) to deploy, e.g. 0.1.0"
-        required: true
-        type: string
-      operation:
-        description: "preview, init or up"
-        required: false
-        default: up
-        type: string
   workflow_dispatch:
     inputs:
-      version:
-        description: "Version (image tag) to deploy, e.g. 0.1.0. Required for up; optional for preview."
-        required: false
-        type: string
       operation:
-        description: "What to do"
-        required: true
-        default: preview
+        description: "What to run"
         type: choice
         options:
-          - preview
+          - deploy
+          - release-stack-lock
           - init
-          - up
+        default: deploy
+      version:
+        description: "Existing published version to deploy, e.g. 0.2.7 (deploy only)"
+        required: false
+        type: string
+      # Recovery-only. A Pulumi resource whose Kubernetes object was removed outside this stack leaves
+      # state claiming it exists, so a normal `up` reports no work and production stays down. Refresh
+      # reconciles state with the cluster first. It is deliberately opt-in and normally paired with a
+      # single target, because refreshing the whole stack adopts every live drift before applying.
+      refresh:
+        description: "Recovery only: refresh state from the cluster before applying"
+        required: false
+        default: false
+        type: boolean
+      target:
+        description: "Recovery only: a single resource URN to apply, leaving every other resource untouched"
+        required: false
+        default: ""
+        type: string
 
 concurrency:
-  group: deploy-production
+  group: deploy-prompter-production
   cancel-in-progress: false
 
 permissions:
   contents: read
+  actions: read
 
 jobs:
-  deploy:
-    permissions:
-      contents: write
-    name: Deploy to Production
-    # Runs on the Cratis self-hosted `cratis-arc` runner scale set, like the other Cratis repositories.
-    # Set the repository or organization variable RUNNER_FORCE (for example to `ubuntu-latest`) to move
-    # the job to another runner; the cluster's control plane accepts connections from anywhere, so a
-    # hosted runner also reaches it, and the DOTNET_INSTALL_DIR workaround below is then harmless.
+  release-stack-lock:
+    name: Release a stale Prompter stack lock
+    if: inputs.operation == 'release-stack-lock'
     runs-on: ${{ vars.RUNNER_FORCE || 'cratis-arc' }}
-    timeout-minutes: 45
+    environment: production
+    timeout-minutes: 10
     env:
       PULUMI_CONFIG_PASSPHRASE: ${{ secrets.PULUMI_CONFIG_PASSPHRASE }}
       AWS_ACCESS_KEY_ID: ${{ secrets.STATE_BACKEND_ACCESS_KEY_ID }}
       AWS_SECRET_ACCESS_KEY: ${{ secrets.STATE_BACKEND_SECRET_ACCESS_KEY }}
-      # Pulumi < 3.261.0 against an S3-compatible endpoint needs these (aws-sdk-go-v2 regression).
       AWS_REQUEST_CHECKSUM_CALCULATION: when_required
       AWS_RESPONSE_CHECKSUM_VALIDATION: when_required
-      PROMPTER_KUBECONFIG: ${{ secrets.PROMPTER_KUBECONFIG }}
-      PROMPTER_DISCORD_TOKEN: ${{ secrets.PROMPTER_DISCORD_TOKEN }}
-      PROMPTER_ANTHROPIC_API_KEY: ${{ secrets.PROMPTER_ANTHROPIC_API_KEY }}
-      PROMPTER_VOYAGE_API_KEY: ${{ secrets.PROMPTER_VOYAGE_API_KEY }}
-      PROMPTER_REINDEX_SECRET: ${{ secrets.PROMPTER_REINDEX_SECRET }}
-      PROMPTER_GITHUB_TOKEN: ${{ secrets.PROMPTER_GITHUB_TOKEN }}
-      PROMPTER_GITHUB_WEBHOOK_SECRET: ${{ secrets.PROMPTER_GITHUB_WEBHOOK_SECRET }}
-      # Inputs reach shell only through the environment, never by interpolation into a script body.
-      VERSION: ${{ inputs.version }}
-      OPERATION: ${{ inputs.operation }}
-
     steps:
-      - name: Validate inputs
-        shell: bash
-        run: |
-          set -euo pipefail
-          case "${OPERATION}" in
-            preview|init|up) ;;
-            *) echo "::error::operation must be preview, init or up."; exit 1 ;;
-          esac
-          semver='^[0-9]+\.[0-9]+\.[0-9]+(-[0-9A-Za-z][0-9A-Za-z.-]*)?$'
-          if [ "${OPERATION}" = "up" ] && [ -z "${VERSION}" ]; then
-            echo "::error::version is required for operation up."
-            exit 1
-          fi
-          if [ -n "${VERSION}" ] && ! [[ "${VERSION}" =~ ${semver} ]]; then
-            echo "::error::version must be a SemVer such as 0.2.7 or 1.0.0-rc.1."
-            exit 1
-          fi
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          ref: ${{ github.sha }}
+      - name: Install Pulumi CLI
+        if: runner.environment != 'self-hosted'
+        uses: pulumi/actions@8e5e406f4007fca908480587cb9893c07090f58d # v7.0.0
+      - name: Cancel the interrupted update and release its lock
+        working-directory: Deployment
+        run: pulumi cancel --yes --non-interactive --stack production
 
-      - name: Checkout code
+  # Prompter only. Direct's stack already exists; a brand-new Prompter stack does not, and `pulumi up`
+  # does not create one. The stack's encryption salt is generated at creation and is needed to decrypt the
+  # stack's secrets (the generated Postgres password), so it must be committed once, or the next run
+  # could not read the state.
+  init:
+    name: Create the Prompter stack
+    if: inputs.operation == 'init'
+    runs-on: ${{ vars.RUNNER_FORCE || 'cratis-arc' }}
+    environment: production
+    timeout-minutes: 10
+    permissions:
+      contents: write
+    env:
+      PULUMI_CONFIG_PASSPHRASE: ${{ secrets.PULUMI_CONFIG_PASSPHRASE }}
+      AWS_ACCESS_KEY_ID: ${{ secrets.STATE_BACKEND_ACCESS_KEY_ID }}
+      AWS_SECRET_ACCESS_KEY: ${{ secrets.STATE_BACKEND_SECRET_ACCESS_KEY }}
+      AWS_REQUEST_CHECKSUM_CALCULATION: when_required
+      AWS_RESPONSE_CHECKSUM_VALIDATION: when_required
+    steps:
+      - name: Checkout main
         uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
           ref: main
           fetch-depth: 0
-
-      - name: Setup .NET
-        uses: actions/setup-dotnet@a98b56852c35b8e3190ac28c8c2271da59106c68 # v6.0.0
-        with:
-          dotnet-version: "10.0.x"
-        env:
-          # The self-hosted runner cannot write to the default /usr/share/dotnet; install into a
-          # writable, runner-scoped location (setup-dotnet adds it to PATH).
-          DOTNET_INSTALL_DIR: ${{ runner.temp }}/dotnet
-
       - name: Install Pulumi CLI
+        if: runner.environment != 'self-hosted'
         uses: pulumi/actions@8e5e406f4007fca908480587cb9893c07090f58d # v7.0.0
-
-      - name: Setup kubectl
-        uses: azure/setup-kubectl@bda439f5f36b99b262ebdcd3613869bddb064c8e # v5.2.0
-
       - name: Create the stack
-        if: env.OPERATION == 'init'
         working-directory: Deployment
-        shell: bash
         run: |
           set -euo pipefail
           if pulumi stack ls --json | jq -e '.[] | select(.name == "production")' > /dev/null; then
@@ -126,101 +106,120 @@ jobs:
             exit 1
           fi
           pulumi stack init production --secrets-provider passphrase
-
-      - name: Select the stack
-        if: env.OPERATION != 'init'
-        working-directory: Deployment
-        shell: bash
+      # Pulumi.production.yaml now holds the generated encryptionsalt. No [skip ci]: the downstream CI run
+      # is the only check that sees the merged result.
+      - name: Commit the encryption salt
         run: |
           set -euo pipefail
-          if ! pulumi stack select production; then
-            echo "::error::Stack production does not exist. Run this workflow with operation=init first."
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          git add Deployment/Pulumi.production.yaml
+          git commit -m "chore(deploy): initialise production stack"
+          for attempt in 1 2 3 4 5; do
+            if git push origin HEAD:main; then
+              exit 0
+            fi
+            git pull --rebase origin main
+            sleep "$((attempt * 2))"
+          done
+          echo "::error::Could not commit the encryption salt after 5 attempts. The stack exists; commit Deployment/Pulumi.production.yaml from this run's checkout by hand."
+          exit 1
+
+  deploy:
+    name: Deploy
+    if: inputs.operation == 'deploy'
+    runs-on: ${{ vars.RUNNER_FORCE || 'cratis-arc' }}
+    timeout-minutes: 60
+    environment: production
+
+    steps:
+      # The version is the only free-text input. It reaches shell only through the environment and is
+      # validated before any use.
+      - name: Validate the version
+        env:
+          VERSION: ${{ inputs.version }}
+        run: |
+          set -euo pipefail
+          semver='^[0-9]+\.[0-9]+\.[0-9]+(-[0-9A-Za-z][0-9A-Za-z.-]*)?$'
+          if ! [[ "${VERSION}" =~ ${semver} ]]; then
+            echo "::error::version must be a SemVer such as 0.2.7 or 1.0.0-rc.1 (required for deploy)."
             exit 1
           fi
 
-      # Deploy the exact released version by pinning the image tag rather than :latest.
-      # `pulumi config set` preserves the config file's comments and structure (a raw YAML edit would not).
-      - name: Pin the image version
-        if: env.OPERATION != 'init' && env.VERSION != ''
-        working-directory: Deployment
+      - name: Checkout main
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          ref: main
+          fetch-depth: 0
+
+      # Keep NuGet packages on the runner's scratch volume beside the checkout, not on the node's small
+      # ephemeral storage, where the kubelet evicts the runner under disk pressure.
+      - name: Keep NuGet packages on the scratch volume
         shell: bash
+        run: echo "NUGET_PACKAGES=$(dirname "$GITHUB_WORKSPACE")/.nuget-packages" >> "$GITHUB_ENV"
+
+      - name: Setup .NET (hosted fallback only)
+        if: runner.environment != 'self-hosted'
+        uses: actions/setup-dotnet@a98b56852c35b8e3190ac28c8c2271da59106c68 # v6.0.0
+        with:
+          dotnet-version: "10.0.x"
+
+      - name: Install Pulumi CLI (hosted fallback only)
+        if: runner.environment != 'self-hosted'
+        uses: pulumi/actions@8e5e406f4007fca908480587cb9893c07090f58d # v7.0.0
+
+      - name: Pin existing image version
+        working-directory: Deployment
+        env:
+          PULUMI_CONFIG_PASSPHRASE: ${{ secrets.PULUMI_CONFIG_PASSPHRASE }}
+          AWS_ACCESS_KEY_ID: ${{ secrets.STATE_BACKEND_ACCESS_KEY_ID }}
+          AWS_SECRET_ACCESS_KEY: ${{ secrets.STATE_BACKEND_SECRET_ACCESS_KEY }}
+          AWS_REQUEST_CHECKSUM_CALCULATION: when_required
+          AWS_RESPONSE_CHECKSUM_VALIDATION: when_required
+          VERSION: ${{ inputs.version }}
         run: |
           set -euo pipefail
+          # The full Docker Hub reference: Prompter's image is public, so there is no registry to resolve against.
           pulumi config set --stack production "prompter-deployment:prompterImage" "docker.io/cratis/prompter:${VERSION}"
 
-      # Read-only look at the namespace, names only. A missing namespace means Cratis/Infrastructure has not
-      # onboarded Prompter yet, and nothing here can create it.
-      - name: Inspect the namespace
-        if: env.OPERATION != 'init'
-        shell: bash
-        run: |
-          set -euo pipefail
-          umask 077
-          export KUBECONFIG="${RUNNER_TEMP}/prompter-kubeconfig"
-          printf '%s' "${PROMPTER_KUBECONFIG}" > "${KUBECONFIG}"
-          if ! kubectl get namespace prompter -o name > /dev/null; then
-            echo "::error::Namespace prompter is not reachable. Cratis/Infrastructure has not onboarded Prompter, or PROMPTER_KUBECONFIG is wrong."
-            exit 1
-          fi
-          kubectl -n prompter get deploy,svc,ingress,pvc,netpol -o name
-          rm -f "${KUBECONFIG}"
-
-      - name: Preview
-        if: env.OPERATION == 'preview'
-        uses: pulumi/actions@8e5e406f4007fca908480587cb9893c07090f58d # v7.0.0
-        with:
-          command: preview
-          stack-name: production
-          work-dir: Deployment
-          suppress-outputs: true
-
-      - name: Deploy
-        id: apply
-        if: env.OPERATION == 'up'
+      - name: Deploy Prompter stack
         uses: pulumi/actions@8e5e406f4007fca908480587cb9893c07090f58d # v7.0.0
         with:
           command: up
           stack-name: production
           work-dir: Deployment
-          # Reconcile with the cluster first, so state drift never turns into a surprise replace.
-          refresh: true
-          suppress-outputs: true
+          refresh: ${{ inputs.refresh }}
+          target: ${{ inputs.target }}
+        env:
+          PULUMI_CONFIG_PASSPHRASE: ${{ secrets.PULUMI_CONFIG_PASSPHRASE }}
+          AWS_ACCESS_KEY_ID: ${{ secrets.STATE_BACKEND_ACCESS_KEY_ID }}
+          AWS_SECRET_ACCESS_KEY: ${{ secrets.STATE_BACKEND_SECRET_ACCESS_KEY }}
+          AWS_REQUEST_CHECKSUM_CALCULATION: when_required
+          AWS_RESPONSE_CHECKSUM_VALIDATION: when_required
+          PROMPTER_KUBECONFIG: ${{ secrets.KUBECONFIG }}
+          PROMPTER_DISCORD_TOKEN: ${{ secrets.DISCORD_TOKEN }}
+          PROMPTER_ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
+          PROMPTER_VOYAGE_API_KEY: ${{ secrets.VOYAGE_API_KEY }}
+          PROMPTER_REINDEX_SECRET: ${{ secrets.REINDEX_SECRET }}
+          PROMPTER_GITHUB_TOKEN: ${{ secrets.PROMPTER_GITHUB_TOKEN }}
+          PROMPTER_GITHUB_WEBHOOK_SECRET: ${{ secrets.PROMPTER_GITHUB_WEBHOOK_SECRET }}
 
-      # Pulumi.production.yaml is the only thing that lives in git: the image pin and the encryption salt.
-      # The checkpoint itself is on the S3 state backend. The commit deliberately skips no CI: the downstream run is the only
-      # check that sees the merged result.
-      - name: Commit the stack configuration
-        if: ${{ !cancelled() && (steps.apply.outcome == 'success' || (env.OPERATION == 'init' && job.status == 'success')) }}
-        shell: bash
+      - name: Setup kubectl
+        uses: azure/setup-kubectl@bda439f5f36b99b262ebdcd3613869bddb064c8e # v5.2.0
+
+      - name: Verify production rollout
+        env:
+          KUBECONFIG_CONTENT: ${{ secrets.KUBECONFIG }}
+          VERSION: ${{ inputs.version }}
         run: |
           set -euo pipefail
-          git config user.name "github-actions[bot]"
-          git config user.email "github-actions[bot]@users.noreply.github.com"
-          saved="${RUNNER_TEMP}/Pulumi.production.yaml"
-          cp Deployment/Pulumi.production.yaml "${saved}"
-          for attempt in 1 2 3 4 5; do
-            git fetch origin main
-            git checkout -f -B stack-commit origin/main
-            if [ "${OPERATION}" = "init" ]; then
-              cp "${saved}" Deployment/Pulumi.production.yaml
-              message="chore(deploy): initialise production stack"
-            else
-              (cd Deployment && pulumi config set --stack production "prompter-deployment:prompterImage" "docker.io/cratis/prompter:${VERSION}")
-              message="chore(deploy): deploy ${VERSION}"
-            fi
-            git add Deployment/Pulumi.production.yaml
-            if git diff --cached --quiet; then
-              echo "Nothing to commit; main already has this configuration."
-              exit 0
-            fi
-            git commit -m "${message}"
-            if git push origin HEAD:main; then
-              exit 0
-            fi
-            if [ "${attempt}" -lt 5 ]; then
-              echo "Push rejected; retrying on current main (attempt ${attempt} of 5)."
-              sleep "$((attempt * 2))"
-            fi
-          done
-          echo "::error::Could not commit the stack configuration after 5 attempts. Re-run this workflow with the same operation."
-          exit 1
+          printf '%s' "$KUBECONFIG_CONTENT" > "$RUNNER_TEMP/kubeconfig"
+          chmod 600 "$RUNNER_TEMP/kubeconfig"
+          export KUBECONFIG="$RUNNER_TEMP/kubeconfig"
+          kubectl -n prompter rollout status deployment/prompter --timeout=300s
+          image="$(kubectl -n prompter get deployment prompter -o jsonpath='{.spec.template.spec.containers[0].image}')"
+          case "$image" in
+            *":${VERSION}") ;;
+            *) echo "::error::Prompter runs '$image', not version ${VERSION}."; exit 1 ;;
+          esac
+          echo "Prompter runs $image"
