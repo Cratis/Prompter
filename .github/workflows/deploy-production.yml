@@ -187,7 +187,7 @@ jobs:
           suppress-outputs: true
 
       # Pulumi.production.yaml is the only thing that lives in git: the image pin and the encryption salt.
-      # The checkpoint itself is on the S3 state backend. No [skip ci]: the downstream CI run is the only
+      # The checkpoint itself is on the S3 state backend. The commit deliberately skips no CI: the downstream run is the only
       # check that sees the merged result.
       - name: Commit the stack configuration
         if: ${{ !cancelled() && (steps.apply.outcome == 'success' || (env.OPERATION == 'init' && job.status == 'success')) }}

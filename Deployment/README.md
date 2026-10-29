@@ -1,84 +1,118 @@
 # Prompter Deployment
 
-Pulumi C# project that runs Prompter on the **UpCloud** managed Kubernetes cluster (UKS, zone `no-svg1`,
-Norway) that Studio's Pulumi stack owns.
+Pulumi C# project that runs Prompter in its own namespace on the **shared UpCloud Kubernetes cluster**
+(UKS, Norway) that Cratis/Infrastructure's Core stack owns and that Studio and Direct also deploy to.
 
-Two things make this different from a stock Pulumi project — read them before running anything:
+## Ownership
 
-1. **Self-managed state, committed to Git.** There is no Pulumi Cloud account. State lives in-repo under
-   `state/` (a `file://` backend) and secrets are encrypted with a passphrase. This mirrors Studio, which is
-   the reference implementation for this cluster.
-2. **This stack does not own the cluster.** Studio's stack creates the UKS cluster, its node group, the NGINX
-   ingress controller, cert-manager's `letsencrypt-prod` ClusterIssuer, the `upcloud-maxiops` StorageClass and
-   Promtail's log shipping. This stack looks the cluster up by id and creates **only namespaced resources**
-   inside `prompter-production`. That rule is what keeps two stacks on one cluster from fighting — see
-   decision [D-15](../Planning/DECISIONS.md).
+| Owned by Cratis/Infrastructure (Core stack) | Owned by this stack |
+|---|---|
+| The cluster, its node group, NGINX ingress, cert-manager and its `letsencrypt-prod` issuer, the `upcloud-maxiops` StorageClass | Everything *inside* the `prompter` namespace |
+| The `prompter` namespace itself (`AppAccess`) | Postgres Deployment, claim, Service and Secret |
+| The `prompter-deploy` identity: a ServiceAccount whose Role is limited to that namespace | The Prompter Deployment, Service and Secret |
+| The baseline `default-deny` NetworkPolicy | The Ingress and the `prompter-external-https` egress policy |
+| The shared Pulumi state bucket | The `production` stack in it |
+
+This stack runs as the namespace-scoped `prompter-deploy` identity, so it cannot create the namespace or touch
+anything cluster-wide. It reads `prompterNamespace` and `ingressLoadBalancerEndpoint` from the Core stack
+(`organization/core-deployment/production`) and fails fast when Core has not onboarded Prompter yet.
 
 ## What gets deployed
 
 ```text
-UpCloud UKS (owned by Studio's stack)
-└── namespace prompter-production
-    ├── Secret  prompter-postgres      ← database password
-    ├── Secret  prompter-secrets       ← Discord token, Anthropic + Voyage keys, reindex secret,
-    │                                     connection string (keys are the Cratis__Prompter__… paths)
-    ├── StatefulSet postgres (pgvector/pgvector:0.8.7-pg17) + headless Service + 10Gi volume
-    ├── Deployment prompter (1 replica, Recreate) + ClusterIP Service on 8080
-    └── Ingress   prompter-ingress     ← TLS host, publishes ONLY POST /reindex
+namespace prompter  (Core)
+├── Secret  prompter-postgres      ← generated database password
+├── PersistentVolumeClaim postgres-data (10Gi, upcloud-maxiops)
+├── Deployment postgres (pgvector/pgvector:0.8.7-pg17, 1 replica, Recreate) + ClusterIP Service
+├── Secret  prompter-secrets       ← Discord token, Anthropic + Voyage keys, reindex secret, connection string
+├── Deployment prompter (1 replica, Recreate) + ClusterIP Service on 8080
+├── Ingress prompter-ingress       ← TLS host, publishes ONLY POST /reindex and the GitHub webhook
+└── NetworkPolicy prompter-external-https ← outbound TCP 443 to public addresses only
 ```
 
 Single replica is a requirement, not sizing: the Discord gateway wants exactly one connection per bot.
+Postgres is a Deployment on a claim rather than a StatefulSet because the deploy Role Core grants every app has
+no `statefulsets` permission; one replica on a ReadWriteOnce volume with `Recreate` gives the same
+single-writer guarantee.
 
-## Stack
+## State
 
-| Project | Stack | Backend | Public host |
-|---------|-------|---------|-------------|
-| `Deployment/` (`prompter-deployment`) | `production` | `file://./state` | `prompter.cratis.studio` (config) |
+State is in the shared S3-compatible bucket `cratis-pulumi-state-production` (UpCloud Object Storage), set in
+[`Pulumi.yaml`](Pulumi.yaml). Secrets in the stack are encrypted with the passphrase provider. Only
+[`Pulumi.production.yaml`](Pulumi.production.yaml) lives in git: the image pin and the `encryptionsalt`, which must stay
+committed.
 
 ## Configuration
 
-Non-secret values live in [`Pulumi.production.yaml`](Pulumi.production.yaml) with comments. Secrets are set
-with [`scripts/set-secrets.sh`](scripts/set-secrets.sh) and stored as passphrase-encrypted `secure:` values in
-the same file, which is what makes it safe to commit.
+Non-secret values are in `Pulumi.production.yaml` with comments. Secrets are never stored there: the deploy
+workflow passes them as environment variables from GitHub secrets.
 
 | Key | Kind | Notes |
 |---|---|---|
-| `clusterId` | config | UKS cluster id to deploy into (`upctl kubernetes list`) |
-| `ingressHost` | config | Public host; needs a DNS record at the cluster load balancer |
-| `prompterImage` | config | Pinned by the deploy workflow to `cratis/prompter:<version>` |
-| `storageClassName` | config | Defaults to `upcloud-maxiops` (Studio's StorageClass) |
+| `ingressHost` | config | Public host; needs a DNS CNAME to the `ingressDnsTarget` output |
+| `prompterImage` | config | Pinned by the deploy workflow to `docker.io/cratis/prompter:<version>` |
+| `storageClassName` | config | Defaults to `upcloud-maxiops` (Core's StorageClass) |
 | `postgresStorageSizeGb` | config | Volumes can grow, never shrink |
 | `askChannelId`, `helpForumChannelId` | config | Discord channel ids; omit to disable that surface |
-| `postgresPassword` | secret | `openssl rand -base64 32` |
-| `discordToken` | secret | From the Discord application |
-| `anthropicApiKey`, `voyageApiKey` | secret | The two model providers |
-| `reindexSecret` | secret | `openssl rand -hex 32`; the Documentation build sends it as `X-Reindex-Secret` |
+| `answeringRepositories`, `issueNotifyChannelId` | config | Tracker bridge; optional |
+
+| GitHub secret | Becomes | Notes |
+|---|---|---|
+| `PULUMI_CONFIG_PASSPHRASE` | `PULUMI_CONFIG_PASSPHRASE` | The shared Cratis passphrase |
+| `STATE_BACKEND_ACCESS_KEY_ID`, `STATE_BACKEND_SECRET_ACCESS_KEY` | `AWS_ACCESS_KEY_ID`, `AWS_SECRET_ACCESS_KEY` | Core's `stateBackendAccessKeyId` and `stateBackendSecretAccessKey` outputs |
+| `PROMPTER_KUBECONFIG` | `PROMPTER_KUBECONFIG` | From `scripts/generate-prompter-kubeconfig.sh` |
+| `PROMPTER_DISCORD_TOKEN` | `PROMPTER_DISCORD_TOKEN` | From the Discord application |
+| `PROMPTER_ANTHROPIC_API_KEY`, `PROMPTER_VOYAGE_API_KEY` | same | The two model providers |
+| `PROMPTER_REINDEX_SECRET` | `PROMPTER_REINDEX_SECRET` | `openssl rand -hex 32`; sent by the Documentation build as `X-Reindex-Secret` |
+| `PROMPTER_GITHUB_TOKEN`, `PROMPTER_GITHUB_WEBHOOK_SECRET` | same | Optional; tracker bridge |
+
+The Postgres password is generated by Pulumi and kept in state.
+
+## Operations
+
+`Deploy - Production` (`.github/workflows/deploy-production.yml`) takes an `operation`:
+
+| Operation | What it does |
+|---|---|
+| `preview` | Shows the plan and changes nothing. The default for a manual run; `version` is optional. |
+| `init` | Creates the `production` stack once and commits the generated `encryptionsalt`. |
+| `up` | Pins the image to `version`, refreshes and applies, then commits `Pulumi.production.yaml` to `main`. |
+
+`version` must be a SemVer such as `0.2.7` or `1.0.0-rc.1`; anything else is rejected before it reaches a shell.
+Publish calls the workflow with `operation: up` after pushing the image, but only when the secrets above and an
+initialised stack exist.
 
 ## First deploy
 
-```bash
-cd Deployment
-export PULUMI_CONFIG_PASSPHRASE=...            # pick one; store it in a password manager + repo secret
-export UPCLOUD_TOKEN=...                       # or UPCLOUD_USERNAME + UPCLOUD_PASSWORD
+1. Cratis/Infrastructure's Core stack onboards Prompter (the `prompter` namespace, deploy identity and the
+   `prompterNamespace` output). Merge and deploy that Infrastructure change first.
+2. An operator with Infrastructure's admin access runs `scripts/generate-prompter-kubeconfig.sh` and sets the
+   GitHub secrets above, including `PROMPTER_KUBECONFIG`.
+3. Run `operation=init` once, then `operation=preview` and review: namespaced resources only, nothing replaced.
+4. Run `operation=up` with the latest released version.
+5. Create the DNS CNAME `prompter.cratis.studio` pointing at the `ingressDnsTarget` output.
+6. Index the corpus once with `POST https://prompter.cratis.studio/reindex` and the `X-Reindex-Secret` header,
+   check `/healthz` through the pod logs, and install the Discord application per
+   [`DISCORD_INTEGRATION.md`](../Planning/DISCORD_INTEGRATION.md).
 
-pulumi stack init production                   # creates local state under ./state
-# fill in clusterId + ingressHost in Pulumi.production.yaml first
-export POSTGRES_PASSWORD=... DISCORD_TOKEN=... ANTHROPIC_API_KEY=... VOYAGE_API_KEY=... REINDEX_SECRET=...
-./scripts/set-secrets.sh
-pulumi preview                                 # review
-pulumi up
-git add Deployment/state Deployment/Pulumi.production.yaml && git commit -m "Update production state"
+## Local operator access (read-only)
+
+Production `preview`, `up` and `refresh` run only in CI. From a workstation you can look, using credentials from
+Bitwarden loaded into one shell, with no file holding the values:
+
+```bash
+export BW_SESSION="$(bw unlock --raw)"      # and `bw sync` once
+source Deployment/scripts/load-credentials.sh
+(cd Deployment && pulumi stack output --stack production)
+kubectl --kubeconfig "$PROMPTER_KUBECONFIG_PATH" -n prompter get pods
+prompter_credentials_clear
 ```
 
-Then index the corpus once — `POST /reindex` with the secret, or run the image's `index` mode as a one-off
-job — and install the Discord application per [`DISCORD_INTEGRATION.md`](../Planning/DISCORD_INTEGRATION.md).
+Bitwarden item names are placeholders you can override; see the header of
+[`scripts/load-credentials.sh`](scripts/load-credentials.sh).
 
 ## CI/CD
 
-`Deploy - Production` (`.github/workflows/deploy-production.yml`) pins `prompterImage` to the released
-version, runs `pulumi up` against the file backend, and commits the updated state back to `main` with
-`[skip ci]`. Publish calls it automatically after pushing the image; `workflow_dispatch` redeploys any
-version by hand. It needs two repository secrets: `PULUMI_CONFIG_PASSPHRASE` and `UPCLOUD_TOKEN`.
-
-**Documentation changes never deploy anything** — they trigger a re-index. See
+Publish calls `Deploy - Production` automatically after pushing the image; `workflow_dispatch` runs any
+operation by hand. **Documentation changes never deploy anything** — they trigger a re-index. See
 [`CONTENT_AND_FRESHNESS.md`](../Planning/CONTENT_AND_FRESHNESS.md).
