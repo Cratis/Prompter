@@ -27,18 +27,13 @@ public sealed class PostgresDeploymentArgs
     public required string Environment { get; init; }
 
     /// <summary>
-    /// Gets the resource the namespace is created by, so the database is never created before it.
-    /// </summary>
-    public required Resource NamespaceResource { get; init; }
-
-    /// <summary>
     /// Gets the password for the <c language="csharp">prompter</c> database role.
     /// </summary>
     public required Output<string> Password { get; init; }
 
     /// <summary>
     /// Gets the name of the storage class volumes are provisioned from. This references a cluster-scoped
-    /// StorageClass owned by Studio's stack (<c language="csharp">upcloud-maxiops</c>) — it is never created here.
+    /// StorageClass owned by Cratis/Infrastructure's Core stack (<c language="csharp">upcloud-maxiops</c>) — it is never created here.
     /// </summary>
     public required string StorageClassName { get; init; }
 

@@ -17,8 +17,8 @@ namespace Cratis.Prompter.Deployment.Networking;
 /// ingress exposes exactly those two paths and nothing else — <c language="csharp">/healthz</c> stays cluster-internal for the
 /// probes to use. Both are authenticated by the application itself (a shared secret and an HMAC signature
 /// respectively), so the ingress is routing, not a security boundary. The NGINX
-/// controller and the <c language="csharp">letsencrypt-prod</c> ClusterIssuer are cluster-scoped resources owned by Studio's
-/// stack; this only references them by name.
+/// controller and the <c language="csharp">letsencrypt-prod</c> ClusterIssuer are cluster-scoped resources owned by Cratis/Infrastructure's
+/// Core stack; this only references them by name.
 /// </remarks>
 public sealed class PrompterIngress
 {
