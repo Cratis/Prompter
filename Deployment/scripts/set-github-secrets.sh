@@ -17,6 +17,8 @@
 # (cratis-bw-unlock), and the kubeconfig from generate-prompter-kubeconfig.sh. PROMPTER_DISCORD_TOKEN is read
 # from the environment and set only when present.
 set -euo pipefail
+# Never trace: tracing (for example from SHELLOPTS or bash -x) would print the values.
+{ set +x; } 2> /dev/null
 
 repo="Cratis/Prompter"
 dry_run=0

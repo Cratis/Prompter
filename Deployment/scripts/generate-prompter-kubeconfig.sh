@@ -15,6 +15,8 @@
 #
 #   INFRASTRUCTURE_KUBECONFIG=~/.studio-kube/config Deployment/scripts/generate-prompter-kubeconfig.sh
 set -euo pipefail
+# Never trace: tracing (for example from SHELLOPTS or bash -x) would print the token.
+{ set +x; } 2> /dev/null
 
 namespace="${PROMPTER_NAMESPACE:-prompter}"
 secret_name="${PROMPTER_DEPLOY_TOKEN_SECRET:-prompter-deploy-token}"

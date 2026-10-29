@@ -115,7 +115,7 @@ jobs:
           set -euo pipefail
           if [ -n "${PULUMI_CONFIG_PASSPHRASE}" ] && [ -n "${STATE_BACKEND_ACCESS_KEY_ID}" ] \
             && [ -n "${STATE_BACKEND_SECRET_ACCESS_KEY}" ] && [ -n "${KUBECONFIG_CONTENT}" ] \
-            && grep -q '^  encryptionsalt:' Deployment/Pulumi.production.yaml; then
+            && grep -q '^encryptionsalt:' Deployment/Pulumi.production.yaml; then
             echo "ready=true" >> "$GITHUB_OUTPUT"
           else
             echo "ready=false" >> "$GITHUB_OUTPUT"

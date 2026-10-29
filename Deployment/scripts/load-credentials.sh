@@ -95,8 +95,14 @@ _prompter_load_credentials() {
   echo "Set: PULUMI_CONFIG_PASSPHRASE, AWS_ACCESS_KEY_ID, AWS_SECRET_ACCESS_KEY, AWS_REQUEST_CHECKSUM_CALCULATION, AWS_RESPONSE_CHECKSUM_VALIDATION${PROMPTER_KUBECONFIG_PATH:+, PROMPTER_KUBECONFIG_PATH}."
 }
 
+# Tracing inherited from the caller's shell would print the values, so turn it off while loading and
+# restore it afterwards.
+case "$-" in *x*) _prompter_xtrace=1 ;; *) _prompter_xtrace=0 ;; esac
+{ set +x; } 2> /dev/null
 _prompter_load_credentials
 _prompter_status=$?
 unset -f _prompter_load_credentials
 unset _prompter_sourced
+if [ "${_prompter_xtrace}" = 1 ]; then set -x; fi
+unset _prompter_xtrace
 return "${_prompter_status}"
