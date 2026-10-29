@@ -40,7 +40,7 @@ It writes a timestamped markdown + JSON report (per-question rows plus aggregate
 `.github/workflows/eval.yml` (**P-19**) turns the harness into a regression gate. Because a run costs Voyage
 + Anthropic calls and a full index of cratis.io, it is **not** on every PR — it runs only on
 `workflow_dispatch` or when a pull request carries the **`eval`** label (add the label to have a PR scored;
-an unlabeled PR never spends API budget). The job stands up a `pgvector/pgvector:pg17` service container
+an unlabeled PR never spends API budget). The job stands up a `pgvector/pgvector:0.8.7-pg17` service container
 matching `docker-compose.yml`, indexes the corpus, runs the harness, uploads the report as a workflow
 artifact, and then enforces the baseline.
 

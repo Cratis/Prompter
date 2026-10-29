@@ -22,7 +22,7 @@ UpCloud UKS (owned by Studio's stack)
     ├── Secret  prompter-postgres      ← database password
     ├── Secret  prompter-secrets       ← Discord token, Anthropic + Voyage keys, reindex secret,
     │                                     connection string (keys are the Cratis__Prompter__… paths)
-    ├── StatefulSet postgres (pgvector/pgvector:pg17) + headless Service + 10Gi volume
+    ├── StatefulSet postgres (pgvector/pgvector:0.8.7-pg17) + headless Service + 10Gi volume
     ├── Deployment prompter (1 replica, Recreate) + ClusterIP Service on 8080
     └── Ingress   prompter-ingress     ← TLS host, publishes ONLY POST /reindex
 ```
