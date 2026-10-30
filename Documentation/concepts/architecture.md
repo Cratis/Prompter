@@ -35,7 +35,8 @@ The documentation site already publishes a sitemap and a markdown mirror of ever
 Ingestion walks the sitemap, fetches each page's markdown mirror, splits pages into chunks along their
 heading structure, and embeds only
 chunks whose content hash changed since the last run. Generated code-snippet fragments are excluded. A
-re-index is triggered by the same `build-docs` dispatch event that rebuilds the documentation site.
+re-index runs as a one-shot Kubernetes Job through **Reindex - Production**, nightly at 03:52 UTC or on
+demand on `main`. Documentation dispatches do not trigger it, and production has no public reindex route.
 
 ## Retrieval
 

@@ -42,4 +42,4 @@ API keys are never committed - use environment variables or a git-ignored
 | Endpoint | Does |
 |---|---|
 | `GET /healthz` | Liveness/readiness - database and gateway connectivity |
-| `POST /reindex` | Triggers an ingestion pass; requires the shared-secret header; returns 409 if a run is already in progress |
+| `POST /reindex` | In-cluster/local ingestion endpoint; requires the shared-secret header; returns 409 if a run is already in progress. Production has no public route; use **Reindex - Production** on `main` |

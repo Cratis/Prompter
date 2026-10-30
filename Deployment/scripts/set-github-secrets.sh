@@ -13,8 +13,7 @@
 # Bitwarden items read: the note named by PROMPTER_BW_ENV_ITEM (state backend keys and passphrase, see
 # load-credentials.sh), "Anthropic - Prompter - API Key" (note), "Voyage AI - Cratis" (login password),
 # "Prompter - Reindex Secret" (note, `openssl rand -hex 32`) and "Discord - Prompter - Bot token" (note).
-# To rotate the reindex secret, replace the note's value and rerun; the Documentation build's copy must be
-# updated at the same time.
+# To rotate the reindex secret, replace the note's value and rerun, then deploy to update the cluster Secret.
 #
 # Prerequisites: gh (authenticated with access to Cratis/Prompter), bw, jq, an unlocked Bitwarden
 # (cratis-bw-unlock), and the kubeconfig from generate-prompter-kubeconfig.sh.

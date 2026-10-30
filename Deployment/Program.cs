@@ -12,15 +12,14 @@ using KubernetesProvider = Pulumi.Kubernetes.Provider;
 // Prompter's slice of the shared UpCloud UKS cluster. The cluster, the `prompter` namespace, the baseline
 // network policy and the namespace-scoped deploy identity this stack runs as all belong to
 // Cratis/Infrastructure's Core stack (AppAccess). This stack holds only resources inside that namespace:
-// it never creates the namespace, and the ingress controller, cert-manager and the `upcloud-maxiops`
-// StorageClass are referenced, never declared.
+// it never creates the namespace, and the `upcloud-maxiops` StorageClass is referenced, never declared.
+// There is no public route; re-indexing runs as an on-demand or nightly Job.
 return await Deployment.RunAsync(() =>
 {
     var config = new Config("prompter-deployment");
 
     var environment = config.Require("environment");
     var image = config.Require("prompterImage");
-    var host = config.Require("ingressHost");
     var storageClassName = config.Get("storageClassName") ?? "upcloud-maxiops";
     var storageSizeGb = config.GetInt32("postgresStorageSizeGb") ?? 10;
 
@@ -70,7 +69,7 @@ return await Deployment.RunAsync(() =>
         StorageSizeGb = storageSizeGb,
     });
 
-    var prompter = new PrompterDeployment(new PrompterDeploymentArgs
+    _ = new PrompterDeployment(new PrompterDeploymentArgs
     {
         Provider = provider,
         Namespace = namespaceName,
@@ -90,17 +89,6 @@ return await Deployment.RunAsync(() =>
         DependsOn = { postgres.Resource },
     });
 
-    _ = new PrompterIngress(new PrompterIngressArgs
-    {
-        Provider = provider,
-        Namespace = namespaceName,
-        Environment = environment,
-        Host = host,
-        ServiceName = PrompterDeployment.Name,
-        ServicePort = PrompterDeployment.Port,
-        DependsOn = { prompter.Service },
-    });
-
     _ = new PrompterEgress(new PrompterEgressArgs
     {
         Provider = provider,
@@ -112,11 +100,6 @@ return await Deployment.RunAsync(() =>
     {
         ["namespace"] = coreNamespace,
         ["image"] = image,
-        ["reindexUrl"] = $"https://{host}/reindex",
-        ["gitHubWebhookUrl"] = $"https://{host}/github/webhook",
-
-        // The CNAME target for the ingress host; created by hand at the DNS provider.
-        ["ingressDnsTarget"] = core.RequireOutput("ingressLoadBalancerEndpoint"),
     };
 });
 

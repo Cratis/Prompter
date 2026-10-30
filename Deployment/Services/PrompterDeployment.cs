@@ -11,7 +11,7 @@ using K8sDeployment = Pulumi.Kubernetes.Apps.V1.Deployment;
 namespace Cratis.Prompter.Deployment.Services;
 
 /// <summary>
-/// The Prompter bot itself: a single-replica Deployment plus the ClusterIP Service the ingress routes to.
+/// The Prompter bot itself: a single-replica Deployment plus the in-cluster ClusterIP Service.
 /// </summary>
 /// <remarks>
 /// Single replica is a requirement, not a sizing choice — the Discord gateway wants exactly one connection
@@ -185,7 +185,7 @@ public sealed class PrompterDeployment
     }
 
     /// <summary>
-    /// Gets the Service the ingress routes to.
+    /// Gets the in-cluster ClusterIP Service.
     /// </summary>
     public Service Service { get; }
 }

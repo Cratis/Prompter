@@ -18,9 +18,9 @@ is wrong, that's a valuable bug report.
 
 ## How up to date is it?
 
-Within minutes of documentation changes - the knowledge base re-indexes automatically when
-[cratis.io](https://cratis.io) deploys. It only knows published documentation: undocumented features are
-invisible to it.
+The knowledge base re-indexes nightly at 03:52 UTC through **Reindex - Production**. A maintainer can also
+run that workflow on `main` to pick up published changes sooner. It only knows published documentation:
+undocumented features are invisible to it.
 
 ## Which AI does it use?
 

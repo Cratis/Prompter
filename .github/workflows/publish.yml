@@ -126,7 +126,7 @@ jobs:
           fi
 
   # Deploys the just-published image by running `pulumi up` directly against this repo's own Deployment/
-  # project: Prompter's Deployment, Postgres and Ingress in the `prompter` namespace on the shared cluster,
+  # project: Prompter's Deployment, Postgres and network policy in the `prompter` namespace on the shared cluster,
   # reached through the namespace-scoped KUBECONFIG secret. Mirrors Cratis/Direct's deploy job step-for-step.
   # See Deployment/README.md. Runs only after the image exists, so a failed publish can never deploy a tag
   # that is not there.

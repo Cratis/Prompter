@@ -24,14 +24,17 @@ laptop or a cluster. The artifacts are the same at every stage, so nothing is th
 Prompter is a single-replica Kubernetes Deployment - the Discord gateway wants exactly one connection -
 alongside an in-cluster Postgres with pgvector, in the Norway region. Keeping stored data on EU-jurisdiction
 infrastructure strengthens the [privacy](../concepts/privacy.md) posture. It exposes `GET /healthz` for probes
-and `POST /reindex` (shared secret) for documentation refreshes. Follow the
+and a cluster-internal `POST /reindex` (shared secret); neither has a public route. Follow the
 [first-deploy steps](https://github.com/Cratis/Prompter/blob/main/Deployment/README.md#first-deploy) to onboard
-the namespace in Infrastructure, supply the GitHub secrets, preview the stack, and deploy it. Index the corpus
+the namespace in Infrastructure, supply the GitHub secrets, and deploy it through CI. Run **Reindex - Production**
 once after the first deploy and complete [Discord app setup](discord-setup.md) before inviting questions.
+The tracker bridge's inbound GitHub webhook is dormant in production until a public route or relay is decided.
 
 ## Documentation changes never redeploy
 
 App deploys are for code changes only. When the documentation changes, nothing is redeployed - the
-Documentation build calls `POST /reindex` and the corpus updates in place. See
+**Reindex - Production** workflow picks up published changes nightly at 03:52 UTC, or a maintainer can run
+it on demand on `main`. It creates a one-shot Kubernetes Job running the deployed image's `index` command,
+and fails if indexing fails or the crawl is empty. See
 [Configuration](../reference/configuration.md) for the endpoints and
 [Grounded answers](../concepts/grounded-answers.md) for how freshness works.
