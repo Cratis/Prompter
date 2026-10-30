@@ -3,6 +3,7 @@
 
 using System.Globalization;
 using Cratis.Prompter.GitHub;
+using Cratis.Prompter.Protection;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
 using NetCord;
@@ -17,8 +18,8 @@ namespace Cratis.Prompter.Discord;
 /// <param name="drafting">Drafts the issue from the description.</param>
 /// <param name="issues">Looks for likely duplicates before the preview is shown.</param>
 /// <param name="pending">Holds the draft between the preview and the confirmation.</param>
-/// <param name="rateLimiter">The per-user throttle, shared with question answering.</param>
-/// <param name="timeProvider">The clock the throttle's refills are measured against.</param>
+/// <param name="admission">The cheap shared admission guard.</param>
+/// <param name="work">The global concurrency and durable spend guard.</param>
 /// <param name="options">The Prompter options carrying the GitHub configuration and reply text.</param>
 /// <param name="logger">Logger for diagnostics.</param>
 /// <remarks>
@@ -31,8 +32,8 @@ public class FileIssue(
     IIssueDrafting drafting,
     IIssues issues,
     PendingIssues pending,
-    RateLimiter rateLimiter,
-    TimeProvider timeProvider,
+    Admission admission,
+    PaidWork work,
     IOptions<PrompterOptions> options,
     ILogger<FileIssue> logger) : ApplicationCommandModule<ApplicationCommandContext>
 {
@@ -57,30 +58,21 @@ public class FileIssue(
     public async Task Handle(string description)
     {
         var github = options.Value.GitHub;
-
-        if (!github.FilingEnabled)
+        if (!await Accept(description))
         {
-            await RespondEphemerally(NotConfiguredReply);
             return;
         }
 
-        // The rate-limit key is the user id, used only in memory - never stored, never logged.
-        var userKey = Context.User.Id.ToString(CultureInfo.InvariantCulture);
-        if (!rateLimiter.TryConsume(userKey, timeProvider.GetUtcNow()))
-        {
-            logger.IssueRateLimited();
-            await RespondEphemerally(options.Value.Discord.RateLimitedReply);
-            return;
-        }
-
-        // Drafting calls the model, which takes seconds - well past the 3-second acknowledgement window.
-        // The deferral is ephemeral so the whole exchange stays private until an issue actually exists.
-        await Context.Interaction.SendResponseAsync(
-            InteractionCallback.DeferredMessage(MessageFlags.Ephemeral));
-
+        var deferred = false;
         try
         {
-            var draft = await drafting.Draft(description, hint: null);
+            await using var lease = await work.BeginInteractive();
+            lease.Activate();
+
+            // Drafting is ephemeral so the preview stays private until confirmed.
+            await Context.Interaction.SendResponseAsync(InteractionCallback.DeferredMessage(MessageFlags.Ephemeral));
+            deferred = true;
+            var draft = await drafting.Draft(description, hint: null, lease.Token);
             if (draft is null)
             {
                 logger.CouldNotDraftIssue();
@@ -90,7 +82,7 @@ public class FileIssue(
 
             var repository = IssueRouting.RepositoryFor(draft.Product, github);
             var routed = IssueRouting.IsRouted(draft.Product, github);
-            var similar = await issues.FindSimilar(repository, draft.Title);
+            var similar = await issues.FindSimilar(repository, draft.Title, lease.Token);
             var token = pending.Hold(draft, repository, ConversationUrl());
 
             await Context.Interaction.SendFollowupMessageAsync(new()
@@ -99,6 +91,10 @@ public class FileIssue(
                 Flags = MessageFlags.Ephemeral,
                 Components = [IssuePreview.Buttons(token)]
             });
+        }
+        catch (WorkRefused)
+        {
+            await Refuse(admission.MayReply(new(Context.Interaction.GuildId, Context.Channel.Id, Context.User.Id)), deferred);
         }
         catch (Exception exception)
         {
@@ -109,6 +105,46 @@ public class FileIssue(
 
     static InteractionMessageProperties Ephemeral(string content) =>
         new() { Content = content, Flags = MessageFlags.Ephemeral };
+
+    async Task<bool> Accept(string description)
+    {
+        if (!admission.InScope(Context.Interaction.GuildId, Context.Channel.Id) || !options.Value.Protection.GitHubWritesEnabled)
+        {
+            return false;
+        }
+
+        var decision = admission.TryEnter(new(Context.Interaction.GuildId, Context.Channel.Id, Context.User.Id), description);
+        if (!decision.Allowed)
+        {
+            await Refuse(decision.Reply, false);
+            return false;
+        }
+
+        if (!options.Value.GitHub.FilingEnabled)
+        {
+            await RespondEphemerally(NotConfiguredReply);
+            return false;
+        }
+
+        return true;
+    }
+
+    async Task Refuse(bool reply, bool deferred)
+    {
+        if (!reply)
+        {
+            return;
+        }
+
+        if (deferred)
+        {
+            await Context.Interaction.SendFollowupMessageAsync(Ephemeral(options.Value.Discord.RateLimitedReply));
+        }
+        else
+        {
+            await RespondEphemerally(options.Value.Discord.RateLimitedReply);
+        }
+    }
 
     string? ConversationUrl()
     {

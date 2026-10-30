@@ -167,6 +167,49 @@ Configuration binds to the `Cratis:Prompter` section (environment variables use 
 
 API keys are never committed — use environment variables or a git-ignored `Source/appsettings.Development.json`.
 
+### Admission and spend protection
+
+`Cratis:Prompter:Protection` applies before history, retrieval, model dispatch or GitHub drafting.
+Bot mode requires `AllowedGuilds`: the empty default refuses every guild and all DMs.
+Production must explicitly set `Cratis__Prompter__Protection__AllowedGuilds__0=1182595891576717413`.
+Within an allowed guild, mentions still work in readable channels, alongside the configured ask
+channel and help forum. `DeniedChannels` optionally excludes channel/thread IDs.
+
+Defaults: 3 simultaneous paid answers (no queue), 60 admissions/hour globally, 20/hour per
+channel/thread, and the existing 5/user/10 minutes. Current questions are capped at 4,000 characters;
+normalized duplicates from the same user/channel are suppressed for 2 minutes. Limit replies are
+restricted to one/user/10 minutes and one/channel/minute; excess requests are ignored silently.
+Only keyed hashes are kept in bounded expiring memory caches; rate limits reset on restart.
+The existing 60-second answer deadline also covers drafting, reservation and forum starter fetching.
+
+The **shared $5/UTC-day ceiling is durable**, including CLI indexing, retries and concurrent processes.
+Each answer reserves its worst-case Anthropic input/output and Voyage retry exposure atomically,
+beneath both the global ceiling and provider `DailyUsd` sublimits. Anthropic SDK retries are disabled;
+Voyage attempts are charged inside the existing retry policy. A restart, timeout, missing usage or
+failed settlement never releases ambiguous exposure. Known plain chat usage is reconciled;
+cache-related/extra usage counters and embedding attempts conservatively retain their upper exposure.
+Spend tables contain only UTC days, anonymous reservation UUIDs, provider dollar amounts and settlement
+state — no Discord IDs or text. The additive `v1_3_0.sql` migration runs at normal schema initialization.
+Old binaries ignore these tables **and bypass the new ceiling**: stop old paid workers before rollout.
+
+Before enabling paid work, explicitly configure **both** `Protection:Anthropic` and
+`Protection:Voyage`: `Model` (exact configured provider model), `InputUsdPerMillion`,
+`MaxInputTokens` (verified hard model ceiling), and `DailyUsd` (default $5 per provider beneath the
+shared ceiling). Anthropic also requires `OutputUsdPerMillion`. Use conservative current prices,
+including the highest applicable cache-write input price. Prices default to unverified, not guessed:
+missing/mismatched pricing or an unavailable ledger refuses dispatch. Large indexing batches may
+need smaller existing indexing batch settings to fit the verified Voyage input bound and remaining spend.
+
+`Protection:AnsweringEnabled`, `IndexingEnabled` and `GitHubWritesEnabled` all default to `true`.
+Set the corresponding environment setting to `false` and restart to stop new answers/drafts,
+indexing, or GitHub operations respectively. These switches do not revoke already-issued provider calls.
+Webhook bodies, including chunked bodies, are capped at 65,536 bytes (`WebhookBytes`).
+
+For isolated ledger specs, supply only the loopback port of a disposable, trust-authenticated
+Postgres instance in `PROMPTER_LEDGER_TEST_PORT` and run `./Specs/bin/Release/net10.0/Prompter.Specs`.
+Without that opt-in, the Postgres integration spec is explicitly skipped; all other protection specs
+are offline. Never point this probe at a live database: it creates and drops a random test schema.
+
 ## 🗺️ Start here (for contributors)
 
 - [`Deployment/README.md`](Deployment/README.md) — the Pulumi stack that runs Prompter on the shared Cratis UpCloud cluster.

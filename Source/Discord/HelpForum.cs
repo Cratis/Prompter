@@ -1,8 +1,8 @@
 // Copyright (c) Cratis. All rights reserved.
 // Licensed under the MIT license. See LICENSE file in the project root for full license information.
 
-using System.Globalization;
 using Cratis.Prompter.Answering;
+using Cratis.Prompter.Protection;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
 using NetCord;
@@ -18,15 +18,15 @@ namespace Cratis.Prompter.Discord;
 /// </summary>
 /// <param name="rest">The REST client used to read the starter message and post replies into the thread.</param>
 /// <param name="answers">The answers Prompter can give.</param>
-/// <param name="rateLimiter">The per-user question throttle, checked before the expensive answer path.</param>
-/// <param name="timeProvider">The clock the rate limiter's refills are measured against.</param>
+/// <param name="admission">The cheap shared admission guard.</param>
+/// <param name="work">The global concurrency and durable spend guard.</param>
 /// <param name="options">The Prompter options carrying the help-forum channel identifier.</param>
 /// <param name="logger">Logger for diagnostics.</param>
 public class HelpForum(
     RestClient rest,
     IAnswers answers,
-    RateLimiter rateLimiter,
-    TimeProvider timeProvider,
+    Admission admission,
+    PaidWork work,
     IOptions<PrompterOptions> options,
     ILogger<HelpForum> logger) : IGuildThreadCreateGatewayHandler
 {
@@ -66,62 +66,38 @@ public class HelpForum(
     {
         try
         {
-            // Discord raises THREAD_CREATE both for brand-new threads and when the bot merely gains visibility
-            // of an existing one; only genuinely new threads carry newly_created, so ignore the rest.
-            if (!arg.NewlyCreated)
-            {
-                return;
-            }
-
             var thread = arg.Thread;
-            var helpForumChannelId = options.Value.Discord.HelpForumChannelId;
-
-            // Cheap pre-filter to avoid a REST round-trip for threads outside the configured help forum.
-            if (helpForumChannelId is not { } forumId || thread.ParentId != forumId)
+            if (!SupportedEvent(arg))
             {
                 return;
             }
 
-            // A forum thread's starter message rides along on the create event; its id equals the thread id,
-            // so fall back to fetching it directly if the payload did not include it.
-            var starter = thread is ForumGuildThread { Message: { } forumStarter }
-                ? forumStarter
-                : await rest.GetMessageAsync(thread.Id, thread.Id);
-
-            var question = starter.Content.Trim();
-            if (!ShouldAnswer(thread.ParentId, helpForumChannelId, starter.Author.IsBot, question))
+            var included = (thread as ForumGuildThread)?.Message;
+            if (included is not null && !HumanStarter(included))
             {
                 return;
             }
 
-            // The rate-limit key is the user id, used only in memory to throttle - it is never stored or logged.
-            var userKey = starter.Author.Id.ToString(CultureInfo.InvariantCulture);
-            if (!rateLimiter.TryConsume(userKey, timeProvider.GetUtcNow()))
+            // Even a missing starter must pass metadata, rates, concurrency and spend before the REST fallback.
+            var decision = admission.TryEnter(new(thread.GuildId, thread.Id, thread.OwnerId), included?.Content ?? $"forum-starter:{thread.Id}");
+            if (!decision.Allowed)
             {
-                logger.RateLimited(thread.Id);
-                await rest.SendMessageAsync(thread.Id, options.Value.Discord.RateLimitedReply);
+                await Refuse(thread, decision.Reply);
                 return;
             }
 
-            logger.AnsweringForumThread(thread.Id);
-
-            using var timeout = new CancellationTokenSource(TimeSpan.FromSeconds(options.Value.Discord.AnswerTimeoutSeconds));
-            var answer = await answers.For(new(question), "discord-forum", timeout.Token);
-            var content = DiscordAnswers.Format(answer);
-
-            // The 👍/👎 feedback buttons ride on the answer message; the standing note follows as its own message.
-            if (answer.InteractionId is { } interactionId)
+            await using var lease = await work.BeginInteractive();
+            lease.Activate();
+            if (!await AnswerThread(thread, included, lease.Token))
             {
-                await rest.SendMessageAsync(thread.Id, new MessageProperties
-                {
-                    Content = content,
-                    Components = [FeedbackButtonRow.For(interactionId)]
-                });
+                return;
             }
-            else
-            {
-                await rest.SendMessageAsync(thread.Id, content);
-            }
+        }
+        catch (WorkRefused)
+        {
+            await Refuse(arg.Thread, admission.MayReply(new(arg.Thread.GuildId, arg.Thread.Id, arg.Thread.OwnerId)));
+
+            return;
         }
         catch (Exception exception)
         {
@@ -139,6 +115,60 @@ public class HelpForum(
         catch (Exception exception)
         {
             logger.FollowUpNoteFailed(exception, arg.Thread.Id);
+        }
+    }
+
+    static bool HumanStarter(RestMessage starter) =>
+        !starter.Author.IsBot && starter.WebhookId is null && starter.Type is MessageType.Default or MessageType.Reply;
+
+    bool SupportedEvent(GuildThreadCreateEventArgs arg) => arg.NewlyCreated && SupportedThread(arg.Thread);
+
+    bool SupportedThread(GuildThread thread) =>
+        options.Value.Discord.HelpForumChannelId is { } forum && thread.ParentId == forum &&
+        admission.InScope(thread.GuildId, forum) && admission.InScope(thread.GuildId, thread.Id);
+
+    async Task Refuse(GuildThread thread, bool reply)
+    {
+        if (reply)
+        {
+            await rest.SendMessageAsync(thread.Id, options.Value.Discord.RateLimitedReply);
+        }
+    }
+
+    async Task<bool> AnswerThread(GuildThread thread, RestMessage? included, CancellationToken cancellationToken)
+    {
+        var starter = included ?? await rest.GetMessageAsync(thread.Id, thread.Id, cancellationToken: cancellationToken);
+        if (!HumanStarter(starter) || starter.Content.Length > options.Value.Protection.MaxQuestionCharacters)
+        {
+            return false;
+        }
+
+        var question = starter.Content.Trim();
+        if (!ShouldAnswer(thread.ParentId, options.Value.Discord.HelpForumChannelId, starter.Author.IsBot, question))
+        {
+            return false;
+        }
+
+        logger.AnsweringForumThread(thread.Id);
+        var answer = await answers.For(new(question), "discord-forum", cancellationToken);
+        await SendAnswer(thread.Id, answer);
+        return true;
+    }
+
+    async Task SendAnswer(ulong thread, Answer answer)
+    {
+        var content = DiscordAnswers.Format(answer);
+        if (answer.InteractionId is { } interactionId)
+        {
+            await rest.SendMessageAsync(thread, new MessageProperties
+            {
+                Content = content,
+                Components = [FeedbackButtonRow.For(interactionId)]
+            });
+        }
+        else
+        {
+            await rest.SendMessageAsync(thread, content);
         }
     }
 

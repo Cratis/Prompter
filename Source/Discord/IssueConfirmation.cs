@@ -2,6 +2,7 @@
 // Licensed under the MIT license. See LICENSE file in the project root for full license information.
 
 using Cratis.Prompter.GitHub;
+using Cratis.Prompter.Protection;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
 using NetCord;
@@ -15,11 +16,13 @@ namespace Cratis.Prompter.Discord;
 /// </summary>
 /// <param name="issues">Files the issue.</param>
 /// <param name="pending">Holds the drafts awaiting confirmation.</param>
+/// <param name="admission">The cheap shared scope and rate guard.</param>
 /// <param name="options">The Prompter options carrying the GitHub configuration.</param>
 /// <param name="logger">Logger for diagnostics.</param>
 public class IssueConfirmation(
     IIssues issues,
     PendingIssues pending,
+    Admission admission,
     IOptions<PrompterOptions> options,
     ILogger<IssueConfirmation> logger) : ComponentInteractionModule<ComponentInteractionContext>
 {
@@ -48,7 +51,22 @@ public class IssueConfirmation(
     [ComponentInteraction(IssueButton.Prefix)]
     public async Task Confirm()
     {
+        if (!options.Value.Protection.GitHubWritesEnabled)
+        {
+            return;
+        }
+
         var customId = Context.Interaction.Data.CustomId;
+        var decision = admission.TryEnter(new(Context.Interaction.GuildId, Context.Channel.Id, Context.User.Id), customId);
+        if (!decision.Allowed)
+        {
+            if (decision.Reply)
+            {
+                await Acknowledge(options.Value.Discord.RateLimitedReply);
+            }
+
+            return;
+        }
         var click = IssueButton.Parse(customId);
         if (click is null)
         {
@@ -80,11 +98,13 @@ public class IssueConfirmation(
 
         try
         {
+            using var timeout = new CancellationTokenSource(TimeSpan.FromSeconds(options.Value.Discord.AnswerTimeoutSeconds));
             var filed = await issues.File(
                 held.Repository,
                 held.Draft.Title,
                 IssueComposition.Body(held.Draft, held.ConversationUrl),
-                IssueComposition.Labels(held.Draft, options.Value.GitHub));
+                IssueComposition.Labels(held.Draft, options.Value.GitHub),
+                timeout.Token);
 
             logger.FiledIssueFromDiscord(filed.Repository, filed.Number);
 

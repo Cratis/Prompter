@@ -50,12 +50,18 @@ public static class PrompterEndpoints
         CancellationToken cancellationToken)
     {
         var logger = loggerFactory.CreateLogger(GitHubLogCategory);
+        if (!options.Value.Protection.AnsweringEnabled || !options.Value.Protection.GitHubWritesEnabled)
+        {
+            return Results.StatusCode(StatusCodes.Status503ServiceUnavailable);
+        }
 
         // The signature covers the exact bytes GitHub sent, so the body is read raw and verified before
         // anything parses it.
-        await using var buffer = new MemoryStream();
-        await request.Body.CopyToAsync(buffer, cancellationToken);
-        var payload = buffer.ToArray();
+        var payload = await Protection.BoundedBody.Read(request, options.Value.Protection.WebhookBytes, cancellationToken);
+        if (payload is null)
+        {
+            return Results.StatusCode(StatusCodes.Status413PayloadTooLarge);
+        }
 
         if (!WebhookAuth.IsAuthentic(
             request.Headers[WebhookAuth.SignatureHeader].ToString(),
@@ -122,6 +128,10 @@ public static class PrompterEndpoints
         ILoggerFactory loggerFactory)
     {
         var logger = loggerFactory.CreateLogger(ReindexLogCategory);
+        if (!options.Value.Protection.IndexingEnabled)
+        {
+            return Results.StatusCode(StatusCodes.Status503ServiceUnavailable);
+        }
 
         var providedSecret = request.Headers[ReindexSecretHeader].ToString();
         if (!ReindexAuth.IsAuthorized(providedSecret, options.Value.ReindexSecret))

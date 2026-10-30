@@ -47,6 +47,9 @@ public class PrompterOptions
     /// </summary>
     public DiscordOptions Discord { get; set; } = new();
 
+    /// <summary>Gets or sets admission, kill-switch, and durable spend limits.</summary>
+    public Protection.ProtectionOptions Protection { get; set; } = new();
+
     /// <summary>
     /// Gets or sets the Anthropic specific options.
     /// </summary>

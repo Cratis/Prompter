@@ -1,7 +1,6 @@
 // Copyright (c) Cratis. All rights reserved.
 // Licensed under the MIT license. See LICENSE file in the project root for full license information.
 
-using System.Collections.Concurrent;
 using Microsoft.Extensions.Options;
 
 namespace Cratis.Prompter.Discord;
@@ -14,7 +13,8 @@ namespace Cratis.Prompter.Discord;
 /// <param name="options">The Prompter options carrying the Discord rate-limit configuration.</param>
 public class RateLimiter(IOptions<PrompterOptions> options)
 {
-    readonly ConcurrentDictionary<string, Bucket> _buckets = new();
+    readonly Dictionary<string, Bucket> _buckets = new(StringComparer.Ordinal);
+    readonly Lock _lock = new();
     readonly RateLimitOptions _limit = options.Value.Discord.RateLimit;
 
     /// <summary>
@@ -33,13 +33,24 @@ public class RateLimiter(IOptions<PrompterOptions> options)
     {
         double capacity = _limit.MaxQuestions;
         var refillPerSecond = capacity / TimeSpan.FromMinutes(_limit.WindowMinutes).TotalSeconds;
-        var bucket = _buckets.GetOrAdd(
-            userKey,
-            static (_, seed) => new Bucket(seed.Capacity, seed.Now),
-            (Capacity: capacity, Now: now));
-
-        lock (bucket)
+        lock (_lock)
         {
+            foreach (var key in _buckets.Where(pair => now - pair.Value.LastRefill >= TimeSpan.FromMinutes(_limit.WindowMinutes)).Select(pair => pair.Key).ToArray())
+            {
+                _buckets.Remove(key);
+            }
+
+            if (!_buckets.TryGetValue(userKey, out var bucket))
+            {
+                if (_buckets.Count >= options.Value.Protection.LocalCapacity)
+                {
+                    return false;
+                }
+
+                bucket = new(capacity, now);
+                _buckets.Add(userKey, bucket);
+            }
+
             var elapsedSeconds = (now - bucket.LastRefill).TotalSeconds;
             if (elapsedSeconds > 0)
             {

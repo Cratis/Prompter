@@ -6,6 +6,7 @@ using Cratis.Prompter.Answering;
 using Cratis.Prompter.Embeddings;
 using Cratis.Prompter.GitHub;
 using Cratis.Prompter.Ingestion;
+using Cratis.Prompter.Protection;
 using Cratis.Prompter.Retrieval;
 using Cratis.Prompter.Storage;
 using Microsoft.Extensions.AI;
@@ -47,6 +48,7 @@ public static class HostBuilderExtensions
             .Validate(
                 options => options.Discord.AnswerTimeoutIsValid,
                 "Cratis:Prompter:Discord:AnswerTimeoutSeconds must be greater than 0; a value of 0 abandons every answer immediately and replies with the apology instead.")
+            .Validate(options => options.Protection.IsValid, "Cratis:Prompter:Protection requires positive bounds and nonnegative allowances.")
             .ValidateOnStart();
 
         builder.Services.AddSingleton(sp =>
@@ -64,28 +66,7 @@ public static class HostBuilderExtensions
             client.BaseAddress = new Uri(options.DocsSiteUrl.TrimEnd('/') + "/");
         });
 
-        builder.Services.AddHttpClient<VoyageEmbeddings>((sp, client) =>
-        {
-            var options = sp.GetRequiredService<IOptions<PrompterOptions>>().Value;
-            client.BaseAddress = new Uri(options.Voyage.Url);
-            client.DefaultRequestHeaders.Authorization = new("Bearer", options.Voyage.ApiKey);
-        });
-
-        builder.Services.AddSingleton<IEmbeddingGenerator<string, Embedding<float>>>(sp =>
-            new ResilientEmbeddingGenerator(
-                sp.GetRequiredService<VoyageEmbeddings>(),
-                sp.GetRequiredService<IOptions<PrompterOptions>>(),
-                sp.GetRequiredService<ILogger<ResilientEmbeddingGenerator>>()));
-
-        builder.Services.AddSingleton<IChatClient>(sp =>
-        {
-            var options = sp.GetRequiredService<IOptions<PrompterOptions>>().Value;
-            var client = options.Anthropic.ApiKey.Length > 0
-                ? new AnthropicClient { ApiKey = options.Anthropic.ApiKey }
-                : new AnthropicClient();
-
-            return client.AsIChatClient(options.Anthropic.Model);
-        });
+        AddModels(builder);
 
         // GitHub: filing issues from Discord and answering newly-opened ones. The client is registered
         // regardless of whether a token is configured - the command checks GitHubOptions.FilingEnabled and
@@ -99,20 +80,56 @@ public static class HostBuilderExtensions
 
             // GitHub rejects requests without a user agent, and names the caller in rate-limit responses.
             client.DefaultRequestHeaders.UserAgent.Add(new("Cratis-Prompter", "1.0"));
-        });
+        }).AddHttpMessageHandler<GitHubWriteGate>();
 
-        builder.Services.AddSingleton<IIssueDrafting, IssueDrafting>();
+        builder.Services.AddTransient<GitHubWriteGate>();
+        builder.Services.AddSingleton<IssueDrafting>();
+        builder.Services.AddSingleton<IIssueDrafting, ProtectedDrafting>();
         builder.Services.AddSingleton<PendingIssues>();
 
         builder.Services.AddSingleton<IChunks, Chunks>();
         builder.Services.AddSingleton<IInteractionLog, InteractionLog>();
         builder.Services.AddSingleton<IPassages, Passages>();
-        builder.Services.AddSingleton<IAnswers, Answers>();
-        builder.Services.AddSingleton<IIndexer, Indexer>();
+        builder.Services.AddSingleton<Answers>();
+        builder.Services.AddSingleton<IAnswers, ProtectedAnswers>();
+        builder.Services.AddSingleton<Indexer>();
+        builder.Services.AddSingleton<IIndexer, ProtectedIndexer>();
+        builder.Services.AddSingleton<ISpendLedger, SpendLedger>();
+        builder.Services.AddSingleton<PaidWork>();
+        builder.Services.AddSingleton<Admission>();
 
         // The per-user question throttle and the clock its refills are measured against. Both are shared
         // across every Discord entry point, so they live as singletons in the common registration.
         builder.Services.AddSingleton(TimeProvider.System);
         builder.Services.AddSingleton<Discord.RateLimiter>();
+    }
+
+    static void AddModels(IHostApplicationBuilder builder)
+    {
+        builder.Services.AddHttpClient<VoyageEmbeddings>((sp, client) =>
+        {
+            var options = sp.GetRequiredService<IOptions<PrompterOptions>>().Value;
+            client.BaseAddress = new Uri(options.Voyage.Url);
+            client.DefaultRequestHeaders.Authorization = new("Bearer", options.Voyage.ApiKey);
+        });
+
+        builder.Services.AddSingleton<IEmbeddingGenerator<string, Embedding<float>>>(sp =>
+            new ResilientEmbeddingGenerator(
+                new BudgetedEmbeddings(
+                    sp.GetRequiredService<VoyageEmbeddings>(),
+                    sp.GetRequiredService<ISpendLedger>(),
+                    sp.GetRequiredService<IOptions<PrompterOptions>>()),
+                sp.GetRequiredService<IOptions<PrompterOptions>>(),
+                sp.GetRequiredService<ILogger<ResilientEmbeddingGenerator>>()));
+
+        builder.Services.AddSingleton<IChatClient>(sp =>
+        {
+            var options = sp.GetRequiredService<IOptions<PrompterOptions>>().Value;
+            var client = options.Anthropic.ApiKey.Length > 0
+                ? new AnthropicClient { ApiKey = options.Anthropic.ApiKey, MaxRetries = 0 }
+                : new AnthropicClient { MaxRetries = 0 };
+
+            return new BudgetedChat(client.AsIChatClient(options.Anthropic.Model), sp.GetRequiredService<IOptions<PrompterOptions>>());
+        });
     }
 }
