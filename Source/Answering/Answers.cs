@@ -2,6 +2,7 @@
 // Licensed under the MIT license. See LICENSE file in the project root for full license information.
 
 using System.Text;
+using System.Text.Json;
 using Anthropic.Models.Messages;
 using Cratis.Prompter.Retrieval;
 using Cratis.Prompter.Storage;
@@ -30,7 +31,7 @@ public class Answers(
     public async Task<Answer> For(Question question, string source, CancellationToken cancellationToken = default)
     {
         var answering = options.Value.Answering;
-        var found = (await passages.Search(question, answering.MaxPassages, cancellationToken)).ToArray();
+        var found = (await passages.Search(new(question.Value), answering.MaxPassages, cancellationToken)).ToArray();
         var confidence = found.Length == 0 ? 0 : found[0].Score;
 
         Answer answer;
@@ -65,7 +66,7 @@ public class Answers(
             new(source, answer.Citations, answer.Confidence, answer.IsRefusal),
             cancellationToken);
 
-        return answer with { InteractionId = interactionId };
+        return answer with { InteractionId = interactionId, ContextDegraded = question.Conversation.IsDegraded };
     }
 
     static string ComposeUserMessage(Question question, IEnumerable<Passage> found)
@@ -80,6 +81,14 @@ public class Answers(
                 .AppendLine(passage.Content)
                 .AppendLine();
             index++;
+        }
+
+        if (question.Conversation.Messages.Count > 0)
+        {
+            message.AppendLine("<untrusted_conversation_history>")
+                .AppendLine(JsonSerializer.Serialize(question.Conversation.Messages))
+                .AppendLine("</untrusted_conversation_history>")
+                .AppendLine();
         }
 
         message.AppendLine($"Question: {question.Value}");

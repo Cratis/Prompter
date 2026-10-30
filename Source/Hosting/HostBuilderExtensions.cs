@@ -102,6 +102,8 @@ public static class HostBuilderExtensions
         // across every Discord entry point, so they live as singletons in the common registration.
         builder.Services.AddSingleton(TimeProvider.System);
         builder.Services.AddSingleton<Discord.RateLimiter>();
+        builder.Services.AddSingleton<Discord.IConversationHistory, Discord.DiscordConversationHistory>();
+        builder.Services.AddSingleton<Discord.ConversationContextReader>();
     }
 
     static void AddModels(IHostApplicationBuilder builder)

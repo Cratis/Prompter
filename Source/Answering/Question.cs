@@ -14,6 +14,10 @@ public record Question(string Value) : ConceptAs<string>(Value)
     /// </summary>
     public static readonly Question NotSet = new(string.Empty);
 
+    /// <summary>Gets request-only history. It is excluded from serialization and retrieval.</summary>
+    [System.Text.Json.Serialization.JsonIgnore]
+    public ConversationContext Conversation { get; init; } = ConversationContext.Empty;
+
     public static implicit operator string(Question question) => question.Value;
 
     public static implicit operator Question(string value) => new(value);
