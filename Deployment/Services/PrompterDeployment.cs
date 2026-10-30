@@ -46,6 +46,8 @@ public sealed class PrompterDeployment
 
         // Every secret the bot needs, in one Secret. The keys are the configuration paths themselves, so the
         // mapping from `Cratis:Prompter:…` to environment variable is readable at a glance in `kubectl`.
+        var secretData = SecretData(args);
+
         var secret = new Secret(
             $"{SecretName}-{args.Environment}",
             new SecretArgs
@@ -56,16 +58,7 @@ public sealed class PrompterDeployment
                     Namespace = args.Namespace,
                     Labels = labels,
                 },
-                StringData = new InputMap<string>
-                {
-                    ["Cratis__Prompter__ConnectionString"] = args.ConnectionString,
-                    ["Cratis__Prompter__Discord__Token"] = args.DiscordToken,
-                    ["Cratis__Prompter__Anthropic__ApiKey"] = args.AnthropicApiKey,
-                    ["Cratis__Prompter__Voyage__ApiKey"] = args.VoyageApiKey,
-                    ["Cratis__Prompter__ReindexSecret"] = args.ReindexSecret,
-                    ["Cratis__Prompter__GitHub__Token"] = args.GitHubToken,
-                    ["Cratis__Prompter__GitHub__WebhookSecret"] = args.GitHubWebhookSecret,
-                },
+                StringData = secretData,
             },
             new CustomResourceOptions { Provider = args.Provider });
 
@@ -154,7 +147,11 @@ public sealed class PrompterDeployment
                     Strategy = new DeploymentStrategyArgs { Type = "Recreate" },
                     Template = new PodTemplateSpecArgs
                     {
-                        Metadata = new ObjectMetaArgs { Labels = labels },
+                        Metadata = new ObjectMetaArgs
+                        {
+                            Labels = labels,
+                            Annotations = { ["checksum/configuration"] = ConfigurationFingerprint.Create(secretData) },
+                        },
                         Spec = new PodSpecArgs { Containers = [container] },
                     },
                 },
@@ -188,4 +185,15 @@ public sealed class PrompterDeployment
     /// Gets the in-cluster ClusterIP Service.
     /// </summary>
     public Service Service { get; }
+
+    static InputMap<string> SecretData(PrompterDeploymentArgs args) => new()
+    {
+        ["Cratis__Prompter__ConnectionString"] = args.ConnectionString,
+        ["Cratis__Prompter__Discord__Token"] = args.DiscordToken,
+        ["Cratis__Prompter__Anthropic__ApiKey"] = args.AnthropicApiKey,
+        ["Cratis__Prompter__Voyage__ApiKey"] = args.VoyageApiKey,
+        ["Cratis__Prompter__ReindexSecret"] = args.ReindexSecret,
+        ["Cratis__Prompter__GitHub__Token"] = args.GitHubToken,
+        ["Cratis__Prompter__GitHub__WebhookSecret"] = args.GitHubWebhookSecret,
+    };
 }
