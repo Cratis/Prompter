@@ -270,8 +270,8 @@ not zero usage. Hooks carry fixed provider/account/task labels and no prompts, a
 ## ✅ Quality gates
 
 ```bash
-dotnet build --configuration Release   # zero warnings, zero errors (warnings are errors in Release)
-dotnet test  --configuration Release   # all specs green
+dotnet build --configuration Release          # zero warnings, zero errors (warnings are errors in Release)
+./Specs/bin/Release/net10.0/Prompter.Specs    # all specs green (xUnit v3 executable, not dotnet test)
 ```
 
 And one more gate that's unusual for a bot: **answer quality is measured, not vibed.** A golden-question eval
