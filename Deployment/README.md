@@ -151,7 +151,9 @@ kubectl --kubeconfig "$PROMPTER_KUBECONFIG_PATH" -n prompter logs job/<job-name>
 ```
 
 After rotating the Voyage key, run `scripts/set-github-secrets.sh`, then **Deploy - Production** with the
-currently deployed version to update `prompter-secrets` before re-indexing. Updating GitHub secrets alone
+currently deployed version to update `prompter-secrets` before re-indexing. Any change to the bot's consumed
+secret map automatically rolls its single pod via a secret-tainted SHA-256 `checksum/configuration`
+pod-template annotation; the annotation contains no raw secret values. Updating GitHub secrets alone
 does not update the Job's credentials. Scheduled workflows in public repositories can be disabled after
 60 days without activity; if needed, re-enable with `gh workflow enable reindex-production.yml`.
 
