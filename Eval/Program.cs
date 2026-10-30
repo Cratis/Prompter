@@ -1,58 +1,45 @@
 // Copyright (c) Cratis. All rights reserved.
 // Licensed under the MIT license. See LICENSE file in the project root for full license information.
 
-using System.Globalization;
-using Cratis.Prompter.Answering;
 using Cratis.Prompter.Eval;
-using Cratis.Prompter.Eval.Scoring;
-using Cratis.Prompter.Storage;
-using Microsoft.Extensions.AI;
-using Microsoft.Extensions.AI.Evaluation;
-using Microsoft.Extensions.DependencyInjection;
 
-var (goldenPath, resultsDir) = EvalWorkspace.Resolve(args);
-
-if (!File.Exists(goldenPath))
+// No default paid mode, CLI configuration binding, appsettings or user-secrets.
+if (!args.Contains("--offline", StringComparer.Ordinal) || args.Contains("--index", StringComparer.Ordinal) || args.Contains("--paid", StringComparer.Ordinal))
 {
-    await Console.Error.WriteLineAsync($"Golden question set not found at '{goldenPath}'. Pass --golden <path>.");
-    return 1;
+    await Console.Error.WriteLineAsync(EvalHost.Configuration().PaidBlockReason);
+    return 2;
 }
 
-using var host = EvalHost.Build(args);
-
-// Applies any pending schema migrations, exactly as the bot does at startup.
-await host.Services.GetRequiredService<IChunks>().EnsureSchema();
-
-var goldenSet = GoldenSet.Parse(await File.ReadAllTextAsync(goldenPath));
-var questions = goldenSet.Questions.ToArray();
-Console.WriteLine($"Loaded {questions.Length} golden questions from {goldenPath}");
-
-var run = new EvaluationRun(
-    host.Services.GetRequiredService<IAnswers>(),
-    new GroundednessEvaluator(),
-    new ChatConfiguration(host.Services.GetRequiredService<IChatClient>()));
-
-var results = new List<QuestionResult>(questions.Length);
-foreach (var question in questions)
+for (var index = 0; index < args.Length; index++)
 {
-    var result = await run.Score(question);
-    results.Add(result);
-    Console.WriteLine(result.ConsoleLine());
+    if (args[index] == "--offline") continue;
+    if ((args[index] == "--out" || args[index] == "--revision") && index + 1 < args.Length &&
+        !args[index + 1].StartsWith("--", StringComparison.Ordinal))
+    {
+        index++;
+        continue;
+    }
+    await Console.Error.WriteLineAsync("Supported offline arguments: --offline --out <directory> --revision <source revision>.");
+    return 2;
 }
 
-var report = new EvalReport(results, DateTimeOffset.UtcNow);
-var stamp = report.GeneratedAt.ToString("yyyyMMdd-HHmmss", CultureInfo.InvariantCulture);
+string? Value(string name)
+{
+    var index = Array.IndexOf(args, name);
+    return index >= 0 && index + 1 < args.Length ? args[index + 1] : null;
+}
 
+var revision = Value("--revision");
+if (string.IsNullOrWhiteSpace(revision) || revision.StartsWith("--", StringComparison.Ordinal))
+{
+    await Console.Error.WriteLineAsync("An explicit non-secret --revision is required for report provenance.");
+    return 2;
+}
+
+var (_, resultsDir) = EvalWorkspace.Resolve(args);
+var report = OfflineEvaluation.Run(revision);
 Directory.CreateDirectory(resultsDir);
-var markdownPath = Path.Combine(resultsDir, $"report-{stamp}.md");
-var jsonPath = Path.Combine(resultsDir, $"report-{stamp}.json");
-
-await File.WriteAllTextAsync(markdownPath, report.ToMarkdown());
-await File.WriteAllTextAsync(jsonPath, report.ToJson());
-
-Console.WriteLine();
-Console.WriteLine(report.ConsoleSummary());
-Console.WriteLine($"Wrote {markdownPath}");
-Console.WriteLine($"Wrote {jsonPath}");
-
-return 0;
+await File.WriteAllTextAsync(Path.Combine(resultsDir, "report-offline.json"), report.ToJson());
+await File.WriteAllTextAsync(Path.Combine(resultsDir, "report-offline.md"), "Synthetic offline evidence — not measured model quality.\n\n" + report.ToMarkdown());
+Console.WriteLine("Offline synthetic scoring complete; paid baseline remains unmeasured.");
+return report.ExitCode;

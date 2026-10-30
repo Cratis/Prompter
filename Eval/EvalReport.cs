@@ -13,7 +13,8 @@ namespace Cratis.Prompter.Eval;
 /// </summary>
 /// <param name="results">The scored per-question results.</param>
 /// <param name="generatedAt">When the run was produced.</param>
-internal sealed class EvalReport(IReadOnlyList<QuestionResult> results, DateTimeOffset generatedAt)
+/// <param name="provenance">The non-secret evidence identity.</param>
+internal sealed class EvalReport(IReadOnlyList<QuestionResult> results, DateTimeOffset generatedAt, EvalProvenance? provenance = null)
 {
     static readonly JsonSerializerOptions _jsonOptions = new()
     {
@@ -26,6 +27,17 @@ internal sealed class EvalReport(IReadOnlyList<QuestionResult> results, DateTime
 
     /// <summary>Gets when the run was produced.</summary>
     public DateTimeOffset GeneratedAt => generatedAt;
+
+    /// <summary>Gets whether all required samples and scorer outputs are present and valid.</summary>
+    public bool Complete => _inScope.Length > 0 && _outOfScope.Length > 0 &&
+        results.Select(result => result.Id).Distinct(StringComparer.Ordinal).Count() == results.Count &&
+        results.All(result => !string.IsNullOrWhiteSpace(result.Id) && result.Error is null &&
+            double.IsFinite(result.Confidence) &&
+            (result.ExpectedRefusal || (result.CitationHit is not null &&
+                (result.ActualRefusal || result.Groundedness is >= 1 and <= 5))));
+
+    /// <summary>Gets the process exit status; incomplete scoring is never success.</summary>
+    public int ExitCode => Complete ? 0 : 1;
 
     int Passed => results.Count(result => result.Passed);
 
@@ -105,6 +117,8 @@ internal sealed class EvalReport(IReadOnlyList<QuestionResult> results, DateTime
         var document = new
         {
             GeneratedAt = generatedAt,
+            Provenance = provenance,
+            Complete,
             Summary = new
             {
                 Questions = results.Count,

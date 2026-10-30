@@ -1,96 +1,66 @@
 name: Eval
 
-# Answer-quality gate (backlog P-19). Running the harness costs Voyage + Anthropic API calls and a full
-# index of cratis.io, so this workflow is deliberately NOT on every PR. It runs only when:
-#   * triggered by hand (workflow_dispatch), or
-#   * a pull request carries the `eval` label (add the label to a PR to have it scored).
-# The `pull_request` trigger fires on `labeled` (so adding the label kicks off a run) and on `synchronize`
-# / `reopened` (so an already-labeled PR is re-scored on each push). The job-level `if` guards every
-# pull_request event on the `eval` label, so an ordinary unlabeled PR triggers nothing but a skipped job.
-#
-# Required repository secrets (Settings -> Secrets and variables -> Actions):
-#   * VOYAGE_API_KEY      — Voyage AI key, used for retrieval embeddings during indexing and the eval.
-#   * ANTHROPIC_API_KEY   — Anthropic key, used for the answer and the groundedness judge.
-# They are mapped onto the env-var forms the app binds (Cratis__Prompter__Voyage__ApiKey /
-# Cratis__Prompter__Anthropic__ApiKey — see the config table in README.md).
-
-env:
-  DOTNET_VERSION: "10.0.x"
-  # Where the harness writes its report and where the baseline check reads it from — kept in one place so
-  # the two stay in sync.
-  RESULTS_DIR: "Eval/results"
-
 on:
-  workflow_dispatch:
   pull_request:
-    types: [labeled, synchronize, reopened]
-    branches:
-      - "main"
+    branches: [main]
+    paths: ['Eval/**', 'Specs/**', '.github/workflows/eval.yml', 'Source/**', 'Directory.*', 'global.json']
+  workflow_dispatch:
+    inputs:
+      paid:
+        description: 'Request protected paid preflight (execution remains disabled pending aggregate budget integration)'
+        type: boolean
+        default: false
 
-# Eval runs are expensive; never let a labeled PR pile up overlapping runs.
+permissions:
+  contents: read
+
 concurrency:
   group: eval-${{ github.event.pull_request.number || github.ref }}
   cancel-in-progress: true
 
 jobs:
-  eval:
-    permissions:
-      contents: read
-    # workflow_dispatch always runs; pull_request events run only while the PR carries the `eval` label,
-    # so unlabeled PRs never spend API budget here.
-    if: >-
-      github.event_name == 'workflow_dispatch' ||
-      contains(github.event.pull_request.labels.*.name, 'eval')
+  offline:
     runs-on: ubuntu-latest
-    timeout-minutes: 30
-
-    # Postgres + pgvector, matching docker-compose.yml (pgvector/pgvector:0.8.7-pg17, db/user/pass all `prompter`).
-    services:
-      postgres:
-        image: pgvector/pgvector:0.8.7-pg17
-        env:
-          POSTGRES_DB: prompter
-          POSTGRES_USER: prompter
-          POSTGRES_PASSWORD: prompter
-        ports:
-          - 5432:5432
-        options: >-
-          --health-cmd "pg_isready -U prompter -d prompter"
-          --health-interval 10s
-          --health-timeout 5s
-          --health-retries 5
-
-    env:
-      # Points at the service container mapped onto the runner's localhost (matches the app default).
-      Cratis__Prompter__ConnectionString: "Host=localhost;Port=5432;Database=prompter;Username=prompter;Password=prompter"
-      Cratis__Prompter__Voyage__ApiKey: ${{ secrets.VOYAGE_API_KEY }}
-      Cratis__Prompter__Anthropic__ApiKey: ${{ secrets.ANTHROPIC_API_KEY }}
-
+    timeout-minutes: 10
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
-
-      - name: Setup .NET
-        uses: actions/setup-dotnet@a98b56852c35b8e3190ac28c8c2271da59106c68 # v6.0.0
+      - uses: actions/setup-dotnet@a98b56852c35b8e3190ac28c8c2271da59106c68 # v6.0.0
         with:
-          dotnet-version: ${{ env.DOTNET_VERSION }}
-
-      - name: Build
-        run: dotnet build --configuration Release
-
-      - name: Index the corpus
-        run: dotnet run --project Source --configuration Release --no-build -- index
-
-      - name: Run the eval harness
-        run: dotnet run --project Eval --configuration Release --no-build -- --out "${{ env.RESULTS_DIR }}"
-
-      - name: Upload the eval report
-        if: always()
-        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+          dotnet-version: '10.0.x'
+      - name: Build offline specs
+        run: dotnet build Specs/Prompter.Specs.csproj --configuration Release --no-incremental
+      - name: Run specs executable
+        run: dotnet Specs/bin/Release/net10.0/Prompter.Specs.dll
+      - name: Check baseline rejection rules
+        run: node --test Eval/tests/check-baseline.test.mjs
+      - name: Run synthetic evaluation
+        run: dotnet Eval/bin/Release/net10.0/Cratis.Prompter.Eval.dll --offline --revision "$GITHUB_SHA" --out Eval/results/offline
+      - name: Check synthetic evidence only
+        run: node Eval/check-baseline.mjs --synthetic --report Eval/results/offline/report-offline.json --baseline Eval/offline-baseline.json
+      - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
         with:
           retention-days: 3
-          name: eval-report
-          path: ${{ env.RESULTS_DIR }}
-          if-no-files-found: warn
+          name: synthetic-eval-report
+          path: |
+            Eval/results/offline/report-offline.json
+            Eval/results/offline/report-offline.md
+          if-no-files-found: error
 
-      - name: Enforce the answer-quality baseline
-        run: python3 Eval/check-baseline.py --report "${{ env.RESULTS_DIR }}" --baseline Eval/baseline.json
+  paid-preflight:
+    if: github.event_name == 'workflow_dispatch' && inputs.paid && github.ref == 'refs/heads/main'
+    environment: eval
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    env:
+      Cratis__PrompterEval__AnthropicApiKey: ${{ secrets.EVAL_ANTHROPIC_API_KEY }}
+      Cratis__PrompterEval__VoyageApiKey: ${{ secrets.EVAL_VOYAGE_API_KEY }}
+    steps:
+      - name: Fail closed before any indexing or paid work
+        shell: bash
+        run: |
+          if [ -z "$Cratis__PrompterEval__AnthropicApiKey" ] || [ -z "$Cratis__PrompterEval__VoyageApiKey" ]; then
+            echo 'Missing dedicated eval keys.' >&2
+            exit 1
+          fi
+          echo 'Paid evaluation disabled: aggregate budget/admission integration and disposable eval corpus configuration are pending.' >&2
+          exit 1
