@@ -4,9 +4,11 @@
 using Cratis.Prompter.Answering;
 using Cratis.Prompter.Embeddings;
 using Cratis.Prompter.GitHub;
+using Cratis.Prompter.GitHub.Authentication;
 using Cratis.Prompter.Ingestion;
 using Cratis.Prompter.Protection;
 using Cratis.Prompter.Retrieval;
+using Cratis.Prompter.Routing;
 using Cratis.Prompter.Storage;
 using Cratis.Prompter.Telemetry;
 using Microsoft.Extensions.AI;
@@ -70,20 +72,18 @@ public static class HostBuilderExtensions
         AddModels(builder);
 
         // GitHub: filing issues from Discord and answering newly-opened ones. The client is registered
-        // regardless of whether a token is configured - the command checks GitHubOptions.FilingEnabled and
+        // regardless of whether App credentials are configured - the command checks GitHubOptions.FilingEnabled and
         // says so, which is a better failure than an unresolvable dependency at startup.
-        builder.Services.AddHttpClient<IIssues, Issues>((sp, client) =>
+        builder.Services.AddHttpClient<IIssues, Issues>(client =>
         {
-            var options = sp.GetRequiredService<IOptions<PrompterOptions>>().Value;
-            client.BaseAddress = new Uri(options.GitHub.ApiUrl.TrimEnd('/') + "/");
-            client.DefaultRequestHeaders.Authorization = new("Bearer", options.GitHub.Token);
             client.DefaultRequestHeaders.Accept.Add(new("application/vnd.github+json"));
 
             // GitHub rejects requests without a user agent, and names the caller in rate-limit responses.
             client.DefaultRequestHeaders.UserAgent.Add(new("Cratis-Prompter", "1.0"));
-        }).AddHttpMessageHandler<GitHubWriteGate>();
+        }).AddHttpMessageHandler<GitHubWriteGate>().AddGitHubAppAuthentication();
 
         builder.Services.AddTransient<GitHubWriteGate>();
+        AddRequestAssistance(builder);
         builder.Services.AddSingleton<IssueDrafting>();
         builder.Services.AddSingleton<IIssueDrafting, ProtectedDrafting>();
         builder.Services.AddSingleton<PendingIssues>();
@@ -110,6 +110,17 @@ public static class HostBuilderExtensions
         builder.Services.AddSingleton<Discord.RateLimiter>();
         builder.Services.AddSingleton<Discord.IConversationHistory, Discord.DiscordConversationHistory>();
         builder.Services.AddSingleton<Discord.ConversationContextReader>();
+    }
+
+    static void AddRequestAssistance(IHostApplicationBuilder builder)
+    {
+        var routing = new RoutingOptions();
+        builder.Configuration.GetSection("Cratis:Prompter:Routing").Bind(routing);
+        var github = new GitHubOptions();
+        builder.Configuration.GetSection("Cratis:Prompter:GitHub").Bind(github);
+        builder.Services.AddRequestRouting(routing, github.Repositories.Keys.ToArray());
+        builder.Services.AddRelatedIssueSearch();
+        builder.Services.AddSingleton<Discord.ConversationAssistance>();
     }
 
     static void AddModels(IHostApplicationBuilder builder)

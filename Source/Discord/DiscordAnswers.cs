@@ -17,6 +17,18 @@ public static class DiscordAnswers
     const string Ellipsis = "…";
     const string CodeFence = "```";
 
+    /// <summary>Formats advice separately from documentation citations and feedback.</summary>
+    /// <param name="reply">The original answer and bounded advisory hints.</param>
+    /// <returns>An optional separate message without remote titles or model-generated text.</returns>
+    public static string Advice(ConversationReply reply)
+    {
+        if (reply.Related.Count == 0) return reply.Offer;
+        var links = reply.Related.Take(6).Select(issue =>
+            $"- {(issue.RecentlyClosed ? "Recently closed" : "Open")} #{issue.Number}: <{issue.Url}>");
+        var content = "Possibly related issues (not documentation evidence; closed does not mean fixed):\n" + string.Join('\n', links);
+        return reply.Offer.Length == 0 ? content : content + "\n\n" + reply.Offer;
+    }
+
     /// <summary>
     /// Formats an answer as a single Discord message, capped to Discord's message length.
     /// </summary>

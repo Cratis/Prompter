@@ -17,7 +17,7 @@ namespace Cratis.Prompter.Discord;
 /// reply followed by a standing note that a human will follow up.
 /// </summary>
 /// <param name="rest">The REST client used to read the starter message and post replies into the thread.</param>
-/// <param name="answers">The answers Prompter can give.</param>
+/// <param name="assistance">Documentation answers and separate advisory hints.</param>
 /// <param name="admission">The cheap shared admission guard.</param>
 /// <param name="work">The global concurrency and durable spend guard.</param>
 /// <param name="context">Request-only bounded conversation history.</param>
@@ -25,7 +25,7 @@ namespace Cratis.Prompter.Discord;
 /// <param name="logger">Logger for diagnostics.</param>
 public class HelpForum(
     RestClient rest,
-    IAnswers answers,
+    ConversationAssistance assistance,
     Admission admission,
     PaidWork work,
     ConversationContextReader context,
@@ -153,8 +153,13 @@ public class HelpForum(
 
         logger.AnsweringForumThread(thread.Id);
         var request = await context.For(question, new(thread.GuildId, thread.Id, starter.Id, starter.CreatedAt), cancellationToken);
-        var answer = await answers.For(request, "discord-forum", cancellationToken);
-        await SendAnswer(thread.Id, answer);
+        var reply = await assistance.For(request, "discord-forum", cancellationToken);
+        await SendAnswer(thread.Id, reply.Answer);
+        var advice = DiscordAnswers.Advice(reply);
+        if (advice.Length > 0)
+        {
+            await rest.SendMessageAsync(thread.Id, new MessageProperties { Content = advice });
+        }
         return true;
     }
 
