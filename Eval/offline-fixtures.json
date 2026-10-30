@@ -1,0 +1,8 @@
+{
+  "corpus": "synthetic-docs-v1: Chronicle stores events; Arc provides CQRS.",
+  "golden": "questions:\n  - id: synthetic-answer\n    product: chronicle\n    type: concept\n    question: What stores events?\n    expected: answer\n    expected_pages: [https://cratis.io/chronicle]\n  - id: synthetic-refusal\n    product: out-of-scope\n    type: refusal\n    question: What is tomorrow's weather?\n    expected: refuse\n    expected_pages: []\n",
+  "responses": [
+    { "refusal": false, "citations": ["https://cratis.io/chronicle.md"], "judgeScore": 4 },
+    { "refusal": true, "citations": [], "judgeScore": null }
+  ]
+}
