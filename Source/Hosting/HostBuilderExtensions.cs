@@ -93,13 +93,18 @@ public static class HostBuilderExtensions
         builder.Services.AddSingleton<Answers>();
         builder.Services.AddSingleton<IAnswers, ProtectedAnswers>();
         builder.Services.AddSingleton<Indexer>();
-        builder.Services.AddSingleton<IIndexer, ProtectedIndexer>();
+        builder.Services.AddSingleton<ProtectedIndexer>();
+        builder.Services.AddSingleton<IIndexer>(sp => new ObservedIndexer(sp.GetRequiredService<ProtectedIndexer>(), sp.GetRequiredService<IIndexHistory>()));
         builder.Services.AddSingleton<ISpendLedger, SpendLedger>();
         builder.Services.AddSingleton<PaidWork>();
         builder.Services.AddSingleton<Admission>();
 
         // The per-user question throttle and the clock its refills are measured against. Both are shared
         // across every Discord entry point, so they live as singletons in the common registration.
+        builder.Services.Configure<MetricsOptions>(builder.Configuration.GetSection("Cratis:Prompter:Metrics"));
+        builder.Services.AddSingleton<MetricsExport>();
+        if (builder.Configuration.GetValue<bool>("Cratis:Prompter:Metrics:Enabled")) builder.Services.AddHostedService<DurableMetrics>();
+        builder.Services.AddSingleton<IIndexHistory, IndexHistory>();
         builder.Services.AddSingleton(TimeProvider.System);
         builder.Services.AddSingleton<Discord.RateLimiter>();
     }
@@ -131,7 +136,7 @@ public static class HostBuilderExtensions
             var secondary = string.IsNullOrWhiteSpace(options.Anthropic.SecondaryApiKey)
                 ? null : new BudgetedChat(new AnthropicConnection(options.Anthropic.SecondaryApiKey), configuration);
 
-            return new AnthropicAccounts(primary, secondary, options.Anthropic, sp.GetService<IProviderAccounting>());
+            return new AnthropicAccounts(primary, secondary, options.Anthropic, sp.GetService<IProviderAccounting>(), options.Protection.Anthropic);
         });
     }
 }

@@ -1,6 +1,7 @@
 // Copyright (c) Cratis. All rights reserved.
 // Licensed under the MIT license. See LICENSE file in the project root for full license information.
 
+using System.Diagnostics;
 using System.Text;
 using Cratis.Prompter.Telemetry;
 using Microsoft.Extensions.AI;
@@ -57,6 +58,8 @@ public sealed class ResilientEmbeddingGenerator(
                     throw;
                 }
 
+                ProviderMetrics.Retry("voyage", delay);
+                if (failure.StatusCode == System.Net.HttpStatusCode.TooManyRequests) ProviderMetrics.Event("voyage", "cooldown");
                 logger.RetryingAfterTransientFailure((int?)failure.StatusCode, attempt + 1, policy.MaxRetries, delay.TotalMilliseconds);
                 await EmbeddingCooldown.WaitFor(delay, deadline, timeout.Token);
             }
@@ -74,17 +77,28 @@ public sealed class ResilientEmbeddingGenerator(
     {
         if (accounting is not null && !await accounting.Reserve(dispatch, token))
         {
+            ProviderMetrics.Event("voyage", "denied");
             throw new EmbeddingGenerationFailed("budget unavailable");
         }
 
         GeneratedEmbeddings<Embedding<float>>? response = null;
+        var outcome = "unknown";
+        var start = Stopwatch.GetTimestamp();
+        ProviderMetrics.Begin(dispatch);
         try
         {
             response = await inner.GenerateAsync(inputs, options, token);
+            outcome = "success";
             return response;
+        }
+        catch (Exception error)
+        {
+            outcome = ProviderMetrics.Category(error);
+            throw;
         }
         finally
         {
+            ProviderMetrics.Complete(dispatch, new(response?.Usage, outcome, Stopwatch.GetElapsedTime(start)), prompterOptions.Value.Protection.Voyage);
             if (accounting is not null)
             {
                 await accounting.Complete(dispatch, response?.Usage, response is null ? "unknown" : "stop");

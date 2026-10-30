@@ -7,6 +7,7 @@ using Cratis.Prompter.Hosting;
 using Cratis.Prompter.Ingestion;
 using Cratis.Prompter.Operations;
 using Cratis.Prompter.Storage;
+using Cratis.Prompter.Telemetry;
 using Microsoft.AspNetCore.Builder;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
@@ -24,7 +25,8 @@ if (mode == "index" || mode == "ask")
     var builder = Host.CreateApplicationBuilder(mode == "index" ? IndexArguments.ConfigurationArguments(args) : args);
     builder.AddPrompter();
 
-    var host = builder.Build();
+    using var host = builder.Build();
+    _ = host.Services.GetRequiredService<MetricsExport>();
     await host.Services.GetRequiredService<IChunks>().EnsureSchema();
 
     if (mode == "index")

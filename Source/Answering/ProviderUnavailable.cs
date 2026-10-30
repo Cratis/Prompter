@@ -7,4 +7,8 @@ namespace Cratis.Prompter.Answering;
 /// A sanitized generation failure, safe to log without provider bodies or request text.
 /// </summary>
 /// <param name="reason">A fixed failure category.</param>
-public sealed class ProviderUnavailable(string reason) : Exception($"Generation unavailable: {reason}.");
+public sealed class ProviderUnavailable(string reason) : Exception($"Generation unavailable: {reason}.")
+{
+    /// <summary>Gets the HTTP-derived category, never provider error text.</summary>
+    public string Category { get; init; } = "provider_failure";
+}

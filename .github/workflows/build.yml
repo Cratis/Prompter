@@ -21,6 +21,8 @@ on:
       - "Directory.Packages.props"
       - "global.json"
       - ".github/workflows/build.yml"
+      - ".github/scripts/**"
+      - "Monitoring/**"
   pull_request:
     branches:
       - "main"
@@ -33,8 +35,23 @@ on:
       - "Directory.Packages.props"
       - "global.json"
       - ".github/workflows/build.yml"
+      - ".github/scripts/**"
+      - "Monitoring/**"
 
 jobs:
+  monitoring-specs:
+    permissions:
+      contents: read
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - name: Validate monitoring artifacts and notification behavior
+        run: node --test Monitoring/specs/*.spec.mjs
+      - name: Check failure notifier syntax
+        run: node --check .github/scripts/notify-reindex-failure.mjs
   dotnet-build:
     permissions:
       contents: read

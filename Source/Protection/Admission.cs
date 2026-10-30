@@ -6,6 +6,7 @@ using System.Security.Cryptography;
 using System.Text;
 using Cratis.Prompter.Answering;
 using Cratis.Prompter.Discord;
+using Cratis.Prompter.Telemetry;
 using Microsoft.Extensions.Options;
 
 namespace Cratis.Prompter.Protection;
@@ -39,6 +40,7 @@ public sealed class Admission(IOptions<PrompterOptions> options, RateLimiter use
     {
         if (!InScope(actor.GuildId, actor.ChannelId))
         {
+            ProviderMetrics.Event("admission", "denied");
             return new(false, false);
         }
 
@@ -50,12 +52,14 @@ public sealed class Admission(IOptions<PrompterOptions> options, RateLimiter use
             var limits = options.Value.Protection;
             if (!TryNormalize(question, out var normalized))
             {
+                ProviderMetrics.Event("admission", "denied");
                 return Deny(userKey, channelKey, now);
             }
 
             var duplicate = Hash($"{userKey.Value}:{channelKey.Value}:{normalized}");
             if (!_duplicates.Available(duplicate.Value, 1, now) || !UnderRateLimits(userKey, channelKey, now))
             {
+                ProviderMetrics.Event("admission", "denied");
                 return Deny(userKey, channelKey, now);
             }
 

@@ -30,6 +30,11 @@ the namespace in Infrastructure, supply the GitHub secrets, and deploy it throug
 once after the first deploy and complete [Discord app setup](discord-setup.md) before inviting questions.
 The tracker bridge's inbound GitHub webhook is dormant in production until a public route or relay is decided.
 
+## Private metrics and alerts
+
+See [Monitor Prompter](monitoring.md) for opt-in private metrics, the Grafana dashboard, paused alert
+provisioning, failure-notification configuration, and operator runbooks. No alert destination is assumed.
+
 ## Documentation changes never redeploy
 
 App deploys are for code changes only. When the documentation changes, nothing is redeployed - the

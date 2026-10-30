@@ -1,6 +1,8 @@
 // Copyright (c) Cratis. All rights reserved.
 // Licensed under the MIT license. See LICENSE file in the project root for full license information.
 
+using System.Diagnostics;
+using Cratis.Prompter.Protection;
 using Cratis.Prompter.Telemetry;
 using Microsoft.Extensions.AI;
 
@@ -14,11 +16,13 @@ namespace Cratis.Prompter.Answering;
 /// <param name="secondary">The optional secondary client, with SDK retries disabled.</param>
 /// <param name="configuration">Task and account configuration.</param>
 /// <param name="accounting">Shared durable reservation/accounting integration.</param>
+/// <param name="prices">Verified prices for optional usage estimates.</param>
 public sealed class AnthropicAccounts(
     IChatClient primary,
     IChatClient? secondary,
     AnthropicOptions configuration,
-    IProviderAccounting? accounting = null) : DelegatingChatClient(primary)
+    IProviderAccounting? accounting = null,
+    ProviderBudget? prices = null) : DelegatingChatClient(primary)
 {
     /// <summary>
     /// The AdditionalProperties key selecting the fixed issue-draft task; absent means answer.
@@ -50,10 +54,13 @@ public sealed class AnthropicAccounts(
             }
             catch (AnthropicCapacityFailure failure) when (attempt == 1)
             {
-                await Task.Delay(failure.RetryAfter ?? TimeSpan.FromMilliseconds(Random.Shared.Next(100, 1000)), timeout.Token);
+                var delay = failure.RetryAfter ?? TimeSpan.FromMilliseconds(Random.Shared.Next(100, 1000));
+                ProviderMetrics.Retry("anthropic", delay);
+                await Task.Delay(delay, timeout.Token);
             }
             catch (AnthropicCapacityFailure)
             {
+                ProviderMetrics.Event("anthropic", "capacity_exhausted");
                 throw new ProviderUnavailable("capacity_exhausted");
             }
         }
@@ -99,9 +106,11 @@ public sealed class AnthropicAccounts(
         var authorized = policy.AllowSecondary && accounting is not null;
         if (!authorized || secondary is null)
         {
+            ProviderMetrics.Event("anthropic", "quota");
             throw new ProviderUnavailable("quota_exhausted");
         }
 
+        ProviderMetrics.Event("anthropic", "fallback_quota");
         return (secondary, "secondary");
     }
 
@@ -109,29 +118,38 @@ public sealed class AnthropicAccounts(
     {
         if (accounting is not null && !await accounting.Reserve(dispatch, token))
         {
+            ProviderMetrics.Event("anthropic", "denied");
             throw new ProviderUnavailable("budget_unavailable");
         }
 
         ChatResponse? response = null;
+        var outcome = "unknown";
+        var start = Stopwatch.GetTimestamp();
+        ProviderMetrics.Begin(dispatch);
         try
         {
             response = await client.GetResponseAsync(request.Messages, request.Options, token);
+            outcome = Finish(response) == "refusal" ? "refusal" : "success";
             return response;
         }
         catch (AnthropicCapacityFailure)
         {
+            outcome = "capacity";
             throw;
         }
         catch (OperationCanceledException)
         {
+            outcome = "cancelled";
             throw;
         }
-        catch (Exception)
+        catch (Exception error)
         {
+            outcome = ProviderMetrics.Category(error);
             throw new ProviderUnavailable("provider_failure");
         }
         finally
         {
+            ProviderMetrics.Complete(dispatch, new(response?.Usage, outcome, Stopwatch.GetElapsedTime(start)), prices ?? new());
             if (accounting is not null)
             {
                 await accounting.Complete(dispatch, response?.Usage, Finish(response));

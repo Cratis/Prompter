@@ -62,6 +62,13 @@ jobs:
           export KUBECONFIG="$RUNNER_TEMP/kubeconfig"
           Deployment/scripts/run-index-job.sh
 
+      - name: Notify reindex failure
+        if: ${{ failure() || cancelled() }}
+        env:
+          PROMPTER_ALERT_WEBHOOK: ${{ secrets.PROMPTER_ALERT_WEBHOOK }}
+          REINDEX_JOB_STATUS: ${{ job.status }}
+        run: node .github/scripts/notify-reindex-failure.mjs
+
       - name: Remove kubeconfig
         if: always()
         run: rm -f "$RUNNER_TEMP/kubeconfig"

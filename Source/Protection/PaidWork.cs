@@ -1,6 +1,7 @@
 // Copyright (c) Cratis. All rights reserved.
 // Licensed under the MIT license. See LICENSE file in the project root for full license information.
 
+using Cratis.Prompter.Telemetry;
 using Microsoft.Extensions.Options;
 using Npgsql;
 
@@ -25,7 +26,7 @@ public sealed class PaidWork(ISpendLedger ledger, IOptions<PrompterOptions> opti
         CheckEnabled();
         if (!_slots.Wait(0, cancellationToken))
         {
-            throw new WorkRefused();
+            throw Refused("concurrency");
         }
 
         try
@@ -43,17 +44,23 @@ public sealed class PaidWork(ISpendLedger ledger, IOptions<PrompterOptions> opti
     /// <inheritdoc/>
     public void Dispose() => _slots.Dispose();
 
+    static WorkRefused Refused(string reason)
+    {
+        ProviderMetrics.Event("protection", reason);
+        return new();
+    }
+
     void CheckEnabled()
     {
         var config = options.Value;
         if (!config.Protection.AnsweringEnabled)
         {
-            throw new WorkRefused();
+            throw Refused("disabled");
         }
 
         if (!config.Protection.Anthropic.Covers(config.Anthropic.Model, true) || !config.Protection.Voyage.Covers(config.Voyage.Model, false))
         {
-            throw new WorkRefused();
+            throw Refused("pricing");
         }
     }
 
@@ -64,7 +71,7 @@ public sealed class PaidWork(ISpendLedger ledger, IOptions<PrompterOptions> opti
             var now = clock.GetUtcNow();
             if (!_hourly.Available("global", options.Value.Protection.GlobalPerHour, now))
             {
-                throw new WorkRefused();
+                throw Refused("hourly");
             }
 
             _hourly.Consume("global", TimeSpan.FromHours(1), now);
@@ -84,7 +91,7 @@ public sealed class PaidWork(ISpendLedger ledger, IOptions<PrompterOptions> opti
         {
             deadline = new(TimeSpan.FromSeconds(config.Discord.AnswerTimeoutSeconds), clock);
             linked = CancellationTokenSource.CreateLinkedTokenSource(cancellationToken, deadline.Token);
-            var id = await ledger.Reserve(exposure, linked.Token) ?? throw new WorkRefused();
+            var id = await ledger.Reserve(exposure, linked.Token) ?? throw Refused("budget");
             var lease = new WorkLease(ledger, id, exposure, linked, deadline, () => _slots.Release());
             linked = null;
             deadline = null;
@@ -92,7 +99,7 @@ public sealed class PaidWork(ISpendLedger ledger, IOptions<PrompterOptions> opti
         }
         catch (Exception error) when (error is NpgsqlException or TimeoutException)
         {
-            throw new WorkRefused();
+            throw Refused("budget");
         }
         finally
         {

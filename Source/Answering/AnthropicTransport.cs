@@ -3,6 +3,7 @@
 
 using System.Net;
 using Cratis.Prompter.Embeddings;
+using Cratis.Prompter.Telemetry;
 
 namespace Cratis.Prompter.Answering;
 
@@ -28,7 +29,10 @@ public sealed class AnthropicTransport : DelegatingHandler
                 throw new AnthropicCapacityFailure(EmbeddingRetry.RetryAfter(hint, DateTimeOffset.UtcNow));
             }
 
-            throw new ProviderUnavailable("nonretryable_or_unknown");
+            throw new ProviderUnavailable("nonretryable_or_unknown")
+            {
+                Category = ProviderMetrics.HttpCategory(response.StatusCode)
+            };
         }
     }
 }
