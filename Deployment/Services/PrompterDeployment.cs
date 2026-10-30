@@ -101,7 +101,7 @@ public sealed class PrompterDeployment
             Name = Name,
             Image = args.Image,
             Ports = [new ContainerPortArgs { ContainerPortValue = Port, Name = "http" }],
-            Env = WithMetrics(env, args.MetricsEnabled),
+            Env = WithMetrics(env, args.MetricsEnabled, args.Environment),
             EnvFrom = [new EnvFromSourceArgs { SecretRef = new SecretEnvSourceArgs { Name = SecretName } }],
 
             // Readiness uses /healthz, which checks the database *and* the gateway connection — exactly the
@@ -186,10 +186,11 @@ public sealed class PrompterDeployment
     /// </summary>
     public Service Service { get; }
 
-    static List<EnvVarArgs> WithMetrics(List<EnvVarArgs> environment, bool enabled) =>
+    static List<EnvVarArgs> WithMetrics(List<EnvVarArgs> environment, bool enabled, string deploymentEnvironment) =>
     [
         .. environment,
-        new() { Name = "Cratis__Prompter__Metrics__Enabled", Value = enabled ? "true" : "false" }
+        new() { Name = "Cratis__Prompter__Metrics__Enabled", Value = enabled ? "true" : "false" },
+        new() { Name = "Cratis__Prompter__Metrics__Environment", Value = deploymentEnvironment }
     ];
 
     static InputMap<string> SecretData(PrompterDeploymentArgs args) => new()

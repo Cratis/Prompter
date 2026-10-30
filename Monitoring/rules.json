@@ -19,24 +19,52 @@
       },
       {
         "alert": "PrompterIndexStale",
-        "expr": "time() - max(prompter_state_last_success) > 172800",
+        "expr": "time() - max(prompter_state_last_success) > 108000",
         "for": "15m",
         "labels": { "service": "prompter", "severity": "warning" },
-        "annotations": { "summary": "No successful corpus refresh in 48 hours (or no success recorded yet)", "runbook_url": "https://github.com/Cratis/Prompter/blob/main/Documentation/guides/monitoring.md#index-failure" }
+        "annotations": { "summary": "No successful corpus refresh in 30 hours (or no success recorded yet)", "runbook_url": "https://github.com/Cratis/Prompter/blob/main/Documentation/guides/monitoring.md#index-failure" }
       },
       {
         "alert": "PrompterSpendExposure",
-        "expr": "((max(prompter_state_anthropic_usd) + max(prompter_state_voyage_usd)) / clamp_min(max(prompter_limit_daily_usd), 0.001) > 0.8) or (max(prompter_state_anthropic_usd) / clamp_min(max(prompter_limit_anthropic_daily_usd), 0.001) > 0.8) or (max(prompter_state_voyage_usd) / clamp_min(max(prompter_limit_voyage_daily_usd), 0.001) > 0.8)",
+        "expr": "((max(prompter_state_anthropic_usd) + max(prompter_state_voyage_usd)) / clamp_min(max(prompter_limit_daily_usd), 0.001) >= 0.7) or (max(prompter_state_anthropic_usd) / clamp_min(max(prompter_limit_anthropic_daily_usd), 0.001) >= 0.7) or (max(prompter_state_voyage_usd) / clamp_min(max(prompter_limit_voyage_daily_usd), 0.001) >= 0.7)",
         "for": "5m",
         "labels": { "service": "prompter", "severity": "warning" },
-        "annotations": { "summary": "UTC-day interactive reserved exposure exceeds 80 percent of a protection ceiling", "runbook_url": "https://github.com/Cratis/Prompter/blob/main/Documentation/guides/monitoring.md#spend-and-protection" }
+        "annotations": { "summary": "UTC-day interactive reserved exposure reaches 70 percent of a protection ceiling", "runbook_url": "https://github.com/Cratis/Prompter/blob/main/Documentation/guides/monitoring.md#spend-and-protection" }
       },
       {
         "alert": "PrompterIndexSpendExposure",
-        "expr": "max(prompter_state_index_usd) / clamp_min(max(prompter_limit_index_daily_usd), 0.001) > 0.8",
+        "expr": "max(prompter_state_index_usd) / clamp_min(max(prompter_limit_index_daily_usd), 0.001) >= 0.7",
         "for": "5m",
         "labels": { "service": "prompter", "severity": "warning" },
-        "annotations": { "summary": "UTC-day retry-inclusive indexing exposure exceeds 80 percent of its ceiling", "runbook_url": "https://github.com/Cratis/Prompter/blob/main/Documentation/guides/monitoring.md#spend-and-protection" }
+        "annotations": { "summary": "UTC-day retry-inclusive indexing exposure reaches 70 percent of its ceiling", "runbook_url": "https://github.com/Cratis/Prompter/blob/main/Documentation/guides/monitoring.md#spend-and-protection" }
+      },
+      {
+        "alert": "PrompterSpendExposureHigh",
+        "expr": "((max(prompter_state_anthropic_usd) + max(prompter_state_voyage_usd)) / clamp_min(max(prompter_limit_daily_usd), 0.001) >= 0.9) or (max(prompter_state_anthropic_usd) / clamp_min(max(prompter_limit_anthropic_daily_usd), 0.001) >= 0.9) or (max(prompter_state_voyage_usd) / clamp_min(max(prompter_limit_voyage_daily_usd), 0.001) >= 0.9)",
+        "for": "5m",
+        "labels": { "service": "prompter", "severity": "critical" },
+        "annotations": { "summary": "UTC-day interactive reserved exposure reaches 90 percent of a protection ceiling", "runbook_url": "https://github.com/Cratis/Prompter/blob/main/Documentation/guides/monitoring.md#spend-and-protection" }
+      },
+      {
+        "alert": "PrompterIndexSpendExposureHigh",
+        "expr": "max(prompter_state_index_usd) / clamp_min(max(prompter_limit_index_daily_usd), 0.001) >= 0.9",
+        "for": "5m",
+        "labels": { "service": "prompter", "severity": "critical" },
+        "annotations": { "summary": "UTC-day retry-inclusive indexing exposure reaches 90 percent of its ceiling", "runbook_url": "https://github.com/Cratis/Prompter/blob/main/Documentation/guides/monitoring.md#spend-and-protection" }
+      },
+      {
+        "alert": "PrompterSpendHardCap",
+        "expr": "((max(prompter_state_anthropic_usd) + max(prompter_state_voyage_usd)) / clamp_min(max(prompter_limit_daily_usd), 0.001) >= 1) or (max(prompter_state_anthropic_usd) / clamp_min(max(prompter_limit_anthropic_daily_usd), 0.001) >= 1) or (max(prompter_state_voyage_usd) / clamp_min(max(prompter_limit_voyage_daily_usd), 0.001) >= 1)",
+        "for": "0s",
+        "labels": { "service": "prompter", "severity": "critical" },
+        "annotations": { "summary": "UTC-day interactive reserved exposure reaches a protection hard cap", "runbook_url": "https://github.com/Cratis/Prompter/blob/main/Documentation/guides/monitoring.md#spend-and-protection" }
+      },
+      {
+        "alert": "PrompterIndexSpendHardCap",
+        "expr": "max(prompter_state_index_usd) / clamp_min(max(prompter_limit_index_daily_usd), 0.001) >= 1",
+        "for": "0s",
+        "labels": { "service": "prompter", "severity": "critical" },
+        "annotations": { "summary": "UTC-day retry-inclusive indexing exposure reaches its hard cap", "runbook_url": "https://github.com/Cratis/Prompter/blob/main/Documentation/guides/monitoring.md#spend-and-protection" }
       },
       {
         "alert": "PrompterProviderErrors",

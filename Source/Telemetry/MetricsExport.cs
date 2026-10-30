@@ -20,7 +20,7 @@ public sealed class MetricsExport : IDisposable
     {
         if (!options.Value.Enabled) return;
         _provider = Sdk.CreateMeterProviderBuilder()
-            .SetResourceBuilder(ResourceBuilder.CreateEmpty().AddService("prompter"))
+            .SetResourceBuilder(CreateResource(options.Value.Environment))
             .AddMeter(ProviderMetrics.MeterName)
             .AddOtlpExporter((exporter, reader) =>
             {
@@ -30,6 +30,24 @@ public sealed class MetricsExport : IDisposable
                 reader.PeriodicExportingMetricReaderOptions.ExportIntervalMilliseconds = 30000;
             })
             .Build();
+    }
+
+    /// <summary>
+    /// Builds the content-free resource with a bounded deployment environment.
+    /// </summary>
+    /// <param name="environment">The configured deployment environment, never request metadata.</param>
+    /// <returns>The resource builder used by the private exporter.</returns>
+    public static ResourceBuilder CreateResource(string environment)
+    {
+        var boundedEnvironment = environment switch
+        {
+            "production" or "staging" or "development" or "test" => environment,
+            _ => "unknown"
+        };
+
+        return ResourceBuilder.CreateEmpty()
+            .AddService("prompter")
+            .AddAttributes([new KeyValuePair<string, object>("deployment.environment.name", boundedEnvironment)]);
     }
 
     /// <inheritdoc/>

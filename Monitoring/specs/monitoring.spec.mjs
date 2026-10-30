@@ -25,6 +25,33 @@ test('alerts cover missing telemetry, true pipeline failure, freshness, spend an
     assert.match(rules.find(rule => rule.alert === 'PrompterIndexFailed').expr, /last_failure.*last_success/);
 });
 
+test('stale success is older than thirty hours, not equal to thirty hours', () => {
+    const rule = rules.find(rule => rule.alert === 'PrompterIndexStale');
+    assert.equal(rule.expr, 'time() - max(prompter_state_last_success) > 108000');
+});
+
+test('interactive and indexing budgets alert at seventy, ninety and one hundred percent', () => {
+    for (const [suffix, threshold, severity, duration] of [
+        ['Exposure', '0.7', 'warning', '5m'],
+        ['ExposureHigh', '0.9', 'critical', '5m'],
+        ['HardCap', '1', 'critical', '0s']
+    ]) {
+        const interactive = rules.find(rule => rule.alert === `PrompterSpend${suffix}`);
+        const indexing = rules.find(rule => rule.alert === `PrompterIndexSpend${suffix}`);
+        const ratio = (spend, limit) => `${spend} / clamp_min(max(prompter_limit_${limit}), 0.001) >= ${threshold}`;
+        assert.equal(interactive.expr, [
+            ratio('(max(prompter_state_anthropic_usd) + max(prompter_state_voyage_usd))', 'daily_usd'),
+            ratio('max(prompter_state_anthropic_usd)', 'anthropic_daily_usd'),
+            ratio('max(prompter_state_voyage_usd)', 'voyage_daily_usd')
+        ].map(expression => `(${expression})`).join(' or '));
+        assert.equal(indexing.expr, ratio('max(prompter_state_index_usd)', 'index_daily_usd'));
+        for (const rule of [interactive, indexing]) {
+            assert.equal(rule.labels.severity, severity);
+            assert.equal(rule.for, duration);
+        }
+    }
+});
+
 test('Grafana provisioning defaults paused and requires explicit activation', () => {
     const script = new URL('grafana-alerts.mjs', root);
     const paused = JSON.parse(execFileSync(process.execPath, [script.pathname], { encoding: 'utf8' }));

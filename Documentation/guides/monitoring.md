@@ -16,7 +16,11 @@ are recorded. Existing logs and interaction retention are separate from this exp
 
 Exporting defaults **off**. Set `Cratis__Prompter__Metrics__Enabled=true` for a standalone process, or
 `prompter-deployment:metricsEnabled: true` in the deployment's nonsecret stack configuration before the
-normal authorized deployment. Set it to `false` to disable exporting. No other OTEL environment variables
+normal authorized deployment. Set it to `false` to disable exporting. The deployment forwards its configured
+`environment` to `Cratis__Prompter__Metrics__Environment`; standalone processes can set that option directly.
+The OTLP resource includes `service.name=prompter` and `deployment.environment.name`, allowing only
+`production`, `staging`, `development`, or `test`; unset or unrecognized values become `unknown`.
+These are deployment configuration values, never request or user labels. No other OTEL environment variables
 are required: the only destination is
 `http://otel-collector.monitoring.svc.cluster.local:4318/v1/metrics` (OTLP HTTP/protobuf).
 The deployment adds egress only to collector pods in `monitoring` on TCP 4318; Core still owns DNS,
@@ -54,7 +58,10 @@ in this repository. The Prompter deployment cannot modify Core Grafana. Importin
 does not activate alerts. With no destination configured, leave the rules paused.
 
 Defaults: telemetry absent/stale for five minutes; failed/cancelled pipeline after latest success for two
-minutes; no success in 48 hours for 15 minutes; 80% of a UTC-day exposure ceiling for five minutes;
+minutes; no success in more than 30 hours for 15 minutes; 70% and 90% of a UTC-day exposure ceiling for
+five minutes (warning and critical respectively); hard cap reached (100%) with no pending delay.
+Spend tiers cover the interactive total, each provider, and the separate indexing ceiling. These are
+initial operational thresholds, not measured percentiles. Other defaults:
 provider errors above 20% over ten minutes with at least five attempts for five minutes; at least three
 429s over ten minutes for two minutes; any auth/quota/exhausted-overload event for one minute; ten
 admission/protection denials over ten minutes for five minutes. Review these thresholds against traffic.
