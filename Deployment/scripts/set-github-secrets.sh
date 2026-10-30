@@ -11,7 +11,7 @@
 #   --dry-run   Resolve every value and list the secret names that would be set, setting nothing.
 #
 # Bitwarden items read: the note named by PROMPTER_BW_ENV_ITEM (state backend keys and passphrase, see
-# load-credentials.sh), "Anthropic - Prompter - API Key" (note), "Voyage AI - Cratis" (login password),
+# load-credentials.sh), "Anthropic - Prompter - API Key" (note), "Voyage AI - Cratis" (custom field "prompter-production token"),
 # "Prompter - Reindex Secret" (note, `openssl rand -hex 32`) and "Discord - Prompter - Bot token" (note).
 # To rotate the reindex secret, replace the note's value and rerun, then deploy to update the cluster Secret.
 #
@@ -52,9 +52,10 @@ bw_item() { bw list items --search "$1" | jq -r --arg n "$1" '.[] | select(.name
 anthropic_name="Anthropic - Prompter - API Key"
 voyage_name="Voyage AI - Cratis"
 anthropic_key="$(bw_item "${anthropic_name}" | jq -r '.notes // empty' | tr -d '\r\n')"
-voyage_key="$(bw_item "${voyage_name}" | jq -r '.login.password // empty')"
+voyage_field="prompter-production token"
+voyage_key="$(bw_item "${voyage_name}" | jq -r --arg f "${voyage_field}" '.fields[]? | select(.name == $f) | .value // empty' | tr -d '\r\n')"
 if [ -z "${anthropic_key}" ]; then echo "Bitwarden item '${anthropic_name}' has no notes." >&2; exit 1; fi
-if [ -z "${voyage_key}" ]; then echo "Bitwarden item '${voyage_name}' has no password." >&2; exit 1; fi
+if [ -z "${voyage_key}" ]; then echo "Bitwarden item '${voyage_name}' has no '${voyage_field}' field." >&2; exit 1; fi
 
 # Sets one secret from stdin. The name is reported; the value never is.
 set_secret() {
