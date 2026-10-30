@@ -21,6 +21,7 @@ namespace Cratis.Prompter.Discord;
 /// <param name="answers">The answers Prompter can give.</param>
 /// <param name="admission">The cheap shared admission guard.</param>
 /// <param name="work">The global concurrency and durable spend guard.</param>
+/// <param name="context">Request-only bounded conversation history.</param>
 /// <param name="options">The Prompter options carrying the Discord ask-channel identifier.</param>
 /// <param name="logger">Logger for diagnostics.</param>
 /// <remarks>
@@ -34,6 +35,7 @@ public class Mentions(
     IAnswers answers,
     Admission admission,
     PaidWork work,
+    ConversationContextReader context,
     IOptions<PrompterOptions> options,
     ILogger<Mentions> logger) : IMessageCreateGatewayHandler
 {
@@ -136,7 +138,7 @@ public class Mentions(
     bool Supported(Message message) =>
         admission.InScope(message.GuildId, message.ChannelId) && message.WebhookId is null &&
         message.Type is MessageType.Default or MessageType.Reply &&
-        message.Content.Length <= options.Value.Protection.MaxQuestionCharacters;
+        message.Content.Length <= Math.Min(options.Value.Protection.MaxQuestionCharacters, ConversationContextReader.MaximumCurrentCharacters);
 
     async Task Refuse(Message message, bool reply)
     {
@@ -151,7 +153,10 @@ public class Mentions(
     {
         var source = message.ChannelId == options.Value.Discord.AskChannelId ? "discord-ask-channel" : "discord-mention";
         logger.AnsweringQuestion(source);
-        var answer = await answers.For(new(question), source, cancellationToken);
+        var request = message.GuildId is { } guildId
+            ? await context.For(question, new(guildId, message.ChannelId, message.Id, message.CreatedAt), cancellationToken)
+            : new Question(ConversationText.Sanitize(question)) { Conversation = new([], IsDegraded: true) };
+        var answer = await answers.For(request, source, cancellationToken);
         var chunks = DiscordAnswers.Split(answer);
         for (var index = 0; index < chunks.Count; index++)
         {

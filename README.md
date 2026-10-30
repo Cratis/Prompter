@@ -105,6 +105,27 @@ Built with **C# / .NET 10**, [NetCord](https://netcord.dev),
 [Microsoft.Extensions.AI](https://learn.microsoft.com/en-us/dotnet/ai/), **Claude** (Anthropic), **Voyage AI**
 embeddings, and **Postgres + pgvector**.
 
+## Conversation context and privacy
+
+For mentions, the dedicated ask channel, and help-forum answers, Prompter can send recent public
+conversation text to its model provider to clarify follow-up questions. The latest question alone drives
+documentation retrieval; only retrieved documentation is evidence, never earlier messages or bot claims.
+`/ask`, CLI questions, and evaluations remain single-question requests.
+
+History is limited to **10 preceding messages**, **15 minutes**, and **6,000 characters** in the same
+public channel or thread. The current question is kept separately, with a **4,000-character** ceiling.
+Admission, duplicate/rate checks, concurrency, and spend reservation all precede history reads.
+Missing permissions, unavailable history, a one-second history deadline, or cancellation discard history
+and leave a current-only request with a degraded-context flag.
+
+No DMs, private threads, parent/sibling message scans, attachments, embeds, linked pages, or other bots'
+messages are read as context. The bot's own earlier text may be included as untrusted assistant context.
+Author names and IDs are not sent as metadata; mentions and obvious secret-like strings are removed
+from message text. This filtering cannot guarantee anonymity or detect every secret: do not post
+sensitive information in public conversations. Context is held only for the request, not stored in the
+corpus, interaction log, caches, feedback, or diagnostics. Existing aggregate interaction records do not
+contain question or conversation text.
+
 ## 🚀 Quick start
 
 Bring up Postgres (with pgvector):

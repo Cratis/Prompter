@@ -20,6 +20,7 @@ namespace Cratis.Prompter.Discord;
 /// <param name="answers">The answers Prompter can give.</param>
 /// <param name="admission">The cheap shared admission guard.</param>
 /// <param name="work">The global concurrency and durable spend guard.</param>
+/// <param name="context">Request-only bounded conversation history.</param>
 /// <param name="options">The Prompter options carrying the help-forum channel identifier.</param>
 /// <param name="logger">Logger for diagnostics.</param>
 public class HelpForum(
@@ -27,6 +28,7 @@ public class HelpForum(
     IAnswers answers,
     Admission admission,
     PaidWork work,
+    ConversationContextReader context,
     IOptions<PrompterOptions> options,
     ILogger<HelpForum> logger) : IGuildThreadCreateGatewayHandler
 {
@@ -138,7 +140,7 @@ public class HelpForum(
     async Task<bool> AnswerThread(GuildThread thread, RestMessage? included, CancellationToken cancellationToken)
     {
         var starter = included ?? await rest.GetMessageAsync(thread.Id, thread.Id, cancellationToken: cancellationToken);
-        if (!HumanStarter(starter) || starter.Content.Length > options.Value.Protection.MaxQuestionCharacters)
+        if (!HumanStarter(starter) || starter.Content.Length > Math.Min(options.Value.Protection.MaxQuestionCharacters, ConversationContextReader.MaximumCurrentCharacters))
         {
             return false;
         }
@@ -150,7 +152,8 @@ public class HelpForum(
         }
 
         logger.AnsweringForumThread(thread.Id);
-        var answer = await answers.For(new(question), "discord-forum", cancellationToken);
+        var request = await context.For(question, new(thread.GuildId, thread.Id, starter.Id, starter.CreatedAt), cancellationToken);
+        var answer = await answers.For(request, "discord-forum", cancellationToken);
         await SendAnswer(thread.Id, answer);
         return true;
     }
