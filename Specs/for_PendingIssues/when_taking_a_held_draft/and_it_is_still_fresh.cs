@@ -8,20 +8,16 @@ namespace Cratis.Prompter.Specs.for_PendingIssues.when_taking_a_held_draft;
 
 public class and_it_is_still_fresh : Specification
 {
-    readonly ControlledTime _time = new(DateTimeOffset.UnixEpoch);
-    PendingIssues _pending = null!;
-    PendingIssue _taken = null!;
+    readonly PendingIssues _pending = new(new ControlledTime(DateTimeOffset.UnixEpoch));
+    readonly IssueConsent _scope = new(1, 2, 3);
+    readonly PendingIssue _payload = new("Cratis", "Chronicle", "A title", "A body", ["bug"]);
+    PendingIssue? _taken;
 
-    void Establish() => _pending = new(_time);
-
-    void Because()
+    async Task Because()
     {
-        var token = _pending.Hold(new("A title", "A body", IssueKind.Bug, "chronicle"), "Chronicle", "https://discord.com/x");
-        _taken = _pending.Take(token)!;
+        var token = await _pending.Present(_payload, _scope, _ => Task.FromResult(4UL));
+        _taken = _pending.Take(token, _scope, 4);
     }
 
-    [Fact] void should_return_the_draft() => _taken.ShouldNotBeNull();
-    [Fact] void should_keep_the_title() => _taken.Draft.Title.ShouldEqual("A title");
-    [Fact] void should_keep_the_repository() => _taken.Repository.ShouldEqual("Chronicle");
-    [Fact] void should_keep_the_conversation_link() => _taken.ConversationUrl.ShouldEqual("https://discord.com/x");
+    [Fact] void should_return_the_exact_immutable_payload() => ReferenceEquals(_taken, _payload).ShouldBeTrue();
 }

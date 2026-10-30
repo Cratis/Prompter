@@ -1,9 +1,11 @@
 // Copyright (c) Cratis. All rights reserved.
 // Licensed under the MIT license. See LICENSE file in the project root for full license information.
 
+using System.Collections.Immutable;
 using System.Globalization;
 using System.Net.Http.Json;
 using System.Text.Json;
+using Cratis.Prompter.GitHub.Authentication;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
 
@@ -20,18 +22,25 @@ public class Issues(
     IOptions<PrompterOptions> options,
     ILogger<Issues> logger) : IIssues
 {
+    readonly GitHubPolicy _policy = new(options);
+    readonly string _filingOwner = options.Value.GitHub.Owner;
+
     /// <inheritdoc/>
-    public async Task<FiledIssue> File(
+    public Task<FiledIssue> File(
         string repository,
         string title,
         string body,
         IReadOnlyList<string> labels,
-        CancellationToken cancellationToken = default)
+        CancellationToken cancellationToken = default) =>
+        File(new(_filingOwner, repository, title, body, labels.ToImmutableArray()), cancellationToken);
+
+    /// <inheritdoc/>
+    public async Task<FiledIssue> File(PendingIssue payload, CancellationToken cancellationToken = default)
     {
-        var owner = options.Value.GitHub.Owner;
-        var response = await httpClient.PostAsJsonAsync(
-            $"repos/{owner}/{repository}/issues",
-            new { title, body, labels },
+        _policy.RequireRepository(new(payload.Owner, payload.Repository));
+        using var response = await httpClient.PostAsJsonAsync(
+            $"repos/{payload.Owner}/{payload.Repository}/issues",
+            new { title = payload.Title, body = payload.Body, labels = payload.Labels },
             cancellationToken);
 
         response.EnsureSuccessStatusCode();
@@ -41,9 +50,9 @@ public class Issues(
         var number = root.GetProperty("number").GetInt32();
         var url = root.GetProperty("html_url").GetString() ?? string.Empty;
 
-        logger.FiledIssue(repository, number);
+        logger.FiledIssue(payload.Repository, number);
 
-        return new FiledIssue(number, repository, url);
+        return new FiledIssue(number, payload.Repository, url);
     }
 
     /// <inheritdoc/>
