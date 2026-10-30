@@ -140,6 +140,18 @@ public static class PrompterEndpoints
             return Results.Json(new { status = "unauthorized" }, statusCode: StatusCodes.Status401Unauthorized);
         }
 
+        var indexRequest = new IndexRequest(
+            Full: request.Query["full"] == "true",
+            Confirmation: request.Headers["X-Reindex-Confirmation"].ToString());
+        try
+        {
+            indexRequest.Validate();
+        }
+        catch (IndexConsentRequired)
+        {
+            return Results.Json(new { status = "full reindex confirmation required" }, statusCode: StatusCodes.Status400BadRequest);
+        }
+
         if (!gate.TryEnter())
         {
             logger.ReindexAlreadyRunning();
@@ -156,7 +168,7 @@ public static class PrompterEndpoints
         {
             try
             {
-                var run = await indexer.Run(lifetime.ApplicationStopping);
+                var run = await indexer.Run(indexRequest, lifetime.ApplicationStopping);
                 logger.ReindexCompleted(run.Duration, run.Pages, run.Embedded, run.Unchanged, run.Removed);
             }
             catch (OperationCanceledException)

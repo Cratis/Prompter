@@ -15,6 +15,31 @@ set -euo pipefail
 # Never trace: tracing (for example from SHELLOPTS or bash -x) could expose credentials.
 { set +x; } 2> /dev/null
 
+mode="${PROMPTER_INDEX_MODE:-incremental}"
+confirmation="${PROMPTER_INDEX_CONFIRMATION:-}"
+case "$mode" in
+    incremental) index_args='["index"]' ;;
+    scheduled) index_args='["index", "--scheduled"]' ;;
+    full)
+        if [[ "$confirmation" != 'FULL REINDEX' ]]; then
+            echo '::error::Full indexing requires the literal confirmation FULL REINDEX.' >&2
+            exit 1
+        fi
+        index_args='["index", "--full", "--confirm-full-reindex=FULL REINDEX"]'
+        ;;
+    *) echo '::error::Unknown index mode.' >&2; exit 1 ;;
+esac
+
+price="${PROMPTER_INDEX_PRICE_PER_MILLION_TOKENS:-0}"
+run_dollars="${PROMPTER_INDEX_MAX_RUN_DOLLARS:-0}"
+daily_dollars="${PROMPTER_INDEX_MAX_DAILY_DOLLARS:-0}"
+for value in "$price" "$run_dollars" "$daily_dollars"; do
+    if ! [[ "$value" =~ ^[0-9]+([.][0-9]+)?$ ]]; then
+        echo '::error::Index pricing and dollar limits must be nonnegative decimals.' >&2
+        exit 1
+    fi
+done
+
 timeout_seconds="${PROMPTER_INDEX_TIMEOUT_SECONDS:-1500}"
 if ! [[ "$timeout_seconds" =~ ^[1-9][0-9]*$ ]]; then
     echo '::error::PROMPTER_INDEX_TIMEOUT_SECONDS must be a positive integer.' >&2
@@ -22,7 +47,8 @@ if ! [[ "$timeout_seconds" =~ ^[1-9][0-9]*$ ]]; then
 fi
 
 if [[ "${1:-}" == '--print-manifest' && $# -eq 3 ]]; then
-    jq -n --arg image "$2" --arg name "$3" --argjson timeout "$timeout_seconds" '{
+    jq -n --arg image "$2" --arg name "$3" --argjson timeout "$timeout_seconds" \
+        --argjson index_args "$index_args" --arg price "$price" --arg run_dollars "$run_dollars" --arg daily_dollars "$daily_dollars" '{
         apiVersion: "batch/v1",
         kind: "Job",
         metadata: {
@@ -49,7 +75,7 @@ if [[ "${1:-}" == '--print-manifest' && $# -eq 3 ]]; then
                         name: "index",
                         image: $image,
                         imagePullPolicy: "IfNotPresent",
-                        args: ["index"],
+                        args: $index_args,
                         securityContext: {
                             allowPrivilegeEscalation: false,
                             capabilities: {drop: ["ALL"]}
@@ -59,6 +85,9 @@ if [[ "${1:-}" == '--print-manifest' && $# -eq 3 ]]; then
                             limits: {cpu: "1", memory: "512Mi"}
                         },
                         env: [
+                            {name: "Cratis__Prompter__Ingestion__PricePerMillionTokens", value: $price},
+                            {name: "Cratis__Prompter__Ingestion__MaxRunDollars", value: $run_dollars},
+                            {name: "Cratis__Prompter__Ingestion__MaxDailyDollars", value: $daily_dollars},
                             {name: "DOTNET_ENVIRONMENT", value: "Production"},
                             {
                                 name: "Cratis__Prompter__ConnectionString",

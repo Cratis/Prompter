@@ -149,7 +149,37 @@ Run **Reindex - Production** on `main` with `gh workflow run reindex-production.
 nightly schedule run at **03:52 UTC**. It uses the `production` environment's namespace-scoped `KUBECONFIG`
 to create a one-shot Job running the deployed image's `index` command. It refuses to overlap an active
 index Job. The Job reads only the connection string and Voyage key from `prompter-secrets` and has the
-same outbound HTTPS access as the bot, without joining the bot's Service.
+same outbound HTTPS access as the bot, without joining the bot's Service. The database advisory lease
+also serializes CLI, HTTP and Jobs across processes; contention fails immediately. The shared workflow
+concurrency group is `prompter-production-operations`, with no cancellation or deletion of an active Job.
+
+Before enabling changed-content indexing, set repository variables
+`PROMPTER_INDEX_PRICE_PER_MILLION_TOKENS`, `PROMPTER_INDEX_MAX_RUN_DOLLARS` and
+`PROMPTER_INDEX_MAX_DAILY_DOLLARS` to verified Voyage model pricing and approved dollar ceilings.
+Missing/zero pricing or ceilings disable paid work. Configure the equivalent `Ingestion` options on the
+bot for HTTP/CLI runs; all runs reserve against the same database UTC-day allowance. Reservations include
+`Voyage.MaxRetries + 1` attempts, use UTF-8 bytes plus framing (not characters/4), and are retained after
+failure or unknown provider outcomes. They are upper bounds, not measured provider usage or invoices.
+
+The nightly Job passes `--scheduled`: at most one admitted scheduled run per UTC day, with a default
+retry-inclusive **1M tokens/run** ceiling. Plain manual runs remain incremental. Full runs have a default
+**25M tokens/run** ceiling and require the workflow's `full` input plus literal confirmation **FULL REINDEX**
+and the existing `production` environment approval. The script equivalent uses `PROMPTER_INDEX_MODE=full`
+and `PROMPTER_INDEX_CONFIRMATION='FULL REINDEX'`. Never schedule full mode. Token ceilings are configurable
+with `Ingestion.MaxIncrementalTokens` and `Ingestion.MaxFullTokens`; raising them requires budget approval.
+No rebuild is implied by the initial observed corpus size.
+
+The indexer preflights the entire crawl before any paid embedding, stages vectors in memory, then publishes
+all changed chunks and stale deletion in one transaction on the lease-owning session. Partial fetches,
+embedding failures, cancellation or lost sessions cannot publish a partial corpus. This requires enough
+Job memory for the approved corpus. Do not deploy a new query embedding model before its compatible staged
+full corpus is ready: incremental indexing rejects model/dimension/profile changes. The migration records
+the legacy shipped `voyage-4/1024/markdown-v1` profile; confirm that matches the existing corpus before upgrade.
+Dimension changes additionally require a compatible schema migration; bump the profile version for future
+chunking changes. Price verification and query-model rollout remain operator responsibilities.
+
+Offline Job manifest specs run with `bash Deployment/scripts/run-index-job.spec.sh` (no cluster access).
+See [indexing integration specs](../Specs/Integration/README.md) for disposable-Postgres verification.
 
 A crash, provider error, timeout, missing summary or zero-page crawl fails the workflow. Only the fixed
 index summary and Kubernetes status appear in public Actions logs. Finished Jobs retain their logs for

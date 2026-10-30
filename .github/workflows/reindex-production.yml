@@ -8,19 +8,30 @@ name: Reindex - Production
 
 on:
   workflow_dispatch:
+    inputs:
+      full:
+        description: Regenerate every embedding (requires approved full-rebuild budget)
+        type: boolean
+        default: false
+      confirmation:
+        description: Type FULL REINDEX to authorize a full rebuild
+        type: string
+        default: ""
   schedule:
     # Daily at 03:52 UTC: a minute unique in the organization, inside the 03:00-07:00 UTC window.
     - cron: "52 3 * * *"
 
 concurrency:
-  group: reindex-prompter-production
+  group: prompter-production-operations
   cancel-in-progress: false
+  queue: max
 
 permissions:
   contents: read
 
 jobs:
   reindex:
+    if: github.ref == 'refs/heads/main'
     runs-on: ${{ vars.RUNNER_FORCE || 'cratis-arc' }}
     environment: production
     timeout-minutes: 30
@@ -30,12 +41,20 @@ jobs:
         with:
           persist-credentials: false
 
+      - name: Validate index Job manifests
+        run: bash Deployment/scripts/run-index-job.spec.sh
+
       - name: Setup kubectl
         uses: azure/setup-kubectl@bda439f5f36b99b262ebdcd3613869bddb064c8e # v5.2.0
 
       - name: Re-index the deployed corpus
         env:
           KUBECONFIG_CONTENT: ${{ secrets.KUBECONFIG }}
+          PROMPTER_INDEX_MODE: ${{ github.event_name == 'schedule' && 'scheduled' || inputs.full && 'full' || 'incremental' }}
+          PROMPTER_INDEX_CONFIRMATION: ${{ inputs.confirmation }}
+          PROMPTER_INDEX_PRICE_PER_MILLION_TOKENS: ${{ vars.PROMPTER_INDEX_PRICE_PER_MILLION_TOKENS }}
+          PROMPTER_INDEX_MAX_RUN_DOLLARS: ${{ vars.PROMPTER_INDEX_MAX_RUN_DOLLARS }}
+          PROMPTER_INDEX_MAX_DAILY_DOLLARS: ${{ vars.PROMPTER_INDEX_MAX_DAILY_DOLLARS }}
         run: |
           set -euo pipefail
           printf '%s' "$KUBECONFIG_CONTENT" > "$RUNNER_TEMP/kubeconfig"

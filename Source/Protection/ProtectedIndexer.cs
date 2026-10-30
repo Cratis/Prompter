@@ -12,6 +12,9 @@ namespace Cratis.Prompter.Protection;
 public sealed class ProtectedIndexer(Indexer inner, IOptions<PrompterOptions> options) : IIndexer
 {
     /// <inheritdoc/>
-    public Task<IndexRun> Run(CancellationToken cancellationToken = default) =>
-        options.Value.Protection.IndexingEnabled ? inner.Run(cancellationToken) : throw new WorkRefused();
+    public Task<IndexRun> Run(CancellationToken cancellationToken = default) => Run(new IndexRequest(), cancellationToken);
+
+    /// <inheritdoc/>
+    public Task<IndexRun> Run(IndexRequest request, CancellationToken cancellationToken = default) =>
+        options.Value.Protection.IndexingEnabled ? inner.Run(request, cancellationToken) : throw new WorkRefused();
 }

@@ -123,7 +123,15 @@ dotnet run -- ask "How do I append an event in Chronicle?" # answer from the CLI
 
 Run it as the Discord bot — bot mode also serves `GET /healthz` and the shared-secret `POST /reindex`
 in-cluster/local endpoint, and sweeps expired interactions on a daily retention job. Production re-indexes
-nightly and on demand via the **Reindex - Production** workflow, without a public route:
+nightly and on demand via the **Reindex - Production** workflow, without a public route.
+All entry points share a non-waiting Postgres advisory lease. A complete crawl and retry-inclusive
+UTF-8 byte/token budget check precede embedding; a failed batch or crawl leaves the last-good corpus intact.
+Plain `index` is incremental. A manual full replacement requires
+`index --full '--confirm-full-reindex=FULL REINDEX'`; scheduled full runs are forbidden.
+The authenticated HTTP equivalent is `POST /reindex?full=true` with `X-Reindex-Confirmation: FULL REINDEX`.
+HTTP acceptance is asynchronous; database contention or budget rejection is recorded as a failed run in logs.
+Configure a verified Voyage price and positive run/day dollar ceilings before embedding changed content:
+
 
 ```bash
 dotnet run
@@ -135,7 +143,7 @@ Measure answer quality against the golden question set (from the repo root; need
 dotnet run --project Eval                                   # groundedness, citation, and refusal scores
 ```
 
-> You'll need a (free) **Voyage** API key to index and an **Anthropic** key to answer — see the table below.
+> You'll need a **Voyage** API key and verified indexing price/dollar ceilings to index, and an **Anthropic** key to answer — see the table below.
 
 ## ⚙️ Configuration
 
@@ -146,6 +154,11 @@ Configuration binds to the `Cratis:Prompter` section (environment variables use 
 | Postgres connection string | `Cratis__Prompter__ConnectionString` | localhost, db/user/pass `prompter` |
 | Docs site to ingest | `Cratis__Prompter__DocsSiteUrl` | `https://cratis.io` |
 | Embedding batch size | `Cratis__Prompter__Voyage__BatchSize` | `128` |
+| Incremental token ceiling (including retries) | `Cratis__Prompter__Ingestion__MaxIncrementalTokens` | `1000000` |
+| Confirmed full token ceiling (including retries) | `Cratis__Prompter__Ingestion__MaxFullTokens` | `25000000` |
+| Verified model price per million tokens | `Cratis__Prompter__Ingestion__PricePerMillionTokens` | `0` (paid indexing disabled) |
+| Index dollar ceiling per run | `Cratis__Prompter__Ingestion__MaxRunDollars` | `0` (paid indexing disabled) |
+| Shared index dollar ceiling per UTC day | `Cratis__Prompter__Ingestion__MaxDailyDollars` | `0` (paid indexing disabled) |
 | Discord bot token | `Cratis__Prompter__Discord__Token` | — |
 | Ask channel (mention-free questions) | `Cratis__Prompter__Discord__AskChannelId` | — |
 | Help forum channel (auto-reply) | `Cratis__Prompter__Discord__HelpForumChannelId` | — |
