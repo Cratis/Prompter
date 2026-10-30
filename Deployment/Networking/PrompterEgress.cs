@@ -59,6 +59,18 @@ public sealed class PrompterEgress
                             [
                                 new NetworkPolicyPeerArgs
                                 {
+                                    NamespaceSelector = new LabelSelectorArgs { MatchLabels = { ["kubernetes.io/metadata.name"] = "monitoring" } },
+                                    PodSelector = new LabelSelectorArgs { MatchLabels = { ["app"] = "otel-collector" } }
+                                }
+                            ],
+                            Ports = [new NetworkPolicyPortArgs { Protocol = "TCP", Port = 4318 }]
+                        },
+                        new NetworkPolicyEgressRuleArgs
+                        {
+                            To =
+                            [
+                                new NetworkPolicyPeerArgs
+                                {
                                     IpBlock = new IPBlockArgs
                                     {
                                         Cidr = "0.0.0.0/0",

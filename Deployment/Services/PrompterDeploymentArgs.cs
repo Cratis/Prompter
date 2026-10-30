@@ -31,6 +31,9 @@ public sealed class PrompterDeploymentArgs
     /// </summary>
     public required string Image { get; init; }
 
+    /// <summary>Gets whether to export private aggregate metrics to the Core collector.</summary>
+    public bool MetricsEnabled { get; init; }
+
     /// <summary>
     /// Gets the connection string for the corpus database.
     /// </summary>

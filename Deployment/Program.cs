@@ -76,6 +76,7 @@ return await Deployment.RunAsync(() =>
         Namespace = namespaceName,
         Environment = environment,
         Image = image,
+        MetricsEnabled = config.GetBoolean("metricsEnabled") ?? false,
         ConnectionString = postgres.ConnectionString,
         DiscordToken = discordToken,
         AnthropicApiKey = anthropicApiKey,
