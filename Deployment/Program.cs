@@ -98,6 +98,22 @@ return await Deployment.RunAsync(() =>
         Environment = environment,
     });
 
+    // No schedule, credentials, image or network grant exists unless deliberately configured.
+    if (config.GetBoolean("postgresBackupsEnabled") == true)
+    {
+        var backupArgs = new PostgresBackupsArgs
+        {
+            Namespace = namespaceName,
+            Environment = environment,
+            Image = config.Require("postgresBackupImage"),
+            Endpoint = config.Require("postgresBackupEndpoint"),
+            StoreCidr = config.Require("postgresBackupStoreCidr"),
+            Bucket = config.Require("postgresBackupBucket"),
+            Recipient = config.Require("postgresBackupRecipient"),
+        };
+        _ = new PostgresBackups(backupArgs, provider);
+    }
+
     return new Dictionary<string, object?>
     {
         ["namespace"] = coreNamespace,

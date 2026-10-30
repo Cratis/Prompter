@@ -196,6 +196,13 @@ pod-template annotation; the annotation contains no raw secret values. Updating 
 does not update the Job's credentials. Scheduled workflows in public repositories can be disabled after
 60 days without activity; if needed, re-enable with `gh workflow enable reindex-production.yml`.
 
+### Postgres backups
+
+Encrypted logical backups and isolated restore verification are opt-in. Follow
+[Postgres backups](POSTGRES-BACKUPS.md) for the region, lifecycle, separate identities,
+key custodian, pinned tooling image, activation gates and required recovery drill.
+Neither backup resources nor scheduled operations are enabled by default.
+
 ## Verify
 
 ```bash

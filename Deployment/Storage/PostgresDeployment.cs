@@ -17,8 +17,8 @@ namespace Cratis.Prompter.Deployment.Storage;
 /// <para>
 /// In-cluster rather than managed, per D-11: it mirrors the MongoDB precedent on this cluster, and the
 /// corpus is fully rebuildable from cratis.io, so the only data worth protecting is the (anonymous)
-/// interaction log. Backups are therefore deliberately out of scope for the first cut — see the
-/// operations table in <c language="csharp">Planning/DEPLOYMENT.md</c>.
+/// interaction log. Optional encrypted logical backups are configured separately through
+/// <see cref="PostgresBackups"/>; they never mount this deployment's persistent volume.
 /// </para>
 /// <para>
 /// It is a Deployment rather than a StatefulSet because the deploy identity Cratis/Infrastructure's Core
