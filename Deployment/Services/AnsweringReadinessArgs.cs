@@ -14,6 +14,9 @@ public sealed record AnsweringReadinessArgs
     /// <summary>Gets whether indexing is explicitly enabled.</summary>
     public bool IndexingEnabled { get; init; }
 
+    /// <summary>Gets the explicitly approved guild list. Empty permits no guilds.</summary>
+    public IReadOnlyList<string> AllowedGuilds { get; init; } = [];
+
     /// <summary>Gets the answer account, using a closed runtime vocabulary.</summary>
     public string AnswerAccount { get; init; } = "primary";
 
@@ -29,13 +32,20 @@ public sealed record AnsweringReadinessArgs
     /// <summary>Reads non-secret deployment configuration without inspecting provider allocation state.</summary>
     /// <param name="config">The deployment configuration.</param>
     /// <returns>Explicit workload choices with disabled defaults.</returns>
-    public static AnsweringReadinessArgs From(Config config) => new()
+    /// <exception cref="InvalidAnsweringReadiness">The non-secret deployment settings are invalid.</exception>
+    public static AnsweringReadinessArgs From(Config config)
     {
-        AnsweringEnabled = config.GetBoolean("answeringEnabled") ?? false,
-        IndexingEnabled = config.GetBoolean("indexingEnabled") ?? false,
-        AnswerAccount = config.Get("answerPreferredAccount") ?? "primary",
-        IssueDraftAccount = config.Get("issueDraftPreferredAccount") ?? "primary",
-        AnswerAllowSecondary = config.GetBoolean("answerAllowSecondary") ?? false,
-        IssueDraftAllowSecondary = config.GetBoolean("issueDraftAllowSecondary") ?? false
-    };
+        var args = new AnsweringReadinessArgs
+        {
+            AnsweringEnabled = config.GetBoolean("answeringEnabled") ?? false,
+            IndexingEnabled = config.GetBoolean("indexingEnabled") ?? false,
+            AllowedGuilds = config.GetObject<string[]>("allowedGuilds") ?? [],
+            AnswerAccount = config.Get("answerPreferredAccount") ?? "primary",
+            IssueDraftAccount = config.Get("issueDraftPreferredAccount") ?? "primary",
+            AnswerAllowSecondary = config.GetBoolean("answerAllowSecondary") ?? false,
+            IssueDraftAllowSecondary = config.GetBoolean("issueDraftAllowSecondary") ?? false
+        };
+        AnsweringReadinessValidation.Validate(args);
+        return args;
+    }
 }

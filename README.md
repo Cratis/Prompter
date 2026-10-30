@@ -290,11 +290,21 @@ not zero usage. Hooks carry fixed provider/account/task labels and no prompts, a
 
 ### Offline-ready deployment configuration
 
-The Pulumi stack projects verified standard-global Sonnet 5.5 and Voyage 4 prices, but explicitly disables
-both paid workloads by default. Non-secret `prompter-deployment` settings `answeringEnabled` and
-`indexingEnabled` activate them only after live model availability, eligibility, migrations, and the intended
-account have been checked. `answerPreferredAccount` / `issueDraftPreferredAccount` default to `primary`;
+The Pulumi stack projects verified standard-global Sonnet 5.5 and Voyage 4 prices. Defaults keep both paid
+workloads disabled. The committed production settings explicitly enable secondary-account answering only
+for guild `1182595891576717413`; indexing remains disabled, including nightly indexing admission.
+These are desired configuration settings, not evidence of deployment or live usability.
+
+Non-secret `prompter-deployment` settings `answeringEnabled` and `indexingEnabled` control paid workloads.
+`answerPreferredAccount` / `issueDraftPreferredAccount` default to `primary`;
 `answerAllowSecondary` / `issueDraftAllowSecondary` default to `false` and are separate workload opt-ins.
+`allowedGuilds` defaults to empty and may contain only the approved guild. Deployment rejects unknown
+accounts, unauthorized guilds, and enabled secondary selection without task opt-in. Startup additionally
+requires a nonempty secondary key for each selected secondary task, without checking provider eligibility
+or logging the key.
+The explicit scalar `Cratis__Prompter__Protection__ConfiguredAllowedGuilds` replaces the entire effective
+guild list after binding, so lower-priority indexed defaults cannot add guilds; indexed `AllowedGuilds__0`
+is also emitted. Enabled answering without an explicit approved allowlist fails startup.
 Do not select secondary to evade provider restrictions, and do not use this configuration as quota evidence.
 
 The shared daily ceiling is $5. Sonnet input reserves $4/MTok (the highest applicable one-hour cache-write

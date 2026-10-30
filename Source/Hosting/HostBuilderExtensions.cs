@@ -36,6 +36,7 @@ public static class HostBuilderExtensions
         builder.Services
             .AddOptions<PrompterOptions>()
             .BindConfiguration(configSection)
+            .ValidateAnsweringReadiness(builder.Configuration)
             .Validate(
                 options => options.Discord.RateLimit.IsValid,
                 "Cratis:Prompter:Discord:RateLimit requires WindowMinutes > 0 and MaxQuestions >= 0.")

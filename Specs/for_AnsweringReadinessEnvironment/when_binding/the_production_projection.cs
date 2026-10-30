@@ -21,7 +21,7 @@ public class the_production_projection : Specification
     void Because()
     {
         _defaults = Bind(new());
-        _secondary = Bind(new() { AnsweringEnabled = true, AnswerAccount = "secondary", AnswerAllowSecondary = true });
+        _secondary = Bind(new() { AnsweringEnabled = true, AnswerAccount = "secondary", AnswerAllowSecondary = true, AllowedGuilds = [AnsweringReadinessValidation.ApprovedGuild] });
     }
 
     [Fact] void should_leave_both_paid_workloads_disabled() => (_defaults.Protection.AnsweringEnabled || _defaults.Protection.IndexingEnabled).ShouldBeFalse();
