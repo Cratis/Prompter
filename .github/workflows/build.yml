@@ -21,6 +21,7 @@ on:
       - "Directory.Packages.props"
       - "global.json"
       - ".github/workflows/build.yml"
+      - ".github/workflows/postgres-backups.yml"
   pull_request:
     branches:
       - "main"
@@ -33,6 +34,7 @@ on:
       - "Directory.Packages.props"
       - "global.json"
       - ".github/workflows/build.yml"
+      - ".github/workflows/postgres-backups.yml"
 
 jobs:
   dotnet-build:
@@ -54,6 +56,12 @@ jobs:
 
       - name: Run specifications
         run: ./Specs/bin/Release/net10.0/Prompter.Specs
+
+      - name: Check Postgres backup scripts offline
+        run: node --test Specs/PostgresBackups/offline.test.mjs
+
+      - name: Lint Postgres backup scripts
+        run: shellcheck Deployment/scripts/backup-postgres.sh Deployment/scripts/restore-postgres-test.sh Deployment/scripts/postgres-backup-common.sh Deployment/scripts/run-postgres-job.sh
 
   # The image is what actually ships, and nothing verified it until Publish tried to push one — which is
   # how a runtime base-image tag that does not exist got released. Build it here (native architecture, no
