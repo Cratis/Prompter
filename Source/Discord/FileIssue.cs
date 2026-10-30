@@ -3,6 +3,7 @@
 
 using System.Globalization;
 using Cratis.Prompter.GitHub;
+using Cratis.Prompter.GitHub.Authentication;
 using Cratis.Prompter.Protection;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
@@ -82,14 +83,30 @@ public class FileIssue(
 
             var repository = IssueRouting.RepositoryFor(draft.Product, github);
             var routed = IssueRouting.IsRouted(draft.Product, github);
-            var similar = await issues.FindSimilar(repository, draft.Title, lease.Token);
-            var token = pending.Hold(draft, repository, ConversationUrl());
-
-            await Context.Interaction.SendFollowupMessageAsync(new()
+            var payload = IssueComposition.Payload(draft, repository, ConversationUrl(), github);
+            new GitHubPolicy(options).RequireRepository(new(payload.Owner, payload.Repository));
+            var preview = IssuePreview.Text(payload, routed);
+            if (preview is null)
             {
-                Content = IssuePreview.Text(draft, repository, routed, similar),
-                Flags = MessageFlags.Ephemeral,
-                Components = [IssuePreview.Buttons(token)]
+                await Context.Interaction.SendFollowupMessageAsync(Ephemeral("That draft is too long or contains text that cannot be safely previewed. Please shorten or clarify it and run `/issue` again. Nothing was filed."));
+                return;
+            }
+            var similar = await issues.FindSimilar(payload.Repository, payload.Title, lease.Token);
+            if (similar.Count > 0)
+            {
+                await Context.Interaction.SendFollowupMessageAsync(Ephemeral(IssuePreview.Advisory(similar)));
+            }
+            var consent = new IssueConsent(Context.User.Id, Context.Interaction.GuildId!.Value, Context.Channel.Id);
+            await pending.Present(payload, consent, async token =>
+            {
+                var message = await Context.Interaction.SendFollowupMessageAsync(new()
+                {
+                    Content = preview,
+                    Flags = MessageFlags.Ephemeral,
+                    AllowedMentions = AllowedMentionsProperties.None,
+                    Components = [IssuePreview.Buttons(token)]
+                });
+                return message.Id;
             });
         }
         catch (WorkRefused)
@@ -104,11 +121,11 @@ public class FileIssue(
     }
 
     static InteractionMessageProperties Ephemeral(string content) =>
-        new() { Content = content, Flags = MessageFlags.Ephemeral };
+        new() { Content = content, Flags = MessageFlags.Ephemeral, AllowedMentions = AllowedMentionsProperties.None };
 
     async Task<bool> Accept(string description)
     {
-        if (!admission.InScope(Context.Interaction.GuildId, Context.Channel.Id) || !options.Value.Protection.GitHubWritesEnabled)
+        if (!CanDraft())
         {
             return false;
         }
@@ -128,6 +145,8 @@ public class FileIssue(
 
         return true;
     }
+
+    bool CanDraft() => Context.Interaction.GuildId is not null && admission.InScope(Context.Interaction.GuildId, Context.Channel.Id) && options.Value.Protection.GitHubWritesEnabled;
 
     async Task Refuse(bool reply, bool deferred)
     {

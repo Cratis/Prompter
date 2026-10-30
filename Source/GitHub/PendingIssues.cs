@@ -1,102 +1,103 @@
 // Copyright (c) Cratis. All rights reserved.
 // Licensed under the MIT license. See LICENSE file in the project root for full license information.
 
-using System.Collections.Concurrent;
-using System.Globalization;
+using System.Security.Cryptography;
 
 namespace Cratis.Prompter.GitHub;
 
 /// <summary>
-/// Holds drafted issues between showing the preview and the reporter confirming it.
+/// Bounded, transient, single-use consent for exactly one delivered preview.
 /// </summary>
-/// <remarks>
-/// In memory only, and deliberately so. A Discord custom id is capped at 100 characters, far too small to
-/// carry an issue body, so the preview's buttons carry a short token that resolves back to the draft here.
-/// Nothing is written to the database: a draft that is never confirmed leaves no trace, which is what keeps
-/// filing consent-in-the-moment under D-13. A restart loses pending drafts — the reporter is told the draft
-/// expired and can run the command again, which is a far better failure than persisting conversation text.
-/// </remarks>
-/// <param name="timeProvider">The clock expiry is measured against.</param>
+/// <param name="timeProvider">The expiry clock.</param>
 public class PendingIssues(TimeProvider timeProvider)
 {
     /// <summary>
-    /// The most drafts held at once, after which the oldest are dropped. A bound rather than a limit anyone
-    /// should reach: it stops a burst of unconfirmed drafts growing the process indefinitely.
+    /// The maximum number of provisional and active previews retained.
     /// </summary>
     public const int Capacity = 200;
 
     /// <summary>
-    /// How long a draft stays available for confirmation.
+    /// The maximum time a draft may be held, including preview delivery.
     /// </summary>
     public static readonly TimeSpan Lifetime = TimeSpan.FromMinutes(15);
 
-    readonly ConcurrentDictionary<string, Pending> _drafts = new(StringComparer.Ordinal);
-    long _next;
+    readonly Lock _lock = new();
+    readonly Dictionary<string, Entry> _entries = [];
 
     /// <summary>
-    /// Holds a draft and returns the token identifying it.
+    /// Holds a provisional payload, delivers it, then binds it to the returned message.
     /// </summary>
-    /// <param name="draft">The drafted issue.</param>
-    /// <param name="repository">The repository the preview offered to file it in.</param>
-    /// <param name="conversationUrl">A link back to the conversation, if available.</param>
-    /// <returns>The token to put on the preview's buttons.</returns>
-    public string Hold(IssueDraft draft, string repository, string? conversationUrl)
+    /// <param name="payload">The exact, already rendered payload.</param>
+    /// <param name="consent">The admitted reporter and public scope.</param>
+    /// <param name="send">Delivers the full preview and buttons; returns its Discord message ID.</param>
+    /// <returns>The unpredictable consent token. Delivery failure revokes it.</returns>
+    public async Task<string> Present(PendingIssue payload, IssueConsent consent, Func<string, Task<ulong>> send)
     {
-        Evict();
-
-        var sequence = Interlocked.Increment(ref _next);
-        var token = sequence.ToString(CultureInfo.InvariantCulture);
-        _drafts[token] = new Pending(draft, repository, conversationUrl, timeProvider.GetUtcNow(), sequence);
-
-        return token;
-    }
-
-    /// <summary>
-    /// Takes a held draft, removing it so a double-click cannot file the same issue twice.
-    /// </summary>
-    /// <param name="token">The token from the clicked button.</param>
-    /// <returns>The held draft, or <see langword="null"/> when it is unknown or has expired.</returns>
-    public PendingIssue? Take(string token)
-    {
-        if (!_drafts.TryRemove(token, out var pending))
+        var token = Convert.ToHexString(RandomNumberGenerator.GetBytes(32));
+        lock (_lock)
         {
-            return null;
+            Prune();
+            if (_entries.Count >= Capacity)
+            {
+                _entries.Remove(_entries.First().Key);
+            }
+            _entries.Add(token, new(payload, consent, timeProvider.GetUtcNow(), 0));
         }
-
-        return timeProvider.GetUtcNow() - pending.HeldAt > Lifetime
-            ? null
-            : new PendingIssue(pending.Draft, pending.Repository, pending.ConversationUrl);
+        try
+        {
+            var message = await send(token);
+            lock (_lock)
+            {
+                Prune();
+                if (message == 0 || !_entries.TryGetValue(token, out var entry))
+                {
+                    throw new PreviewUnavailable();
+                }
+                _entries[token] = entry with { Message = message };
+            }
+            return token;
+        }
+        catch
+        {
+            lock (_lock)
+            {
+                _entries.Remove(token);
+            }
+            throw;
+        }
     }
 
-    void Evict()
+    /// <summary>
+    /// Atomically consumes an active matching preview for either filing or cancellation.
+    /// </summary>
+    /// <param name="token">The random token from the button.</param>
+    /// <param name="consent">The identity and scope of the click.</param>
+    /// <param name="message">The clicked preview's message ID.</param>
+    /// <returns>The payload, or null without consuming another reporter's preview.</returns>
+    public PendingIssue? Take(string token, IssueConsent consent, ulong message)
+    {
+        lock (_lock)
+        {
+            Prune();
+            if (!_entries.TryGetValue(token, out var entry) || !Matches(entry, consent, message))
+            {
+                return null;
+            }
+            _entries.Remove(token);
+            return entry.Payload;
+        }
+    }
+
+    static bool Matches(Entry entry, IssueConsent consent, ulong message) => entry.Message != 0 && entry.Message == message && entry.Consent == consent;
+
+    void Prune()
     {
         var now = timeProvider.GetUtcNow();
-
-        foreach (var (token, pending) in _drafts)
+        foreach (var token in _entries.Where(pair => now - pair.Value.Created >= Lifetime).Select(pair => pair.Key).ToArray())
         {
-            if (now - pending.HeldAt > Lifetime)
-            {
-                _drafts.TryRemove(token, out _);
-            }
-        }
-
-        if (_drafts.Count < Capacity)
-        {
-            return;
-        }
-
-        // Ordered by insertion, not by time: several drafts can be held within one clock tick, and
-        // "oldest" has to mean the one held first rather than whichever the timestamps happen to tie on.
-        foreach (var (token, _) in _drafts.OrderBy(entry => entry.Value.Sequence).Take(_drafts.Count - Capacity + 1))
-        {
-            _drafts.TryRemove(token, out _);
+            _entries.Remove(token);
         }
     }
 
-    sealed record Pending(
-        IssueDraft Draft,
-        string Repository,
-        string? ConversationUrl,
-        DateTimeOffset HeldAt,
-        long Sequence);
+    sealed record Entry(PendingIssue Payload, IssueConsent Consent, DateTimeOffset Created, ulong Message);
 }

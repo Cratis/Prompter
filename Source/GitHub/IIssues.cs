@@ -10,6 +10,14 @@ namespace Cratis.Prompter.GitHub;
 public interface IIssues
 {
     /// <summary>
+    /// Files exactly the immutable payload that the reporter reviewed.
+    /// </summary>
+    /// <param name="payload">The owner, repository, title, body and labels shown in the preview.</param>
+    /// <param name="cancellationToken">Token to cancel the operation.</param>
+    /// <returns>The filed issue.</returns>
+    Task<FiledIssue> File(PendingIssue payload, CancellationToken cancellationToken = default);
+
+    /// <summary>
     /// Files an issue.
     /// </summary>
     /// <param name="repository">The repository name, without the owner.</param>

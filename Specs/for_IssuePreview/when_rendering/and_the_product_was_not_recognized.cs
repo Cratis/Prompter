@@ -10,11 +10,8 @@ public class and_the_product_was_not_recognized : Specification
 {
     string _preview = null!;
 
-    void Because() => _preview = IssuePreview.Text(
-        new("A title", "A body", IssueKind.Idea, string.Empty),
-        "Documentation",
-        routed: false,
-        []);
+    void Because() => _preview = IssuePreview.Text(new("Cratis", "Documentation", "Title", "Body", []), routed: false)!;
 
-    [Fact] void should_warn_that_the_routing_is_a_guess() => _preview.ShouldContain("couldn't tell which product");
+    [Fact] void should_call_out_the_fallback() => _preview.ShouldContain("couldn't tell which product");
+    [Fact] void should_show_the_actual_destination() => _preview.ShouldContain("Cratis/Documentation");
 }

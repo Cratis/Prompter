@@ -1,6 +1,8 @@
 // Copyright (c) Cratis. All rights reserved.
 // Licensed under the MIT license. See LICENSE file in the project root for full license information.
 
+using System.Collections.Immutable;
+
 namespace Cratis.Prompter.GitHub;
 
 /// <summary>
@@ -19,6 +21,17 @@ public static class IssueComposition
     /// The heading under which the drafted description is placed.
     /// </summary>
     public const string ContextHeading = "### Reported from Discord";
+
+    /// <summary>
+    /// Freezes every field that will be displayed and posted.
+    /// </summary>
+    /// <param name="draft">The model's draft.</param>
+    /// <param name="repository">The allowlisted route selected by the application.</param>
+    /// <param name="conversationUrl">The public conversation link.</param>
+    /// <param name="options">The options at preview time.</param>
+    /// <returns>The final immutable payload.</returns>
+    public static PendingIssue Payload(IssueDraft draft, string repository, string? conversationUrl, GitHubOptions options) =>
+        new(options.Owner, repository, draft.Title.Trim(), Body(draft, conversationUrl), Labels(draft, options).ToImmutableArray());
 
     /// <summary>
     /// Builds the issue body.

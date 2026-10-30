@@ -9,17 +9,18 @@ namespace Cratis.Prompter.Specs.for_IssuePreview.when_rendering;
 public class and_the_product_was_recognized : Specification
 {
     string _preview = null!;
+    PendingIssue _payload = null!;
 
-    void Because() => _preview = IssuePreview.Text(
-        new("Projection stops after a rename", "It stops.", IssueKind.Bug, "chronicle"),
-        "Chronicle",
-        routed: true,
-        []);
+    void Because()
+    {
+        _payload = IssueComposition.Payload(new("A title", "A body", IssueKind.Bug, "chronicle"), "Chronicle", "https://discord.com/channels/2/3", new());
+        _preview = IssuePreview.Text(_payload)!;
+    }
 
-    [Fact] void should_show_the_title() => _preview.ShouldContain("Projection stops after a rename");
-    [Fact] void should_show_the_repository() => _preview.ShouldContain("Chronicle");
-    [Fact] void should_show_the_kind() => _preview.ShouldContain("bug");
-    [Fact] void should_show_the_body() => _preview.ShouldContain("It stops.");
-    [Fact] void should_say_nothing_is_filed_yet() => _preview.ShouldContain("Nothing is filed until you say so.");
-    [Fact] void should_not_warn_about_the_product() => _preview.Contains("couldn't tell which product", StringComparison.Ordinal).ShouldBeFalse();
+    [Fact] void should_show_the_owner_and_repository() => _preview.ShouldContain("Cratis/Chronicle");
+    [Fact] void should_show_the_exact_title() => _preview.ShouldContain(_payload.Title);
+    [Fact] void should_show_the_body_and_public_provenance() => _preview.ShouldContain("Filed from Discord by Prompter");
+    [Fact] void should_show_every_label() => _preview.ShouldContain("from\\-discord, bug");
+    [Fact] void should_not_hide_content_with_markdown() => _preview.ShouldContain("\\[the conversation\\]\\(https://discord\\.com/channels/2/3\\)");
+    [Fact] void should_stay_inside_the_encoded_budget() => (_preview.Length <= 1900).ShouldBeTrue();
 }
