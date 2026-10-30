@@ -1,0 +1,33 @@
+// Copyright (c) Cratis. All rights reserved.
+// Licensed under the MIT license. See LICENSE file in the project root for full license information.
+
+using Cratis.Prompter.Answering;
+using Microsoft.Extensions.AI;
+using NSubstitute;
+
+namespace Cratis.Prompter.Specs.for_AnthropicAccounts.when_dispatching;
+
+public class and_the_task_has_a_model_policy : Specification
+{
+    IChatClient _primary = null!;
+    AnthropicAccounts _client = null!;
+    ChatOptions _sent = null!;
+
+    void Establish()
+    {
+        _primary = Substitute.For<IChatClient>();
+        _primary.GetResponseAsync(Arg.Any<IEnumerable<ChatMessage>>(), Arg.Any<ChatOptions>(), Arg.Any<CancellationToken>())
+            .Returns(call =>
+            {
+                _sent = call.Arg<ChatOptions>();
+                return new ChatResponse(new ChatMessage(ChatRole.Assistant, "answer"));
+            });
+        _client = new(_primary, null, new AnthropicOptions());
+    }
+
+    async Task Because() => await _client.GetResponseAsync([new(ChatRole.User, "dummy question")]);
+
+    [Fact] void should_pin_sonnet() => _sent.ModelId.ShouldEqual("claude-sonnet-5-5");
+    [Fact] void should_bound_output() => _sent.MaxOutputTokens.ShouldEqual(4096);
+    [Fact] void should_set_high_effort() => _sent.Reasoning!.Effort.ShouldEqual(ReasoningEffort.High);
+}

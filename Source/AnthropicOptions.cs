@@ -16,5 +16,30 @@ public class AnthropicOptions
     /// <summary>
     /// Gets or sets the model used for answer generation.
     /// </summary>
-    public string Model { get; set; } = "claude-sonnet-5";
+    public string Model { get; set; } = "claude-sonnet-5-5";
+
+    /// <summary>
+    /// Gets or sets the separately authorized secondary-account key. Empty disables secondary dispatch.
+    /// </summary>
+    public string SecondaryApiKey { get; set; } = string.Empty;
+
+    /// <summary>
+    /// Gets or sets a provider-confirmed primary monthly allocation reset. No timestamp is inferred.
+    /// </summary>
+    public DateTimeOffset? PrimaryQuotaResetAt { get; set; }
+
+    /// <summary>
+    /// Gets or sets the answer task policy.
+    /// </summary>
+    public TaskModelOptions Answer { get; set; } = new();
+
+    /// <summary>
+    /// Gets or sets the issue drafting policy. Haiku requires explicit evaluation approval.
+    /// </summary>
+    public TaskModelOptions IssueDraft { get; set; } = new();
+
+    /// <summary>
+    /// Gets or sets whether measured issue-draft evaluation permits a Haiku override.
+    /// </summary>
+    public bool HaikuIssueDraftApproved { get; set; }
 }

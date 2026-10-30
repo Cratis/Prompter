@@ -2,6 +2,7 @@
 // Licensed under the MIT license. See LICENSE file in the project root for full license information.
 
 using Anthropic.Models.Messages;
+using Cratis.Prompter.Answering;
 using Microsoft.Extensions.AI;
 
 namespace Cratis.Prompter.GitHub;
@@ -22,6 +23,7 @@ public class IssueDrafting(IChatClient chatClient) : IIssueDrafting
 
         var response = await chatClient.GetResponseAsync(
             [systemMessage, new(ChatRole.User, IssueDraftPrompt.UserMessage(conversation, hint))],
+            new ChatOptions { AdditionalProperties = new() { [AnthropicAccounts.TaskKey] = "issue-draft" } },
             cancellationToken: cancellationToken);
 
         return IssueDraftParsing.Parse(response.Text);

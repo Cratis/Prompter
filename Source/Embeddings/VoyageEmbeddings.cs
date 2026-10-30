@@ -25,15 +25,22 @@ public sealed class VoyageEmbeddings(HttpClient httpClient, IOptions<PrompterOpt
         CancellationToken cancellationToken = default)
     {
         var request = new VoyageRequest([.. values], prompterOptions.Value.Voyage.Model, prompterOptions.Value.Voyage.Dimensions);
-        var response = await httpClient.PostAsJsonAsync(new Uri("v1/embeddings", UriKind.Relative), request, cancellationToken);
-        response.EnsureSuccessStatusCode();
+        using var response = await httpClient.PostAsJsonAsync(new Uri("v1/embeddings", UriKind.Relative), request, cancellationToken);
+        if (!response.IsSuccessStatusCode)
+        {
+            var hint = response.Headers.TryGetValues("Retry-After", out var hints) ? hints.FirstOrDefault() : null;
+            throw new VoyageRequestFailed(response.StatusCode, EmbeddingRetry.RetryAfter(hint, DateTimeOffset.UtcNow));
+        }
 
         var result = await response.Content.ReadFromJsonAsync<VoyageResponse>(cancellationToken)
             ?? throw new EmbeddingGenerationFailed("response could not be deserialized");
 
         return new(result.Data
             .OrderBy(item => item.Index)
-            .Select(item => new Embedding<float>(item.Embedding)));
+            .Select(item => new Embedding<float>(item.Embedding)))
+        {
+            Usage = result.Usage is null ? null : new() { InputTokenCount = result.Usage.TotalTokens, TotalTokenCount = result.Usage.TotalTokens }
+        };
     }
 
     /// <inheritdoc/>
@@ -50,7 +57,11 @@ public sealed class VoyageEmbeddings(HttpClient httpClient, IOptions<PrompterOpt
         [property: JsonPropertyName("model")] string Model,
         [property: JsonPropertyName("output_dimension")] int OutputDimension);
 
-    sealed record VoyageResponse([property: JsonPropertyName("data")] IEnumerable<VoyageEmbedding> Data);
+    sealed record VoyageResponse(
+        [property: JsonPropertyName("data")] IEnumerable<VoyageEmbedding> Data,
+        [property: JsonPropertyName("usage")] VoyageUsage? Usage);
+
+    sealed record VoyageUsage([property: JsonPropertyName("total_tokens")] long TotalTokens);
 
     sealed record VoyageEmbedding(
         [property: JsonPropertyName("index")] int Index,

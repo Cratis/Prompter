@@ -153,7 +153,18 @@ Configuration binds to the `Cratis:Prompter` section (environment variables use 
 | Rate limit — window length (minutes) | `Cratis__Prompter__Discord__RateLimit__WindowMinutes` | `10` |
 | Answer timeout (seconds) | `Cratis__Prompter__Discord__AnswerTimeoutSeconds` | `60` |
 | Anthropic API key | `Cratis__Prompter__Anthropic__ApiKey` (or `ANTHROPIC_API_KEY`) | — |
-| Answer model | `Cratis__Prompter__Anthropic__Model` | `claude-sonnet-5` |
+| Default task model | `Cratis__Prompter__Anthropic__Model` | `claude-sonnet-5-5` |
+| Optional secondary Anthropic key | `Cratis__Prompter__Anthropic__SecondaryApiKey` | — (disabled) |
+| Provider-confirmed primary allocation reset | `Cratis__Prompter__Anthropic__PrimaryQuotaResetAt` | — |
+| Answer model override | `Cratis__Prompter__Anthropic__Answer__Model` | default task model |
+| Answer adaptive effort | `Cratis__Prompter__Anthropic__Answer__Effort` | `high` |
+| Answer output-token ceiling (includes thinking) | `Cratis__Prompter__Anthropic__Answer__MaxOutputTokens` | `4096` |
+| Answer provider deadline (seconds, max 60) | `Cratis__Prompter__Anthropic__Answer__TimeoutSeconds` | `60` |
+| Answer secondary-account opt-in | `Cratis__Prompter__Anthropic__Answer__AllowSecondary` | `false` |
+| Issue-draft model override | `Cratis__Prompter__Anthropic__IssueDraft__Model` | default task model |
+| Haiku issue-draft evaluation approval | `Cratis__Prompter__Anthropic__HaikuIssueDraftApproved` | `false` |
+| Voyage retries / indexing retries (max 3 / 5) | `Cratis__Prompter__Voyage__MaxRetries` / `Cratis__Prompter__Voyage__IndexMaxRetries` | `3` / `5` |
+| Voyage deadline / indexing deadline (seconds, max 60 / 120) | `Cratis__Prompter__Voyage__TimeoutSeconds` / `Cratis__Prompter__Voyage__IndexTimeoutSeconds` | `60` / `120` |
 | Refusal threshold (min top-passage score) | `Cratis__Prompter__Answering__MinScore` | `0.02` |
 | Voyage API key | `Cratis__Prompter__Voyage__ApiKey` | — |
 | Interaction retention (days) | `Cratis__Prompter__RetentionDays` | `90` |
@@ -209,6 +220,34 @@ For isolated ledger specs, supply only the loopback port of a disposable, trust-
 Postgres instance in `PROMPTER_LEDGER_TEST_PORT` and run `./Specs/bin/Release/net10.0/Prompter.Specs`.
 Without that opt-in, the Postgres integration spec is explicitly skipped; all other protection specs
 are offline. Never point this probe at a live database: it creates and drops a random test schema.
+
+### Provider resilience and task policies
+
+Generation uses Sonnet 5.5 with adaptive thinking, explicit effort, no temperature/top-p/top-k, at most two
+attempts and one shared task deadline. `Answer` and `IssueDraft` each support `Model`, `Effort` (`low`,
+`medium`, `high`, or empty to omit thinking), `MaxOutputTokens` (max 4096), `MaxPromptTokens` (max 32000,
+conservative UTF-8 byte bound), `TimeoutSeconds`, and `AllowSecondary`. Account fallback never changes the
+model. Haiku 5.5 is only accepted for issue drafting after task-specific quality/cost/latency evaluation,
+explicit `HaikuIssueDraftApproved=true`, and empty `IssueDraft:Effort`. It is not enabled by default.
+Production protection additionally requires verified pricing for the selected model and a prepaid lease for
+every transport attempt. A retry without remaining reserved exposure fails closed; the current interactive
+lease permits only one chat dispatch.
+Validate configured model availability and account entitlement before activating any deployment; offline
+wire specs validate request shape, not provider availability or answer quality.
+
+Secondary dispatch additionally requires an installed `IProviderAccounting` implementation reserving each
+attempt against shared global/task budgets and independent provider/account caps. Without that integration,
+existing primary-only dispatch remains available but secondary use fails closed. Only a provider-confirmed
+primary monthly allocation exhaustion, configured with its actual future reset timestamp, can select the
+secondary account. Generic 429s, auth/billing restrictions and unknown failures never switch identities;
+503/529 overloads retry the same account. Do not use the reset setting to bypass unpaid balances, bans,
+fraud restrictions or provider-wide capacity limits. Runtime account-specific error classification remains
+disabled until documented structured evidence is available.
+
+Voyage honors `Retry-After` seconds/dates, otherwise uses jittered exponential backoff, and shares a
+key-scoped cooldown across query/index work. A cooldown exceeding the task deadline fails without an early
+retry. Accounting hooks reconcile measured tokens; failed or canceled attempts retain unknown exposure,
+not zero usage. Hooks carry fixed provider/account/task labels and no prompts, answers, keys or error bodies.
 
 ## 🗺️ Start here (for contributors)
 

@@ -27,6 +27,7 @@ return await Deployment.RunAsync(() =>
     // run `pulumi config set` locally. GitHub secret names cannot start with GITHUB_, hence the PROMPTER_ prefix.
     var discordToken = Output.CreateSecret(RequireEnv("PROMPTER_DISCORD_TOKEN"));
     var anthropicApiKey = Output.CreateSecret(RequireEnv("PROMPTER_ANTHROPIC_API_KEY"));
+    var anthropicSecondaryApiKey = OptionalSecretEnv("PROMPTER_ANTHROPIC_SECONDARY_API_KEY");
     var voyageApiKey = Output.CreateSecret(RequireEnv("PROMPTER_VOYAGE_API_KEY"));
     var reindexSecret = Output.CreateSecret(RequireEnv("PROMPTER_REINDEX_SECRET"));
 
@@ -78,6 +79,7 @@ return await Deployment.RunAsync(() =>
         ConnectionString = postgres.ConnectionString,
         DiscordToken = discordToken,
         AnthropicApiKey = anthropicApiKey,
+        AnthropicSecondaryApiKey = anthropicSecondaryApiKey,
         VoyageApiKey = voyageApiKey,
         ReindexSecret = reindexSecret,
         AskChannelId = askChannelId,

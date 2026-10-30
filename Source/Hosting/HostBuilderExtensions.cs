@@ -1,7 +1,6 @@
 // Copyright (c) Cratis. All rights reserved.
 // Licensed under the MIT license. See LICENSE file in the project root for full license information.
 
-using Anthropic;
 using Cratis.Prompter.Answering;
 using Cratis.Prompter.Embeddings;
 using Cratis.Prompter.GitHub;
@@ -9,6 +8,7 @@ using Cratis.Prompter.Ingestion;
 using Cratis.Prompter.Protection;
 using Cratis.Prompter.Retrieval;
 using Cratis.Prompter.Storage;
+using Cratis.Prompter.Telemetry;
 using Microsoft.Extensions.AI;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
@@ -120,16 +120,18 @@ public static class HostBuilderExtensions
                     sp.GetRequiredService<ISpendLedger>(),
                     sp.GetRequiredService<IOptions<PrompterOptions>>()),
                 sp.GetRequiredService<IOptions<PrompterOptions>>(),
-                sp.GetRequiredService<ILogger<ResilientEmbeddingGenerator>>()));
+                sp.GetRequiredService<ILogger<ResilientEmbeddingGenerator>>(),
+                sp.GetService<IProviderAccounting>()));
 
         builder.Services.AddSingleton<IChatClient>(sp =>
         {
             var options = sp.GetRequiredService<IOptions<PrompterOptions>>().Value;
-            var client = options.Anthropic.ApiKey.Length > 0
-                ? new AnthropicClient { ApiKey = options.Anthropic.ApiKey, MaxRetries = 0 }
-                : new AnthropicClient { MaxRetries = 0 };
+            var configuration = sp.GetRequiredService<IOptions<PrompterOptions>>();
+            var primary = new BudgetedChat(new AnthropicConnection(options.Anthropic.ApiKey), configuration);
+            var secondary = string.IsNullOrWhiteSpace(options.Anthropic.SecondaryApiKey)
+                ? null : new BudgetedChat(new AnthropicConnection(options.Anthropic.SecondaryApiKey), configuration);
 
-            return new BudgetedChat(client.AsIChatClient(options.Anthropic.Model), sp.GetRequiredService<IOptions<PrompterOptions>>());
+            return new AnthropicAccounts(primary, secondary, options.Anthropic, sp.GetService<IProviderAccounting>());
         });
     }
 }
