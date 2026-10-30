@@ -47,6 +47,11 @@ public sealed class PrompterDeploymentArgs
     public required Output<string> AnthropicApiKey { get; init; }
 
     /// <summary>
+    /// Gets the optional separately authorized Anthropic account key. Empty keeps fallback off.
+    /// </summary>
+    public Output<string> AnthropicSecondaryApiKey { get; init; } = Output.CreateSecret(string.Empty);
+
+    /// <summary>
     /// Gets the Voyage API key used to embed the corpus and queries.
     /// </summary>
     public required Output<string> VoyageApiKey { get; init; }

@@ -191,6 +191,7 @@ public sealed class PrompterDeployment
         ["Cratis__Prompter__ConnectionString"] = args.ConnectionString,
         ["Cratis__Prompter__Discord__Token"] = args.DiscordToken,
         ["Cratis__Prompter__Anthropic__ApiKey"] = args.AnthropicApiKey,
+        ["Cratis__Prompter__Anthropic__SecondaryApiKey"] = args.AnthropicSecondaryApiKey,
         ["Cratis__Prompter__Voyage__ApiKey"] = args.VoyageApiKey,
         ["Cratis__Prompter__ReindexSecret"] = args.ReindexSecret,
         ["Cratis__Prompter__GitHub__Token"] = args.GitHubToken,
