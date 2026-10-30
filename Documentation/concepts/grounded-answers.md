@@ -9,9 +9,9 @@ has a language model phrase what it found. That distinction drives everything yo
 
 ## Answers are looked up, not remembered
 
-When documentation changes, Prompter's knowledge updates within minutes - the changed pages are re-indexed
-and the very next question retrieves the new content. There is no retraining, no release, no lag between what
-[cratis.io](https://cratis.io) says and what Prompter says.
+When documentation changes, Prompter's knowledge updates within a day through the nightly refresh;
+maintainers can also re-index on demand. After re-indexing, the next question retrieves the new content
+from [cratis.io](https://cratis.io). There is no retraining or release.
 
 ## Citations are the contract
 
@@ -35,4 +35,5 @@ should write - and the community's 👎 reactions work the same way.
 
 Prompter's knowledge is the published documentation - nothing more. A feature that shipped without
 documentation is invisible to it, exactly as it is to a human reader of cratis.io. The knowledge base
-refreshes automatically when documentation deploys, with a nightly sweep as a safety net.
+refreshes nightly at 03:52 UTC through **Reindex - Production**, or on demand when a maintainer runs the
+workflow on `main`. A one-shot Job indexes the published docs without a public reindex route.

@@ -16,6 +16,7 @@ namespace Cratis.Prompter.Deployment.Networking;
 /// Infrastructure traffic. The bot dials out to the Discord gateway and REST API, Anthropic, Voyage, the
 /// documentation site and GitHub, so this grants outbound TCP 443 to public addresses only, without
 /// opening the private ranges. Postgres needs nothing extra: same-namespace egress is already allowed.
+/// Re-index Job pods (<c language="csharp">app=prompter-index</c>) need the same outbound HTTPS to fetch cratis.io and call Voyage.
 /// </remarks>
 public sealed class PrompterEgress
 {
@@ -37,7 +38,18 @@ public sealed class PrompterEgress
                 },
                 Spec = new NetworkPolicySpecArgs
                 {
-                    PodSelector = new LabelSelectorArgs { MatchLabels = { ["app"] = "prompter" } },
+                    PodSelector = new LabelSelectorArgs
+                    {
+                        MatchExpressions =
+                        [
+                            new LabelSelectorRequirementArgs
+                            {
+                                Key = "app",
+                                Operator = "In",
+                                Values = ["prompter", "prompter-index"],
+                            },
+                        ],
+                    },
                     PolicyTypes = ["Egress"],
                     Egress =
                     [

@@ -7,11 +7,6 @@ config:
   # Cratis/Infrastructure's Core stack. This stack creates only namespaced resources inside it.
   # The cluster-scoped StorageClass Core declares. Referenced, never created.
   prompter-deployment:storageClassName: upcloud-maxiops
-  # --- Public host ----------------------------------------------------------
-  # Only POST /reindex is published on it (see Networking/PrompterIngress.cs). A DNS record for this
-  # name must point at the cluster's existing ingress load balancer (the `ingressDnsTarget` output)
-  # before cert-manager can issue.
-  prompter-deployment:ingressHost: prompter.cratis.studio
   # --- Corpus database ------------------------------------------------------
   prompter-deployment:postgresStorageSizeGb: "10"
   # --- Image ----------------------------------------------------------------

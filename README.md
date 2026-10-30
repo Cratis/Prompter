@@ -121,8 +121,9 @@ dotnet run -- index                                        # ingest cratis.io in
 dotnet run -- ask "How do I append an event in Chronicle?" # answer from the CLI (add --verbose for the passages)
 ```
 
-Run it as the Discord bot — bot mode also serves `GET /healthz` and the shared-secret `POST /reindex` webhook,
-and sweeps expired interactions on a daily retention job:
+Run it as the Discord bot — bot mode also serves `GET /healthz` and the shared-secret `POST /reindex`
+in-cluster/local endpoint, and sweeps expired interactions on a daily retention job. Production re-indexes
+nightly and on demand via the **Reindex - Production** workflow, without a public route:
 
 ```bash
 dotnet run
