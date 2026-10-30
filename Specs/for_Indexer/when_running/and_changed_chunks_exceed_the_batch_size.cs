@@ -14,6 +14,7 @@ public class and_changed_chunks_exceed_the_batch_size : Specification
 {
     RecordingEmbeddingGenerator _embeddings = null!;
     IChunks _chunks = null!;
+    IIndexLease _lease = null!;
     Indexer _indexer = null!;
     IndexRun _run = null!;
 
@@ -25,11 +26,13 @@ public class and_changed_chunks_exceed_the_batch_size : Specification
 
         _embeddings = new RecordingEmbeddingGenerator();
         _chunks = Substitute.For<IChunks>();
+        _lease = Substitute.For<IIndexLease>();
+        _chunks.AcquireIndexLease(Arg.Any<CancellationToken>()).Returns(_lease);
         _chunks.GetHashes(Arg.Any<CancellationToken>())
             .Returns(new Dictionary<ChunkId, ContentHash>());
         _chunks.RemoveAllExcept(Arg.Any<IReadOnlySet<ChunkId>>(), Arg.Any<CancellationToken>()).Returns(0);
 
-        var options = Options.Create(new PrompterOptions { Voyage = { BatchSize = 2 } });
+        var options = Options.Create(new PrompterOptions { Voyage = { BatchSize = 2 }, Ingestion = { PricePerMillionTokens = 1, MaxRunDollars = 10, MaxDailyDollars = 10 } });
         _indexer = new Indexer(new FakeDocsSite(pages), _chunks, _embeddings, options, NullLogger<Indexer>.Instance);
     }
 
@@ -43,5 +46,5 @@ public class and_changed_chunks_exceed_the_batch_size : Specification
 
     [Fact]
     void should_upsert_every_chunk() =>
-        _chunks.Received(5).Upsert(Arg.Any<Chunk>(), Arg.Any<ReadOnlyMemory<float>>(), Arg.Any<CancellationToken>());
+        _lease.Received(1).CommitIndex(Arg.Is<IReadOnlyCollection<EmbeddedChunk>>(items => items.Count == 5), Arg.Any<IReadOnlySet<ChunkId>>(), Arg.Any<CancellationToken>());
 }

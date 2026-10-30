@@ -28,6 +28,7 @@ public class and_all_chunks_are_unchanged : Specification
 
         _embeddings = new RecordingEmbeddingGenerator();
         _chunks = Substitute.For<IChunks>();
+        _chunks.AcquireIndexLease(Arg.Any<CancellationToken>()).Returns(Substitute.For<IIndexLease>());
         _chunks.GetHashes(Arg.Any<CancellationToken>())
             .Returns(existing.ToDictionary(chunk => chunk.Id, chunk => chunk.Hash));
         _chunks.RemoveAllExcept(Arg.Any<IReadOnlySet<ChunkId>>(), Arg.Any<CancellationToken>()).Returns(0);

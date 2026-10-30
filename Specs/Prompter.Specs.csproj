@@ -17,6 +17,9 @@
         <PackageReference Include="xunit.runner.visualstudio" />
     </ItemGroup>
     <ItemGroup>
+        <Compile Remove="for_IndexLease/**/*.cs;Integration/**/*.cs" />
+    </ItemGroup>
+    <ItemGroup>
         <ProjectReference Include="..\Source\Prompter.csproj" />
         <ProjectReference Include="..\Eval\Prompter.Eval.csproj" />
         <ProjectReference Include="..\Deployment\Deployment.csproj" />

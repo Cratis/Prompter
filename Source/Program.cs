@@ -21,7 +21,7 @@ var mode = args.FirstOrDefault() ?? "bot";
 
 if (mode == "index" || mode == "ask")
 {
-    var builder = Host.CreateApplicationBuilder(args);
+    var builder = Host.CreateApplicationBuilder(mode == "index" ? IndexArguments.ConfigurationArguments(args) : args);
     builder.AddPrompter();
 
     var host = builder.Build();
@@ -29,7 +29,7 @@ if (mode == "index" || mode == "ask")
 
     if (mode == "index")
     {
-        var run = await host.Services.GetRequiredService<IIndexer>().Run();
+        var run = await host.Services.GetRequiredService<IIndexer>().Run(IndexArguments.Parse(args));
         Console.WriteLine(
             $"Indexed {run.Pages} pages in {run.Duration:mm\\:ss}: " +
             $"{run.Embedded} embedded, {run.Unchanged} unchanged, {run.Removed} removed.");

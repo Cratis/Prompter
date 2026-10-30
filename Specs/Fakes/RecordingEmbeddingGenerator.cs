@@ -11,6 +11,8 @@ public sealed class RecordingEmbeddingGenerator : IEmbeddingGenerator<string, Em
 
     public IReadOnlyList<int> BatchSizes => _batchSizes;
 
+    public Action<int>? BeforeGenerate { get; set; }
+
     public Task<GeneratedEmbeddings<Embedding<float>>> GenerateAsync(
         IEnumerable<string> values,
         EmbeddingGenerationOptions? options = null,
@@ -18,6 +20,7 @@ public sealed class RecordingEmbeddingGenerator : IEmbeddingGenerator<string, Em
     {
         var inputs = values as IReadOnlyList<string> ?? [.. values];
         _batchSizes.Add(inputs.Count);
+        BeforeGenerate?.Invoke(_batchSizes.Count);
 
         return Task.FromResult(new GeneratedEmbeddings<Embedding<float>>(inputs.Select(_ => new Embedding<float>(new float[4]))));
     }

@@ -18,6 +18,13 @@ public interface IChunks
     Task EnsureSchema(CancellationToken cancellationToken = default);
 
     /// <summary>
+    /// Tries to acquire the session-scoped database-wide index lease without waiting.
+    /// </summary>
+    /// <param name="cancellationToken">Token for cancellation.</param>
+    /// <returns>The lease, which must cover crawl, dispatch and publication.</returns>
+    Task<IIndexLease> AcquireIndexLease(CancellationToken cancellationToken = default);
+
+    /// <summary>
     /// Gets the content hash of every stored chunk, keyed by chunk identifier.
     /// </summary>
     /// <param name="cancellationToken">Token for cancelling the operation.</param>
