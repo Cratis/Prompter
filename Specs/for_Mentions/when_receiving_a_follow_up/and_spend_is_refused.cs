@@ -15,4 +15,5 @@ public class and_spend_is_refused : given.an_admitted_message
     [Fact] void should_attempt_reservation() => Ledger.ReceivedCalls().Count().ShouldEqual(1);
     [Fact] void should_not_read_history() => History.ReceivedCalls().ShouldBeEmpty();
     [Fact] void should_not_answer() => Answers.ReceivedCalls().ShouldBeEmpty();
+    [Fact] void should_not_classify() => Classifier.ReceivedCalls().ShouldBeEmpty();
 }

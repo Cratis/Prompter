@@ -1,7 +1,6 @@
 // Copyright (c) Cratis. All rights reserved.
 // Licensed under the MIT license. See LICENSE file in the project root for full license information.
 
-using Cratis.Prompter.Answering;
 using Cratis.Prompter.Protection;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
@@ -14,13 +13,13 @@ namespace Cratis.Prompter.Discord;
 /// <summary>
 /// The <c language="csharp">/ask</c> slash command.
 /// </summary>
-/// <param name="answers">The answers Prompter can give.</param>
+/// <param name="assistance">Documentation answers and separate advisory hints.</param>
 /// <param name="admission">The cheap shared admission guard.</param>
 /// <param name="work">The global concurrency and durable spend guard.</param>
 /// <param name="options">The Prompter options carrying the rate-limit window, timeout, and reply text.</param>
 /// <param name="logger">Logger for diagnostics.</param>
 public class Ask(
-    IAnswers answers,
+    ConversationAssistance assistance,
     Admission admission,
     PaidWork work,
     IOptions<PrompterOptions> options,
@@ -60,7 +59,8 @@ public class Ask(
             lease.Activate();
             await Context.Interaction.SendResponseAsync(InteractionCallback.DeferredMessage());
             deferred = true;
-            var answer = await answers.For(new(question), "discord-ask", lease.Token);
+            var reply = await assistance.For(new(ConversationText.Sanitize(question)), "discord-ask", lease.Token);
+            var answer = reply.Answer;
             var content = DiscordAnswers.Format(answer);
 
             if (answer.InteractionId is { } interactionId)
@@ -74,6 +74,12 @@ public class Ask(
             else
             {
                 await Context.Interaction.SendFollowupMessageAsync(content);
+            }
+
+            var advice = DiscordAnswers.Advice(reply);
+            if (advice.Length > 0)
+            {
+                await Context.Interaction.SendFollowupMessageAsync(advice);
             }
         }
         catch (WorkRefused)

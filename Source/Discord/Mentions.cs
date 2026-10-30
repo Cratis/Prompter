@@ -18,7 +18,7 @@ namespace Cratis.Prompter.Discord;
 /// </summary>
 /// <param name="client">The gateway client, used to read the bot's own identity for self-mention detection.</param>
 /// <param name="rest">The REST client used to send follow-up messages.</param>
-/// <param name="answers">The answers Prompter can give.</param>
+/// <param name="assistance">Documentation answers and separate advisory hints.</param>
 /// <param name="admission">The cheap shared admission guard.</param>
 /// <param name="work">The global concurrency and durable spend guard.</param>
 /// <param name="context">Request-only bounded conversation history.</param>
@@ -32,7 +32,7 @@ namespace Cratis.Prompter.Discord;
 public class Mentions(
     GatewayClient client,
     RestClient rest,
-    IAnswers answers,
+    ConversationAssistance assistance,
     Admission admission,
     PaidWork work,
     ConversationContextReader context,
@@ -156,11 +156,22 @@ public class Mentions(
         var request = message.GuildId is { } guildId
             ? await context.For(question, new(guildId, message.ChannelId, message.Id, message.CreatedAt), cancellationToken)
             : new Question(ConversationText.Sanitize(question)) { Conversation = new([], IsDegraded: true) };
-        var answer = await answers.For(request, source, cancellationToken);
+        var reply = await assistance.For(request, source, cancellationToken);
+        var answer = reply.Answer;
         var chunks = DiscordAnswers.Split(answer);
         for (var index = 0; index < chunks.Count; index++)
         {
             await SendChunk(message, chunks[index], index == 0, index == chunks.Count - 1 ? answer.InteractionId : null);
+        }
+        await SendAdvice(message, reply);
+    }
+
+    async Task SendAdvice(Message message, ConversationReply reply)
+    {
+        var advice = DiscordAnswers.Advice(reply);
+        if (advice.Length > 0)
+        {
+            await SendChunk(message, advice, first: false, feedback: null);
         }
     }
 

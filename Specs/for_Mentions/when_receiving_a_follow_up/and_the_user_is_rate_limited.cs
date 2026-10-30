@@ -17,4 +17,5 @@ public class and_the_user_is_rate_limited : given.an_admitted_message
     [Fact] void should_not_read_history() => History.ReceivedCalls().ShouldBeEmpty();
     [Fact] void should_not_reserve_spend() => Ledger.ReceivedCalls().ShouldBeEmpty();
     [Fact] void should_not_answer() => Answers.ReceivedCalls().ShouldBeEmpty();
+    [Fact] void should_not_classify() => Classifier.ReceivedCalls().ShouldBeEmpty();
 }

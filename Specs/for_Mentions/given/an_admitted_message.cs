@@ -3,7 +3,9 @@
 
 using Cratis.Prompter.Answering;
 using Cratis.Prompter.Discord;
+using Cratis.Prompter.GitHub;
 using Cratis.Prompter.Protection;
+using Cratis.Prompter.Routing;
 using Microsoft.Extensions.Logging.Abstractions;
 using NetCord;
 using NetCord.Gateway;
@@ -19,6 +21,7 @@ public class an_admitted_message : for_PaidWork.given.a_paid_work
 
     protected IConversationHistory History { get; private set; } = null!;
     protected IAnswers Answers { get; private set; } = null!;
+    protected IRequestClassifier Classifier { get; private set; } = null!;
     protected Admission Admission { get; private set; } = null!;
     protected Mentions Mentions { get; private set; } = null!;
     protected Message Message { get; private set; } = null!;
@@ -37,7 +40,9 @@ public class an_admitted_message : for_PaidWork.given.a_paid_work
         _client = new(token, new() { RestClientConfiguration = new() { RequestHandler = Substitute.For<IRestRequestHandler>() } });
         History = Substitute.For<IConversationHistory>();
         Answers = Substitute.For<IAnswers>();
-        Mentions = new(_client, _client.Rest, Answers, Admission, Work, new(History, Clock), config, NullLogger<Mentions>.Instance);
+        Classifier = Substitute.For<IRequestClassifier>();
+        var assistance = new ConversationAssistance(Classifier, Answers, Substitute.For<IRelatedIssues>(), config);
+        Mentions = new(_client, _client.Rest, assistance, Admission, Work, new(History, Clock), config, NullLogger<Mentions>.Instance);
         var json = new JsonMessage
         {
             Id = 100,
