@@ -10,7 +10,7 @@ public class and_the_token_is_unknown : Specification
 {
     PendingIssue? _taken;
 
-    void Because() => _taken = new PendingIssues(new ControlledTime(DateTimeOffset.UnixEpoch)).Take("nope");
+    void Because() => _taken = new PendingIssues(new ControlledTime(DateTimeOffset.UnixEpoch)).Take("nope", new(1, 2, 3), 4);
 
     [Fact] void should_return_nothing() => (_taken is null).ShouldBeTrue();
 }

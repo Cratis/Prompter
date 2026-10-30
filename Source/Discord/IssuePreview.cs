@@ -10,83 +10,115 @@ using NetCord.Rest;
 namespace Cratis.Prompter.Discord;
 
 /// <summary>
-/// Renders the preview a reporter confirms before anything is filed, and the buttons under it.
+/// Renders the complete payload or refuses it; never truncates consent content.
 /// </summary>
-/// <remarks>
-/// The preview is the consent step (decision D-16), so it has to show what will actually be public: the
-/// title, the repository, and enough of the body to notice if the model got it wrong. It is ephemeral —
-/// only the reporter sees it — so a draft they abandon leaves nothing behind in the channel either.
-/// </remarks>
 public static class IssuePreview
 {
     /// <summary>
-    /// The label on the button that files the issue.
+    /// The confirm button label.
     /// </summary>
     public const string FileLabel = "Create issue";
 
     /// <summary>
-    /// The label on the button that discards the draft.
+    /// The cancel button label.
     /// </summary>
     public const string CancelLabel = "Cancel";
 
     /// <summary>
-    /// The most body characters shown in the preview, keeping the whole message inside Discord's limit.
+    /// The longest title accepted for one reviewable preview.
     /// </summary>
-    public const int BodyPreviewLength = 1200;
+    public const int TitleLimit = 160;
 
     /// <summary>
-    /// Builds the preview text.
+    /// The longest final body, including provenance, accepted for preview.
     /// </summary>
-    /// <param name="draft">The drafted issue.</param>
-    /// <param name="repository">The repository it would be filed in.</param>
-    /// <param name="routed">Whether the repository came from the draft's product or from the fallback.</param>
-    /// <param name="similar">Open issues that look like duplicates, best match first.</param>
-    /// <returns>The message content to show ephemerally.</returns>
-    public static string Text(IssueDraft draft, string repository, bool routed, IReadOnlyList<ExistingIssue> similar)
-    {
-        var preview = new StringBuilder()
-            .Append(CultureInfo.InvariantCulture, $"**{draft.Title}**\n")
-            .Append(CultureInfo.InvariantCulture, $"`{repository}` · {draft.Kind.ToString().ToLowerInvariant()}");
-
-        if (!routed)
-        {
-            // Say so rather than quietly filing in the fallback: the reporter is the only person who can
-            // correct a product the conversation never named.
-            preview.Append(" · *couldn't tell which product — check this*");
-        }
-
-        preview.Append("\n\n").Append(Truncate(draft.Body, BodyPreviewLength));
-
-        if (similar.Count > 0)
-        {
-            preview.Append("\n\n**Already open, possibly the same thing**\n");
-
-            foreach (var issue in similar)
-            {
-                preview.Append(CultureInfo.InvariantCulture, $"- [#{issue.Number} {issue.Title}]({issue.Url})\n");
-            }
-        }
-
-        preview.Append("\n*Only you can see this. Nothing is filed until you say so.*");
-
-        return preview.ToString();
-    }
+    public const int BodyLimit = 1200;
 
     /// <summary>
-    /// Builds the action row carrying the confirm and cancel buttons.
+    /// The complete encoded preview budget, below Discord's message limit.
     /// </summary>
-    /// <param name="token">The token identifying the held draft.</param>
-    /// <returns>The action row to attach to the preview.</returns>
+    public const int PreviewLimit = 1900;
+
+    /// <summary>
+    /// Builds the action row, carrying only the opaque token.
+    /// </summary>
+    /// <param name="token">The random consent token.</param>
+    /// <returns>The two preview actions.</returns>
     public static ActionRowProperties Buttons(string token) => new(
     [
         new ButtonProperties(IssueButton.CustomId(IssueButton.FileAction, token), FileLabel, ButtonStyle.Success),
         new ButtonProperties(IssueButton.CustomId(IssueButton.CancelAction, token), CancelLabel, ButtonStyle.Secondary)
     ]);
 
-    static string Truncate(string body, int limit)
+    /// <summary>
+    /// Renders all posting fields, with markdown escaped and no hidden truncation.
+    /// </summary>
+    /// <param name="payload">The immutable posting payload.</param>
+    /// <param name="routed">Whether the product was recognized.</param>
+    /// <returns>The full preview, or null if it cannot safely be reviewed.</returns>
+    public static string? Text(PendingIssue payload, bool routed = true)
     {
-        var text = body.Trim();
+        if (!Reviewable(payload))
+        {
+            return null;
+        }
+        var fallback = routed ? string.Empty : "I couldn't tell which product this belongs to, so it will go to the default repository.\n\n";
+        var text = $"{fallback}**Public GitHub issue — {Escape(payload.Owner)}/{Escape(payload.Repository)}**\n\n" +
+            $"**Title:** {Escape(payload.Title)}\n\n**Body:**\n{Escape(payload.Body)}\n\n" +
+            $"**Labels:** {Escape(string.Join(", ", payload.Labels))}\n\n" +
+            "Review every field above. File issue posts this exact content publicly; Cancel discards it. Consent expires in 15 minutes.";
+        return text.Length <= PreviewLimit ? text : null;
+    }
 
-        return text.Length <= limit ? text : text[..limit].TrimEnd() + "…";
+    /// <summary>
+    /// Renders bounded, separate, non-authoritative discovery advice.
+    /// </summary>
+    /// <param name="similar">Possibly related issues.</param>
+    /// <returns>A separate advisory message, never part of the posted payload.</returns>
+    public static string Advisory(IReadOnlyList<ExistingIssue> similar) =>
+        "These are possibly related, not confirmed duplicates:\n" + string.Join('\n', similar.Take(3).Select(issue =>
+            $"#{issue.Number} {Escape(issue.Title.Length <= 160 ? issue.Title : issue.Title[..160])}{Link(issue)}"));
+
+    static string Link(ExistingIssue issue) =>
+        issue.Url.Length <= 200 && Uri.TryCreate(issue.Url, UriKind.Absolute, out var uri) && SafeLink(uri, issue.Number)
+            ? $" — <{uri.AbsoluteUri}>"
+            : string.Empty;
+
+    static bool SafeLink(Uri uri, int number) =>
+        uri.Scheme.Equals("https", StringComparison.Ordinal) && uri.Host.Equals("github.com", StringComparison.Ordinal) &&
+        uri is { IsDefaultPort: true, UserInfo.Length: 0, Query.Length: 0, Fragment.Length: 0 } && SafePath(uri, number);
+
+    static bool SafePath(Uri uri, int expectedNumber) =>
+        uri.AbsolutePath.Split('/') is ["", var owner, var repository, "issues", var number] &&
+        owner.All(char.IsAsciiLetterOrDigit) && repository.All(character => char.IsAsciiLetterOrDigit(character) || character is '-' or '_' or '.') &&
+        number == expectedNumber.ToString(CultureInfo.InvariantCulture);
+
+    static bool Reviewable(PendingIssue payload) =>
+        ReviewableTitle(payload.Title) && ReviewableBody(payload.Body) && ReviewableLabels(payload) &&
+        new[] { payload.Owner, payload.Repository, payload.Title, payload.Body }.Concat(payload.Labels).All(Visible);
+
+    static bool ReviewableTitle(string title) => !string.IsNullOrWhiteSpace(title) && title.Length <= TitleLimit && !title.Contains('\n') && !title.Contains('\r');
+
+    static bool ReviewableBody(string body) => !string.IsNullOrWhiteSpace(body) && body.Length <= BodyLimit;
+
+    static bool ReviewableLabels(PendingIssue payload) => !payload.Labels.IsDefault && payload.Labels.Length <= 10 && payload.Labels.All(ReviewableLabel);
+
+    static bool ReviewableLabel(string label) => label.Length is > 0 and <= 50 && !label.Contains('\n') && !label.Contains('\r') && !label.Contains(',');
+
+    static bool Visible(string value) => value.All(character =>
+        (character is '\n' or '\t' || !char.IsControl(character)) && char.GetUnicodeCategory(character) != UnicodeCategory.Format);
+
+    static string Escape(string value)
+    {
+        var escaped = new StringBuilder(value.Length);
+        foreach (var character in value)
+        {
+            if ("\\`*_{}[]()#+-.!|<>~".Contains(character))
+            {
+                escaped.Append('\\');
+            }
+            escaped.Append(character);
+        }
+        return escaped.ToString();
     }
 }
