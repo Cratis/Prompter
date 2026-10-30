@@ -28,7 +28,7 @@ DECLARE
     reserved prompter_spend_reservations%ROWTYPE;
     allocated numeric;
 BEGIN
-    IF upper_cost <= 0 OR upper_cost > global_cap OR prov NOT IN ('anthropic', 'voyage')
+    IF global_cap <= 0 OR global_cap > 5 OR upper_cost <= 0 OR upper_cost > global_cap OR prov NOT IN ('anthropic', 'voyage')
         OR (prov = 'anthropic' AND number > 2) OR (prov = 'voyage' AND acct <> 'primary') THEN
         RETURN false;
     END IF;

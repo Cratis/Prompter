@@ -28,6 +28,8 @@ public class durable_accounting : for_PaidWork.given.a_paid_work
 
     void Establish()
     {
+        Options.Anthropic.Answer.MaxOutputTokens = Options.Answering.MaxOutputTokens;
+        Options.Anthropic.IssueDraft.MaxOutputTokens = Options.Answering.MaxOutputTokens;
         Store = Substitute.For<IProviderAttemptStore>();
         Store.Reserve(Arg.Any<ProviderDispatch>(), Arg.Any<Guid?>(), Arg.Any<decimal>(), Arg.Any<CancellationToken>()).Returns(async _ =>
         {

@@ -11,6 +11,9 @@ namespace Cratis.Prompter.Deployment.Services;
 /// </summary>
 public sealed class PrompterDeploymentArgs
 {
+    /// <summary>Gets explicit paid workload activation and account selection.</summary>
+    public AnsweringReadinessArgs Readiness { get; init; } = new();
+
     /// <summary>
     /// Gets the Kubernetes provider to deploy through.
     /// </summary>

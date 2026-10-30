@@ -113,6 +113,7 @@ public static class HostBuilderExtensions
 
     static void AddModels(IHostApplicationBuilder builder)
     {
+        builder.Services.AddProviderAccounting();
         builder.Services.AddHttpClient<VoyageEmbeddings>((sp, client) =>
         {
             var options = sp.GetRequiredService<IOptions<PrompterOptions>>().Value;
@@ -128,7 +129,7 @@ public static class HostBuilderExtensions
                     sp.GetRequiredService<IOptions<PrompterOptions>>()),
                 sp.GetRequiredService<IOptions<PrompterOptions>>(),
                 sp.GetRequiredService<ILogger<ResilientEmbeddingGenerator>>(),
-                sp.GetService<IProviderAccounting>()));
+                sp.GetRequiredService<IProviderAccounting>()));
 
         builder.Services.AddSingleton<IChatClient>(sp =>
         {
@@ -138,7 +139,7 @@ public static class HostBuilderExtensions
             var secondary = string.IsNullOrWhiteSpace(options.Anthropic.SecondaryApiKey)
                 ? null : new BudgetedChat(new AnthropicConnection(options.Anthropic.SecondaryApiKey), configuration);
 
-            return new AnthropicAccounts(primary, secondary, options.Anthropic, sp.GetService<IProviderAccounting>(), options.Protection.Anthropic);
+            return new AnthropicAccounts(primary, secondary, options.Anthropic, sp.GetRequiredService<IProviderAccounting>(), options.Protection.Anthropic);
         });
     }
 }

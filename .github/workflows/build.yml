@@ -59,6 +59,18 @@ jobs:
       contents: read
     runs-on: ubuntu-latest
     timeout-minutes: 30
+    services:
+      ledger:
+        image: postgres:17
+        env:
+          POSTGRES_HOST_AUTH_METHOD: trust
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd pg_isready
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 10
 
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
@@ -72,6 +84,8 @@ jobs:
         run: dotnet build --configuration Release
 
       - name: Run specifications
+        env:
+          PROMPTER_LEDGER_TEST_PORT: "5432"
         run: ./Specs/bin/Release/net10.0/Prompter.Specs
 
       - name: Check Postgres backup scripts offline

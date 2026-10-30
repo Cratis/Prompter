@@ -17,6 +17,7 @@ using KubernetesProvider = Pulumi.Kubernetes.Provider;
 return await Deployment.RunAsync(() =>
 {
     var config = new Config("prompter-deployment");
+    var readiness = AnsweringReadinessArgs.From(config);
 
     var environment = config.Require("environment");
     var image = config.Require("prompterImage");
@@ -81,6 +82,7 @@ return await Deployment.RunAsync(() =>
         DiscordToken = discordToken,
         AnthropicApiKey = anthropicApiKey,
         AnthropicSecondaryApiKey = anthropicSecondaryApiKey,
+        Readiness = readiness,
         VoyageApiKey = voyageApiKey,
         ReindexSecret = reindexSecret,
         AskChannelId = askChannelId,

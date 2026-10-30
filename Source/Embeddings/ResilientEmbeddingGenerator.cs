@@ -3,6 +3,7 @@
 
 using System.Diagnostics;
 using System.Text;
+using Cratis.Prompter.Protection;
 using Cratis.Prompter.Telemetry;
 using Microsoft.Extensions.AI;
 using Microsoft.Extensions.Logging;
@@ -75,6 +76,7 @@ public sealed class ResilientEmbeddingGenerator(
 
     async Task<GeneratedEmbeddings<Embedding<float>>> GenerateAttempt(IReadOnlyList<string> inputs, EmbeddingGenerationOptions? options, ProviderDispatch dispatch, CancellationToken token)
     {
+        using var attempt = accounting is null ? null : ProviderAttemptScope.Enter(dispatch, inputs.Count);
         if (accounting is not null && !await accounting.Reserve(dispatch, token))
         {
             ProviderMetrics.Event("voyage", "denied");

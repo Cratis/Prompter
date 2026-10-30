@@ -260,20 +260,25 @@ are offline. Never point this probe at a live database: it creates and drops a r
 Generation uses Sonnet 5.5 with adaptive thinking, explicit effort, no temperature/top-p/top-k, at most two
 attempts and one shared task deadline. `Answer` and `IssueDraft` each support `Model`, `Effort` (`low`,
 `medium`, `high`, or empty to omit thinking), `MaxOutputTokens` (max 4096), `MaxPromptTokens` (max 32000,
-conservative UTF-8 byte bound), `TimeoutSeconds`, and `AllowSecondary`. Account fallback never changes the
+conservative UTF-8 byte bound), `TimeoutSeconds`, `PreferredAccount` (`primary` or `secondary`), and
+`AllowSecondary`. Account selection never changes the
 model. Haiku 5.5 is only accepted for issue drafting after task-specific quality/cost/latency evaluation,
 explicit `HaikuIssueDraftApproved=true`, and empty `IssueDraft:Effort`. It is not enabled by default.
-Production protection additionally requires verified pricing for the selected model and a prepaid lease for
-every transport attempt. A retry without remaining reserved exposure fails closed; the current interactive
-lease permits only one chat dispatch.
+Production protection requires verified pricing and durable funding before every transport attempt.
+The first chat attempt claims the interactive prepaid lease without charging the daily ledger twice;
+the one permitted retry reserves its own conservative exposure against the same UTC-day ceiling.
+Voyage query attempts claim their bounded prepaid retry envelope; indexing attempts reserve independently.
+Duplicate or mismatched permits, exhausted funding, and database failures deny transport. Failed, canceled,
+missing, cached/additional, or inconsistent usage retains its full bound. Only fully known usage can refund
+exposure after durable completion; cleanup has an independent five-second deadline.
 Validate configured model availability and account entitlement before activating any deployment; offline
 wire specs validate request shape, not provider availability or answer quality.
 
-Secondary dispatch additionally requires an installed `IProviderAccounting` implementation reserving each
-attempt against shared global/task budgets and independent provider/account caps. Without that integration,
-existing primary-only dispatch remains available but secondary use fails closed. Only a provider-confirmed
-primary monthly allocation exhaustion, configured with its actual future reset timestamp, can select the
-secondary account. Generic 429s, auth/billing restrictions and unknown failures never switch identities;
+Production registers Postgres-backed `IProviderAccounting` as required composition. Secondary selection
+requires that accounting, an available secondary client, task-specific `AllowSecondary=true`, and explicit
+`PreferredAccount=secondary`. The legacy provider-confirmed primary allocation reset setting remains
+compatible, but no reset is manufactured. Unknown account values fail closed. Both keys share the same
+global and provider daily caps, not separate dollar pools. Generic 429s, auth/billing restrictions and unknown failures never switch identities;
 503/529 overloads retry the same account. Do not use the reset setting to bypass unpaid balances, bans,
 fraud restrictions or provider-wide capacity limits. Runtime account-specific error classification remains
 disabled until documented structured evidence is available.
@@ -282,6 +287,25 @@ Voyage honors `Retry-After` seconds/dates, otherwise uses jittered exponential b
 key-scoped cooldown across query/index work. A cooldown exceeding the task deadline fails without an early
 retry. Accounting hooks reconcile measured tokens; failed or canceled attempts retain unknown exposure,
 not zero usage. Hooks carry fixed provider/account/task labels and no prompts, answers, keys or error bodies.
+
+### Offline-ready deployment configuration
+
+The Pulumi stack projects verified standard-global Sonnet 5.5 and Voyage 4 prices, but explicitly disables
+both paid workloads by default. Non-secret `prompter-deployment` settings `answeringEnabled` and
+`indexingEnabled` activate them only after live model availability, eligibility, migrations, and the intended
+account have been checked. `answerPreferredAccount` / `issueDraftPreferredAccount` default to `primary`;
+`answerAllowSecondary` / `issueDraftAllowSecondary` default to `false` and are separate workload opt-ins.
+Do not select secondary to evade provider restrictions, and do not use this configuration as quota evidence.
+
+The shared daily ceiling is $5. Sonnet input reserves $4/MTok (the highest applicable one-hour cache-write
+rate), output including thinking $10/MTok; unknown cache shape does not receive a refund. Voyage 4 reserves
+$0.06/MTok with 1024 dimensions. Both local input ceilings are 32,000 UTF-8 bytes/tokens, stricter than
+Sonnet's 1M context and Voyage's 320K/request; local output is 4096 tokens including thinking. These prices
+cover standard global requests only, not US-only processing (1.1×) or other service tiers. No tools or
+unbounded generation loops are enabled. Public references: [Sonnet overview](https://platform.claude.com/docs/en/models/sonnet-5-5/overview),
+[Anthropic pricing](https://platform.claude.com/docs/en/about-claude/pricing),
+[adaptive thinking](https://platform.claude.com/docs/en/build-with-claude/adaptive-thinking),
+[Voyage embeddings](https://docs.voyageai.com/docs/embeddings), and [Voyage pricing](https://docs.voyageai.com/docs/pricing).
 
 ## 🗺️ Start here (for contributors)
 

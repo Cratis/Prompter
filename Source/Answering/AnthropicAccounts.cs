@@ -96,26 +96,33 @@ public sealed class AnthropicAccounts(
 
     (IChatClient Client, string Account) SelectAccount(TaskModelOptions policy)
     {
-        // Only a provider-confirmed monthly allocation reset is currently accepted as account-scoped
-        // evidence. Generic 429/503/529, text messages, auth and billing errors cannot switch identities.
-        if (!(configuration.PrimaryQuotaResetAt > DateTimeOffset.UtcNow))
+        string account;
+        try
         {
-            return (InnerClient, "primary");
+            account = AccountSelection.Select(policy, configuration.PrimaryQuotaResetAt, secondary is not null && accounting is not null, DateTimeOffset.UtcNow);
+        }
+        catch (ProviderUnavailable)
+        {
+            ProviderMetrics.Event("anthropic", policy.PreferredAccount == "primary" ? "quota" : "denied");
+            throw;
         }
 
-        var authorized = policy.AllowSecondary && accounting is not null;
-        if (!authorized || secondary is null)
+        if (account == "secondary")
         {
-            ProviderMetrics.Event("anthropic", "quota");
-            throw new ProviderUnavailable("quota_exhausted");
+            if (configuration.PrimaryQuotaResetAt > DateTimeOffset.UtcNow)
+            {
+                ProviderMetrics.Event("anthropic", "fallback_quota");
+            }
+
+            return (secondary!, account);
         }
 
-        ProviderMetrics.Event("anthropic", "fallback_quota");
-        return (secondary, "secondary");
+        return (InnerClient, account);
     }
 
     async Task<ChatResponse> Send(IChatClient client, (ChatMessage[] Messages, ChatOptions Options) request, ProviderDispatch dispatch, CancellationToken token)
     {
+        using var attempt = accounting is null ? null : ProviderAttemptScope.Enter(dispatch);
         if (accounting is not null && !await accounting.Reserve(dispatch, token))
         {
             ProviderMetrics.Event("anthropic", "denied");

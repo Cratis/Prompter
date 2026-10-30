@@ -101,7 +101,7 @@ public sealed class PrompterDeployment
             Name = Name,
             Image = args.Image,
             Ports = [new ContainerPortArgs { ContainerPortValue = Port, Name = "http" }],
-            Env = WithMetrics(env, args.MetricsEnabled, args.Environment),
+            Env = WithMetrics([.. env, .. AnsweringReadinessEnvironment.Create(args.Readiness)], args.MetricsEnabled, args.Environment),
             EnvFrom = [new EnvFromSourceArgs { SecretRef = new SecretEnvSourceArgs { Name = SecretName } }],
 
             // Readiness uses /healthz, which checks the database *and* the gateway connection — exactly the

@@ -25,6 +25,7 @@ internal static class ProviderAttemptPolicy
         Require(_providers.Contains(dispatch.Provider));
         Require(count is >= 1 and <= 1000);
         Require(config.Protection.IsValid);
+        Require(config.Protection.DailyUsd is > 0 and <= 5);
         var chat = dispatch.Provider == "anthropic";
         var budget = chat ? config.Protection.Anthropic : config.Protection.Voyage;
         var model = chat ? config.Anthropic.Model : config.Voyage.Model;
@@ -74,7 +75,8 @@ internal static class ProviderAttemptPolicy
         Require(dispatch.Account == "primary");
         Require(_embeddingTasks.Contains(dispatch.Task));
         Require(dispatch.Effort.Length == 0 && dispatch.MaxOutputTokens == 0);
-        var indexing = WorkLease.Current is null;
+        var indexing = dispatch.Task == "index";
+        Require(!indexing || WorkLease.Current is null);
         Require(indexing ? config.Protection.IndexingEnabled : config.Protection.AnsweringEnabled);
         var maximum = indexing ? Math.Clamp(config.Voyage.IndexMaxRetries, 0, 5) : Math.Clamp(config.Voyage.MaxRetries, 0, 3);
         Require(dispatch.Attempt >= 1 && dispatch.Attempt <= maximum + 1);
