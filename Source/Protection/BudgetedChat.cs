@@ -27,11 +27,21 @@ public sealed class BudgetedChat(IChatClient inner, IOptions<PrompterOptions> co
         var bounded = BoundOutput(options, config.Answering.MaxOutputTokens);
 
         using var linked = CancellationTokenSource.CreateLinkedTokenSource(cancellationToken, lease.Token);
-        lease.DispatchChat();
-        var result = await base.GetResponseAsync(input, bounded, linked.Token);
-        if (result.Usage is { InputTokenCount: >= 0, OutputTokenCount: >= 0 } usage && NoAdditionalUsage(usage))
+        linked.Token.ThrowIfCancellationRequested();
+        var scope = ProviderAttemptScope.Current;
+        if (scope is null)
         {
-            lease.ChatUsed(budget.Cost(usage.InputTokenCount.Value, usage.OutputTokenCount.Value));
+            lease.DispatchChat();
+        }
+        else
+        {
+            scope.Consume(new("anthropic", bounded.ModelId ?? config.Anthropic.Model, budget.Cost(budget.MaxInputTokens, bounded.MaxOutputTokens!.Value)));
+        }
+
+        var result = await base.GetResponseAsync(input, bounded, linked.Token);
+        if (scope is null)
+        {
+            SettleLegacy(lease, result.Usage, budget, bounded.MaxOutputTokens!.Value);
         }
 
         return result;
@@ -42,6 +52,20 @@ public sealed class BudgetedChat(IChatClient inner, IOptions<PrompterOptions> co
         IEnumerable<ChatMessage> messages,
         ChatOptions? options = null,
         CancellationToken cancellationToken = default) => throw new WorkRefused();
+
+    static void SettleLegacy(WorkLease lease, UsageDetails? usage, ProviderBudget budget, int maximumOutput)
+    {
+        if (usage is not { InputTokenCount: >= 0, OutputTokenCount: >= 0 })
+        {
+            return;
+        }
+
+        var bounded = usage.InputTokenCount <= budget.MaxInputTokens && usage.OutputTokenCount <= maximumOutput;
+        if (bounded && NoAdditionalUsage(usage))
+        {
+            lease.ChatUsed(budget.Cost(usage.InputTokenCount.Value, usage.OutputTokenCount.Value));
+        }
+    }
 
     static bool NoAdditionalUsage(UsageDetails usage) =>
         usage.AdditionalCounts?.Values.All(count => count == 0) != false;

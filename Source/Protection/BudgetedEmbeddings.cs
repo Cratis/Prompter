@@ -32,6 +32,15 @@ public sealed class BudgetedEmbeddings(
 
         // Reserve the verified hard per-input model ceiling, including tokenizer/framing overhead.
         var cost = budget.Cost((long)budget.MaxInputTokens * input.Length);
+        cancellationToken.ThrowIfCancellationRequested();
+        var scope = ProviderAttemptScope.Current;
+        if (scope is not null)
+        {
+            scope.Consume(new("voyage", options?.ModelId ?? config.Voyage.Model, cost, input.Length));
+            using var funded = CancellationTokenSource.CreateLinkedTokenSource(cancellationToken, lease?.Token ?? CancellationToken.None);
+            return await base.GenerateAsync(input, options, funded.Token);
+        }
+
         if (lease is not null)
         {
             using var linked = CancellationTokenSource.CreateLinkedTokenSource(cancellationToken, lease.Token);

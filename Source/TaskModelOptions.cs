@@ -37,4 +37,7 @@ public class TaskModelOptions
     /// Gets or sets whether this task may use an authorized secondary account.
     /// </summary>
     public bool AllowSecondary { get; set; }
+
+    /// <summary>Gets or sets the explicit account choice: primary or secondary. Unknown values deny dispatch.</summary>
+    public string PreferredAccount { get; set; } = "primary";
 }

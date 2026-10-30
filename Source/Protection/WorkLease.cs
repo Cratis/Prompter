@@ -21,6 +21,7 @@ public sealed class WorkLease(
     Action release) : IAsyncDisposable
 {
     static readonly AsyncLocal<WorkLease?> _current = new();
+    readonly Lock _lock = new();
     decimal _chat;
     decimal _embedding;
     bool _chatDispatched;
@@ -33,6 +34,9 @@ public sealed class WorkLease(
     /// <summary>Gets the shared deadline token.</summary>
     public CancellationToken Token => linked.Token;
 
+    /// <summary>Gets the durable parent funding identifier.</summary>
+    internal Guid Reservation => id;
+
     /// <summary>Activates this lease in the caller execution context before invoking dependencies.</summary>
     public void Activate() => _current.Value = this;
 
@@ -41,20 +45,29 @@ public sealed class WorkLease(
     public void DispatchChat()
     {
         Token.ThrowIfCancellationRequested();
-        if (_chatDispatched)
+        lock (_lock)
         {
-            throw new WorkRefused();
-        }
+            if (_chatDispatched || _disposed != 0)
+            {
+                throw new WorkRefused();
+            }
 
-        _chatDispatched = true;
+            _chatDispatched = true;
+        }
     }
 
     /// <summary>Records a known upper-cost chat result.</summary>
     /// <param name="cost">The billed token exposure.</param>
     public void ChatUsed(decimal cost)
     {
-        _chat = cost;
-        _chatKnown = true;
+        lock (_lock)
+        {
+            if (_chatDispatched && WithinChatReserve(cost))
+            {
+                _chat = cost;
+                _chatKnown = true;
+            }
+        }
     }
 
     /// <summary>Charges an embedding attempt before sending it, including ambiguous failures.</summary>
@@ -63,12 +76,16 @@ public sealed class WorkLease(
     public void DispatchEmbedding(decimal cost)
     {
         Token.ThrowIfCancellationRequested();
-        if (_embedding + cost > reserved.Voyage)
+        lock (_lock)
         {
-            throw new WorkRefused();
-        }
+            ProviderAttemptPolicy.Require(_disposed == 0);
+            if (cost <= 0 || _embedding + cost > reserved.Voyage)
+            {
+                throw new WorkRefused();
+            }
 
-        _embedding += cost;
+            _embedding += cost;
+        }
     }
 
     /// <inheritdoc/>
@@ -86,10 +103,15 @@ public sealed class WorkLease(
 
         try
         {
-            // Cleanup cannot extend the request deadline; a canceled settlement retains the durable reserve.
-            using var settlement = CancellationTokenSource.CreateLinkedTokenSource(Token);
-            settlement.CancelAfter(TimeSpan.FromSeconds(5));
-            await ledger.Reconcile(id, new(_chatDispatched && !_chatKnown ? reserved.Anthropic : _chat, _embedding), settlement.Token);
+            // Cleanup has its own short deadline even after the request has been canceled.
+            using var settlement = new CancellationTokenSource(TimeSpan.FromSeconds(5));
+            SpendExposure exposure;
+            lock (_lock)
+            {
+                exposure = new(_chatDispatched && !_chatKnown ? reserved.Anthropic : _chat, _embedding);
+            }
+
+            await ledger.Reconcile(id, exposure, settlement.Token);
         }
         catch (Exception error) when (error is NpgsqlException or TimeoutException or OperationCanceledException)
         {
@@ -102,4 +124,20 @@ public sealed class WorkLease(
             release();
         }
     }
+
+    /// <summary>Replaces one completed embedding bound with known usage.</summary>
+    /// <param name="upper">The dispatched upper bound.</param>
+    /// <param name="cost">The durably known usage.</param>
+    internal void EmbeddingUsed(decimal upper, decimal cost)
+    {
+        lock (_lock)
+        {
+            if (cost >= 0 && cost <= upper)
+            {
+                _embedding -= upper - cost;
+            }
+        }
+    }
+
+    bool WithinChatReserve(decimal cost) => cost >= 0 && cost <= reserved.Anthropic;
 }
