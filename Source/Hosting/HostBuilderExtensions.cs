@@ -1,13 +1,13 @@
 // Copyright (c) Cratis. All rights reserved.
 // Licensed under the MIT license. See LICENSE file in the project root for full license information.
 
-using Anthropic;
 using Cratis.Prompter.Answering;
 using Cratis.Prompter.Embeddings;
 using Cratis.Prompter.GitHub;
 using Cratis.Prompter.Ingestion;
 using Cratis.Prompter.Retrieval;
 using Cratis.Prompter.Storage;
+using Cratis.Prompter.Telemetry;
 using Microsoft.Extensions.AI;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
@@ -75,16 +75,13 @@ public static class HostBuilderExtensions
             new ResilientEmbeddingGenerator(
                 sp.GetRequiredService<VoyageEmbeddings>(),
                 sp.GetRequiredService<IOptions<PrompterOptions>>(),
-                sp.GetRequiredService<ILogger<ResilientEmbeddingGenerator>>()));
+                sp.GetRequiredService<ILogger<ResilientEmbeddingGenerator>>(),
+                sp.GetService<IProviderAccounting>()));
 
         builder.Services.AddSingleton<IChatClient>(sp =>
         {
             var options = sp.GetRequiredService<IOptions<PrompterOptions>>().Value;
-            var client = options.Anthropic.ApiKey.Length > 0
-                ? new AnthropicClient { ApiKey = options.Anthropic.ApiKey }
-                : new AnthropicClient();
-
-            return client.AsIChatClient(options.Anthropic.Model);
+            return AnthropicClients.Create(options.Anthropic, sp.GetService<IProviderAccounting>());
         });
 
         // GitHub: filing issues from Discord and answering newly-opened ones. The client is registered

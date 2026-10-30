@@ -1,6 +1,8 @@
 // Copyright (c) Cratis. All rights reserved.
 // Licensed under the MIT license. See LICENSE file in the project root for full license information.
 
+using System.Text;
+using Cratis.Prompter.Telemetry;
 using Microsoft.Extensions.AI;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
@@ -8,41 +10,55 @@ using Microsoft.Extensions.Options;
 namespace Cratis.Prompter.Embeddings;
 
 /// <summary>
-/// Wraps an <see cref="IEmbeddingGenerator{TInput, TEmbedding}"/> with retry and exponential backoff on
-/// transient failures (Voyage rate limits and server errors), so a whole index run does not fail on a single
-/// throttled batch. The policy itself lives in <see cref="EmbeddingRetry"/> and is specified in isolation.
+/// Retries bounded transient embedding failures with provider hints, shared cooldown and accounting.
 /// </summary>
 /// <param name="inner">The embedding generator being wrapped.</param>
-/// <param name="prompterOptions">The Prompter options carrying the Voyage retry configuration.</param>
-/// <param name="logger">Logger for diagnostics.</param>
+/// <param name="prompterOptions">The provider retry configuration.</param>
+/// <param name="logger">Logger for sanitized diagnostics.</param>
+/// <param name="accounting">Optional shared reservation/accounting integration.</param>
 public sealed class ResilientEmbeddingGenerator(
     IEmbeddingGenerator<string, Embedding<float>> inner,
     IOptions<PrompterOptions> prompterOptions,
-    ILogger<ResilientEmbeddingGenerator> logger)
+    ILogger<ResilientEmbeddingGenerator> logger,
+    IProviderAccounting? accounting = null)
     : IEmbeddingGenerator<string, Embedding<float>>
 {
+    readonly EmbeddingCooldown _cooldown = new();
+
     /// <inheritdoc/>
     public async Task<GeneratedEmbeddings<Embedding<float>>> GenerateAsync(
         IEnumerable<string> values,
         EmbeddingGenerationOptions? options = null,
         CancellationToken cancellationToken = default)
     {
-        // Materialize once so the input is safe to hand to the inner generator again on a retry.
         var inputs = values as IReadOnlyList<string> ?? [.. values];
         var voyage = prompterOptions.Value.Voyage;
-        var baseDelay = TimeSpan.FromMilliseconds(voyage.RetryBaseDelayMilliseconds);
-
+        var policy = EmbeddingRetryPolicy.For(voyage, options);
+        var deadline = DateTimeOffset.UtcNow + policy.Budget;
+        using var timeout = CancellationTokenSource.CreateLinkedTokenSource(cancellationToken);
+        timeout.CancelAfter(policy.Budget);
+        var operation = Guid.NewGuid();
+        var inputBound = inputs.Sum(Encoding.UTF8.GetByteCount);
         for (var attempt = 0; ; attempt++)
         {
+            timeout.Token.ThrowIfCancellationRequested();
+            await _cooldown.Wait(deadline, timeout.Token);
+            var dispatch = new ProviderDispatch(operation, "voyage", "primary", policy.Task, attempt + 1, inputBound, 0, voyage.Model, string.Empty);
             try
             {
-                return await inner.GenerateAsync(inputs, options, cancellationToken);
+                return await GenerateAttempt(inputs, options, dispatch, timeout.Token);
             }
-            catch (HttpRequestException exception) when (attempt < voyage.MaxRetries && EmbeddingRetry.IsTransient(exception.StatusCode))
+            catch (HttpRequestException failure) when (EmbeddingRetry.IsTransient(failure.StatusCode))
             {
-                var delay = EmbeddingRetry.BackoffFor(attempt, baseDelay);
-                logger.RetryingAfterTransientFailure((int?)exception.StatusCode, attempt + 1, voyage.MaxRetries, delay.TotalMilliseconds);
-                await Task.Delay(delay, cancellationToken);
+                var delay = policy.Delay(failure, attempt);
+                _cooldown.Observe(failure.StatusCode, delay);
+                if (attempt >= policy.MaxRetries)
+                {
+                    throw;
+                }
+
+                logger.RetryingAfterTransientFailure((int?)failure.StatusCode, attempt + 1, policy.MaxRetries, delay.TotalMilliseconds);
+                await EmbeddingCooldown.WaitFor(delay, deadline, timeout.Token);
             }
         }
     }
@@ -53,4 +69,26 @@ public sealed class ResilientEmbeddingGenerator(
 
     /// <inheritdoc/>
     public void Dispose() => inner.Dispose();
+
+    async Task<GeneratedEmbeddings<Embedding<float>>> GenerateAttempt(IReadOnlyList<string> inputs, EmbeddingGenerationOptions? options, ProviderDispatch dispatch, CancellationToken token)
+    {
+        if (accounting is not null && !await accounting.Reserve(dispatch, token))
+        {
+            throw new EmbeddingGenerationFailed("budget unavailable");
+        }
+
+        GeneratedEmbeddings<Embedding<float>>? response = null;
+        try
+        {
+            response = await inner.GenerateAsync(inputs, options, token);
+            return response;
+        }
+        finally
+        {
+            if (accounting is not null)
+            {
+                await accounting.Complete(dispatch, response?.Usage, response is null ? "unknown" : "stop");
+            }
+        }
+    }
 }

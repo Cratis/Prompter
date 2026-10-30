@@ -54,10 +54,25 @@ public class VoyageOptions
     /// <summary>
     /// Gets or sets the number of times a transient embeddings failure (429 or 5xx) is retried before giving up.
     /// </summary>
-    public int MaxRetries { get; set; } = 5;
+    public int MaxRetries { get; set; } = 3;
 
     /// <summary>
     /// Gets or sets the base delay, in milliseconds, for the exponential backoff between retries.
     /// </summary>
     public int RetryBaseDelayMilliseconds { get; set; } = 500;
+
+    /// <summary>
+    /// Gets or sets the whole-call deadline, including requests and cooldowns. Capped at 60 seconds.
+    /// </summary>
+    public int TimeoutSeconds { get; set; } = 60;
+
+    /// <summary>
+    /// Gets or sets indexing retries, capped at five, independently of interactive queries.
+    /// </summary>
+    public int IndexMaxRetries { get; set; } = 5;
+
+    /// <summary>
+    /// Gets or sets the indexing batch deadline, capped at 120 seconds.
+    /// </summary>
+    public int IndexTimeoutSeconds { get; set; } = 120;
 }

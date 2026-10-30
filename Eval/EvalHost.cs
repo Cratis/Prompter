@@ -1,7 +1,6 @@
 // Copyright (c) Cratis. All rights reserved.
 // Licensed under the MIT license. See LICENSE file in the project root for full license information.
 
-using Anthropic;
 using Cratis.Prompter.Answering;
 using Cratis.Prompter.Embeddings;
 using Cratis.Prompter.Retrieval;
@@ -69,11 +68,7 @@ internal static class EvalHost
         builder.Services.AddSingleton<IChatClient>(sp =>
         {
             var options = sp.GetRequiredService<IOptions<PrompterOptions>>().Value;
-            var client = options.Anthropic.ApiKey.Length > 0
-                ? new AnthropicClient { ApiKey = options.Anthropic.ApiKey }
-                : new AnthropicClient();
-
-            return client.AsIChatClient(options.Anthropic.Model);
+            return AnthropicClients.Create(options.Anthropic);
         });
 
         builder.Services.AddSingleton<IChunks, Chunks>();

@@ -2,6 +2,7 @@
 // Licensed under the MIT license. See LICENSE file in the project root for full license information.
 
 using System.Diagnostics;
+using Cratis.Prompter.Embeddings;
 using Cratis.Prompter.Storage;
 using Microsoft.Extensions.AI;
 using Microsoft.Extensions.Logging;
@@ -52,7 +53,7 @@ public class Indexer(
                 return;
             }
 
-            var generated = await embeddings.GenerateAsync(pendingInputs, cancellationToken: cancellationToken);
+            var generated = await embeddings.GenerateAsync(pendingInputs, new() { AdditionalProperties = new() { [EmbeddingRetry.TaskKey] = "index" } }, cancellationToken);
             for (var index = 0; index < pending.Count; index++)
             {
                 await chunks.Upsert(pending[index], generated[index].Vector, cancellationToken);
