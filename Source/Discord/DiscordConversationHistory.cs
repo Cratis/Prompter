@@ -19,6 +19,7 @@ public sealed class DiscordConversationHistory(GatewayClient client) : IConversa
             location.ChannelId,
             new RestRequestProperties { RateLimitHandling = RestRateLimitHandling.NoRetry },
             cancellationToken);
+        if (channel.Id != location.ChannelId) return false;
         var scope = channel is GuildThread thread ? PublicThreadParent(thread, guild) : channel as IGuildChannel;
         if (scope is null || scope.GuildId != location.GuildId) return false;
         if (scope is not TextGuildChannel and not AnnouncementGuildChannel and not ForumGuildChannel) return false;
@@ -41,7 +42,7 @@ public sealed class DiscordConversationHistory(GatewayClient client) : IConversa
                 message.CreatedAt,
                 message.Content,
                 message.Author.IsBot,
-                message.Author.Id == client.Id,
+                message.Author.IsBot && message.Author.Id == client.Id,
                 message.Type is not MessageType.Default and not MessageType.Reply));
             if (messages.Count == 10) break;
         }
@@ -57,10 +58,14 @@ public sealed class DiscordConversationHistory(GatewayClient client) : IConversa
 
     static bool EveryoneCanView(IGuildChannel scope, Permissions permissions)
     {
-        if (scope.PermissionOverwrites.TryGetValue(scope.GuildId, out var everyone))
+        if (permissions.HasFlag(Permissions.Administrator)) return true;
+        if (scope.PermissionOverwrites.TryGetValue(scope.GuildId, out var everyone) && everyone.Type == PermissionOverwriteType.Role)
         {
             permissions = (permissions & ~everyone.Denied) | everyone.Allowed;
         }
-        return permissions.HasFlag(Permissions.ViewChannel) || permissions.HasFlag(Permissions.Administrator);
+
+        // A role/member-specific denial makes this scope restricted even if @everyone can view it.
+        return permissions.HasFlag(Permissions.ViewChannel) &&
+            !scope.PermissionOverwrites.Values.Any(overwrite => overwrite.Denied.HasFlag(Permissions.ViewChannel));
     }
 }
