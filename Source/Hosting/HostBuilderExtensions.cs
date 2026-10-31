@@ -112,6 +112,7 @@ public static class HostBuilderExtensions
         builder.Services.AddSingleton<Discord.RateLimiter>();
         builder.Services.AddSingleton<Discord.IConversationHistory, Discord.DiscordConversationHistory>();
         builder.Services.AddSingleton<Discord.ConversationContextReader>();
+        builder.Services.AddSingleton<Discord.ForumFollowUps>();
     }
 
     static void AddPrivateMetrics(IHostApplicationBuilder builder)

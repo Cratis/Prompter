@@ -23,6 +23,9 @@ fits the moment:
 - **The help forum** - open a new post in the help forum as you normally would; Prompter takes the first swing
   automatically and a human follows up in the same thread. Best when you want a person in the loop too.
 
+To continue a conversation, reply to any Prompter message - no mention needed. In a help-forum post, the post's
+author can keep asking in the thread until someone else joins in. After that, mention Prompter or reply to it.
+
 ## Ask a question it can answer
 
 Prompter looks your answer up in the documentation, so a specific question retrieves better than a vague one:

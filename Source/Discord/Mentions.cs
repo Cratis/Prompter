@@ -13,8 +13,9 @@ using NetCord.Rest;
 namespace Cratis.Prompter.Discord;
 
 /// <summary>
-/// Answers questions asked by mentioning the bot in any channel it can read, and answers every plain message
-/// in the dedicated ask channel (<see cref="DiscordOptions.AskChannelId"/>) without requiring a mention.
+/// Answers questions asked by mentioning the bot in any channel it can read, answers every plain message
+/// in the dedicated ask channel (<see cref="DiscordOptions.AskChannelId"/>) without requiring a mention, and
+/// answers replies to Prompter's own messages and follow-ups from the author of a help-forum thread it answered.
 /// </summary>
 /// <param name="client">The gateway client, used to read the bot's own identity for self-mention detection.</param>
 /// <param name="rest">The REST client used to send follow-up messages.</param>
@@ -22,6 +23,7 @@ namespace Cratis.Prompter.Discord;
 /// <param name="admission">The cheap shared admission guard.</param>
 /// <param name="work">The global concurrency and durable spend guard.</param>
 /// <param name="context">Request-only bounded conversation history.</param>
+/// <param name="followUps">The help-forum threads Prompter answered, whose author may keep asking without a mention.</param>
 /// <param name="options">The Prompter options carrying the Discord ask-channel identifier.</param>
 /// <param name="logger">Logger for diagnostics.</param>
 /// <remarks>
@@ -36,6 +38,7 @@ public class Mentions(
     Admission admission,
     PaidWork work,
     ConversationContextReader context,
+    ForumFollowUps followUps,
     IOptions<PrompterOptions> options,
     ILogger<Mentions> logger) : IMessageCreateGatewayHandler
 {
@@ -49,13 +52,17 @@ public class Mentions(
     /// <param name="askChannelId">
     /// The configured dedicated ask channel, or <see langword="null"/> when the feature is unset.
     /// </param>
+    /// <param name="addressed">
+    /// Whether the message is already known to be directed at the bot (a reply to it, or a follow-up in a thread
+    /// it answered), so no mention is needed.
+    /// </param>
     /// <returns>
     /// A tuple whose <c language="csharp">ShouldAnswer</c> is <see langword="true"/> when the author is human and either the bot
     /// is mentioned (via <c language="csharp">&lt;@id&gt;</c> or the nickname form <c language="csharp">&lt;@!id&gt;</c>) or the message lives in
     /// the ask channel, and the remaining text is a non-empty <c language="csharp">Question</c> with the mention stripped. Role
     /// mentions (<c language="csharp">&lt;@&amp;id&gt;</c>), <c language="csharp">@everyone</c>, and <c language="csharp">@here</c> never trigger an answer on their own.
     /// </returns>
-    public static (bool ShouldAnswer, string Question) ResolveQuestion(string content, ulong botId, bool authorIsBot, ulong channelId, ulong? askChannelId)
+    public static (bool ShouldAnswer, string Question) ResolveQuestion(string content, ulong botId, bool authorIsBot, ulong channelId, ulong? askChannelId, bool addressed = false)
     {
         if (authorIsBot)
         {
@@ -70,7 +77,8 @@ public class Mentions(
             content.Contains(nicknameMention, StringComparison.Ordinal);
 
         var inAskChannel = askChannelId is { } ask && channelId == ask;
-        if (!mentioned && !inAskChannel)
+        var directed = mentioned || inAskChannel || addressed;
+        if (!directed)
         {
             return (false, string.Empty);
         }
@@ -82,6 +90,20 @@ public class Mentions(
 
         return question.Length == 0 ? (false, string.Empty) : (true, question);
     }
+
+    /// <summary>Whether the message is a plain reply, in the same channel, to a message written by the bot itself.</summary>
+    /// <param name="message">The incoming message.</param>
+    /// <param name="botId">The bot's own user id.</param>
+    /// <returns>
+    /// <see langword="true"/> only when Discord delivered the replied-to message and the bot wrote it; a missing
+    /// replied-to message (deleted or not delivered) fails closed.
+    /// </returns>
+    public static bool RepliesTo(RestMessage message, ulong botId) =>
+        message.Type == MessageType.Reply &&
+        message.MessageReference is { Type: MessageReferenceType.Reply } reference &&
+        reference.ChannelId == message.ChannelId &&
+        message.ReferencedMessage is { } referenced &&
+        referenced.Author.Id == botId && referenced.Author.IsBot && referenced.WebhookId is null;
 
     /// <inheritdoc/>
     /// <remarks>
@@ -95,11 +117,14 @@ public class Mentions(
         var message = arg;
         try
         {
-            var question = CurrentQuestion(message);
-            if (question is null)
+            var current = CurrentQuestion(message);
+            if (current is not { } asked)
             {
+                HandOffToHelpers(message);
                 return;
             }
+
+            var question = asked.Question;
 
             var decision = admission.TryEnter(new(message.GuildId, message.ChannelId, message.Author.Id), question);
             if (!decision.Allowed)
@@ -111,7 +136,7 @@ public class Mentions(
             await using var lease = await work.BeginInteractive();
             lease.Activate();
 
-            await Reply(message, question, lease.Token);
+            await Reply(message, asked, lease.Token);
         }
         catch (WorkRefused)
         {
@@ -124,15 +149,62 @@ public class Mentions(
         }
     }
 
-    string? CurrentQuestion(Message message)
+    static bool IsHelper(Message message, ulong ownerId) =>
+        !message.Author.IsBot && message.WebhookId is null && message.Author.Id != ownerId &&
+        message.Type is MessageType.Default or MessageType.Reply;
+
+    ForumThread? HelpForumThread(Message message) =>
+        message.Channel is GuildThread thread && options.Value.Discord.HelpForumChannelId is { } forum && thread.ParentId == forum
+            ? new(thread.Id, thread.OwnerId, message.Id == thread.Id)
+            : null;
+
+    AskedQuestion? CurrentQuestion(Message message)
     {
-        if (!Supported(message))
+        if (!Supported(message) || HelpForumThread(message) is { IsStarter: true })
         {
             return null;
         }
 
-        var (shouldAnswer, question) = ResolveQuestion(message.Content, client.Id, message.Author.IsBot, message.ChannelId, options.Value.Discord.AskChannelId);
-        return shouldAnswer ? question : null;
+        var repliesToBot = RepliesTo(message, client.Id);
+        var (shouldAnswer, question) = ResolveQuestion(
+            message.Content,
+            client.Id,
+            message.Author.IsBot,
+            message.ChannelId,
+            options.Value.Discord.AskChannelId,
+            ParentInScope(message) && (repliesToBot || IsAuthorFollowUp(message)));
+        return shouldAnswer ? new(question, SourceOf(message, repliesToBot), repliesToBot) : null;
+    }
+
+    bool ParentInScope(Message message) => message.Channel is not GuildThread parent || admission.InScope(message.GuildId, parent.ParentId);
+
+    bool IsAuthorFollowUp(Message message) =>
+        HelpForumThread(message) is { } forum && message.Author.Id == forum.OwnerId && followUps.Accepts(forum.Id);
+
+    string SourceOf(Message message, bool repliesToBot)
+    {
+        if (message.ChannelId == options.Value.Discord.AskChannelId)
+        {
+            return "discord-ask-channel";
+        }
+
+        if (MentionsBot(message.Content))
+        {
+            return "discord-mention";
+        }
+
+        return repliesToBot ? "discord-reply" : "discord-forum-follow-up";
+    }
+
+    bool MentionsBot(string content) =>
+        content.Contains($"<@{client.Id}>", StringComparison.Ordinal) || content.Contains($"<@!{client.Id}>", StringComparison.Ordinal);
+
+    void HandOffToHelpers(Message message)
+    {
+        if (HelpForumThread(message) is { IsStarter: false } forum && IsHelper(message, forum.OwnerId))
+        {
+            followUps.HandOff(forum.Id);
+        }
     }
 
     bool Supported(Message message) =>
@@ -149,13 +221,35 @@ public class Mentions(
         }
     }
 
-    async Task Reply(Message message, string question, CancellationToken cancellationToken)
+    async Task<Question> BuildRequest(Message message, AskedQuestion asked, CancellationToken cancellationToken)
     {
-        var source = message.ChannelId == options.Value.Discord.AskChannelId ? "discord-ask-channel" : "discord-mention";
+        if (message.GuildId is not { } guildId)
+        {
+            return new Question(ConversationText.Sanitize(asked.Question)) { Conversation = new([], IsDegraded: true) };
+        }
+
+        var location = new ConversationLocation(guildId, message.ChannelId, message.Id, message.CreatedAt);
+        if (asked.RepliesToBot && message.ReferencedMessage is { } referenced)
+        {
+            var anchor = new HistoryMessage(
+                referenced.Id,
+                referenced.ChannelId,
+                referenced.CreatedAt,
+                referenced.Content,
+                referenced.Author.IsBot,
+                referenced.Author.IsBot && referenced.Author.Id == client.Id,
+                referenced.Type is not MessageType.Default and not MessageType.Reply);
+            return await context.For(asked.Question, location, anchor, cancellationToken);
+        }
+
+        return await context.For(asked.Question, location, cancellationToken);
+    }
+
+    async Task Reply(Message message, AskedQuestion asked, CancellationToken cancellationToken)
+    {
+        var source = asked.Source;
         logger.AnsweringQuestion(source);
-        var request = message.GuildId is { } guildId
-            ? await context.For(question, new(guildId, message.ChannelId, message.Id, message.CreatedAt), cancellationToken)
-            : new Question(ConversationText.Sanitize(question)) { Conversation = new([], IsDegraded: true) };
+        var request = await BuildRequest(message, asked, cancellationToken);
         var reply = await assistance.For(request, source, cancellationToken);
         var answer = reply.Answer;
         var chunks = DiscordAnswers.Split(answer);
@@ -164,6 +258,10 @@ public class Mentions(
             await SendChunk(message, chunks[index], index == 0, index == chunks.Count - 1 ? answer.InteractionId : null);
         }
         await SendAdvice(message, reply);
+        if (HelpForumThread(message) is { } forum && message.Author.Id == forum.OwnerId)
+        {
+            followUps.Answered(forum.Id);
+        }
     }
 
     async Task SendAdvice(Message message, ConversationReply reply)
@@ -211,4 +309,8 @@ public class Mentions(
             logger.ApologyFailed(exception);
         }
     }
+
+    sealed record AskedQuestion(string Question, string Source, bool RepliesToBot);
+
+    sealed record ForumThread(ulong Id, ulong OwnerId, bool IsStarter);
 }

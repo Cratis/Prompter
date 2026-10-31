@@ -24,6 +24,15 @@ public class a_history_reader : Specification
     protected static HistoryMessage Human(ulong id, string content = "Earlier question") =>
         new(id, 2, Now.AddMinutes(-1), content, IsBot: false, IsSelf: false, IsSystem: false);
 
+    protected static HistoryMessage Prompter(ulong id, string content, DateTimeOffset at) =>
+        new(id, 2, at, content, IsBot: true, IsSelf: true, IsSystem: false);
+
+    protected Task<Question> ReadReplyingTo(HistoryMessage anchor, string current = "Version 2.")
+    {
+        lease.Activate();
+        return reader.For(current, location, anchor, cancellation.Token);
+    }
+
     protected Task<Question> Read(string current = "What about that API?")
     {
         lease.Activate();
