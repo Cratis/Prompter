@@ -1,0 +1,21 @@
+// Copyright (c) Cratis. All rights reserved.
+// Licensed under the MIT license. See LICENSE file in the project root for full license information.
+
+using Cratis.Prompter.Discord;
+using NSubstitute;
+
+namespace Cratis.Prompter.Specs.for_DelayedForumAnswers.when_sweeping;
+
+public class and_answering_is_switched_off : given.delayed_forum_answers
+{
+    void Establish()
+    {
+        Post(70, 45);
+        Options.Protection.AnsweringEnabled = false;
+    }
+
+    async Task Because() => Answered = await Sweeper.SweepOnce(CancellationToken.None);
+
+    [Fact] void should_answer_nothing() => Answered.ShouldEqual(0);
+    [Fact] void should_not_call_discord() => Threads.ReceivedCalls().ShouldBeEmpty();
+}

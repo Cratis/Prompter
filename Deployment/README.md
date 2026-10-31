@@ -240,6 +240,11 @@ buttons. Two more optional, non-secret Pulumi keys switch on the other Discord b
 `prompter-deployment:maintainerRoleId` (a mentionable role pinged by "Ask a human") and
 `prompter-deployment:answerInThreadChannelIds` (comma-separated channel ids where answers open a thread).
 Non-numeric values fail the deployment.
+`prompter-deployment:delayedForumAnswers` (unset means off) opts forum channels into delayed answering: a
+comma-separated list of `channelId` or `channelId:minutes` (1 to 1440, default 30). Prompter answers a post that
+is still unanswered after its delay, once, within 24 hours of the delay. A forum equal to `helpForumChannelId` is
+ignored because the immediate path owns it, and the bot needs View Channel and Read Message History in each
+listed forum. An invalid delay fails the deployment.
 
 The indexer preflights the entire crawl before any paid embedding, stages vectors in memory, then publishes
 all changed chunks and stale deletion in one transaction on the lease-owning session. Partial fetches,

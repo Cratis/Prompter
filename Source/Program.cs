@@ -4,6 +4,7 @@
 using Cratis.Prompter.Answering;
 using Cratis.Prompter.Cli;
 using Cratis.Prompter.Digest;
+using Cratis.Prompter.Discord;
 using Cratis.Prompter.Evaluation;
 using Cratis.Prompter.Hosting;
 using Cratis.Prompter.Ingestion;
@@ -113,6 +114,9 @@ webBuilder.Services.AddHostedService<RetentionPurge>();
 webBuilder.Services.AddSingleton<IDocsGapInteractions, DocsGapInteractions>();
 webBuilder.Services.AddSingleton<IMaintainerChannel, DiscordMaintainerChannel>();
 webBuilder.Services.AddHostedService<DocsGapDigest>();
+webBuilder.Services.AddSingleton<IForumThreads, DiscordForumThreads>();
+webBuilder.Services.AddSingleton<IForumAnswerer, ForumAnswerer>();
+webBuilder.Services.AddHostedService<DelayedForumAnswers>();
 webBuilder.Services
     .AddDiscordGateway(options =>
     {
