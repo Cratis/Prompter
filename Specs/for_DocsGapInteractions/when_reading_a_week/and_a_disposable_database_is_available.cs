@@ -3,6 +3,7 @@
 
 using System.Globalization;
 using Cratis.Prompter.Digest;
+using Cratis.Prompter.Specs;
 using Cratis.Prompter.Storage;
 using Npgsql;
 using NpgsqlTypes;
@@ -37,9 +38,10 @@ public class and_a_disposable_database_is_available : Specification
             Port = int.Parse(Environment.GetEnvironmentVariable("PROMPTER_LEDGER_TEST_PORT")!, CultureInfo.InvariantCulture),
             Username = "postgres",
             Database = "postgres",
-            SearchPath = _schema
+            SearchPath = $"{_schema},public"
         };
         _database = NpgsqlDataSource.Create(settings);
+        await VectorExtension.EnsureInstalled(_database);
         await Execute($"CREATE SCHEMA {_schema}");
         foreach (var migration in MigrationPlan.Pending(EmbeddedMigrations.LoadFrom(typeof(DocsGapInteractions).Assembly), new HashSet<MigrationVersion>()))
         {
