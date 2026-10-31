@@ -95,7 +95,8 @@ flowchart LR
 ```
 
 - **Ingest** — walk cratis.io's sitemap, fetch each page's markdown mirror, strip the MDX noise, and split
-  into heading-aware chunks. Only changed chunks are re-embedded, so re-indexing is cheap.
+  into heading-aware chunks. Published GitHub release notes and curated Cratis samples join the same
+  corpus. Only changed chunks are re-embedded, so re-indexing is cheap.
 - **Retrieve** — one SQL query fuses lexical (BM25 via `tsvector`) and semantic (cosine over pgvector) hits
   with Reciprocal Rank Fusion (RRF), used only for ordering.
 - **Answer** — only passages meeting an independent cosine-similarity cutoff reach Claude and citation
@@ -168,6 +169,32 @@ dotnet run --project Eval                                   # groundedness, cita
 
 > You'll need a **Voyage** API key and verified indexing price/dollar ceilings to index, and an **Anthropic** key to answer — see the table below.
 
+## Release notes and curated samples
+
+Indexing includes public, unauthenticated GitHub reads alongside cratis.io documentation:
+
+- **Release notes** — the latest 20 releases per repository for Chronicle, Arc, Fundamentals, Components,
+  and cli. Drafts, prereleases, empty bodies, and bodies over 20,000 characters are excluded. Explicit
+  release tags and publication dates supply version and freshness metadata. Citations retain the full
+  release URL and show `release notes` before any provenance note.
+- **Samples** — up to 300 files, each at most 16,384 bytes, from `Cratis/Samples` on `main`, fetched in
+  ordinal path order. The curated paths are root `README.md`, `LearningPath/**/README.md` and
+  `LearningPath/**/*.cs`, README files under Chronicle, Arc, EventModeling, ModelFirst, and GeneratedValues,
+  and the Capstone and Library root READMEs. Path globs are case-sensitive; `**` spans zero or more
+  directories. Citations retain GitHub blob URLs (including `.md`) and show `sample`.
+
+Samples always exclude dot directories, bin/obj/node_modules, generated paths, `.g.cs`, `.Designer.cs`,
+appsettings files, `.env`, `.pfx`, `.pem`, `.key`, and `.snk` files. Secret-shaped content is excluded before
+embedding; diagnostics contain only its path, never matched contents. This defense is conservative, not a
+promise to detect every secret. Code is wrapped in language-tagged fences longer than any backtick run
+inside the file. Source kind is derived from the URL; no schema migration or separate corpus is needed.
+
+A GitHub error, rate limit, timeout, malformed response, truncated tree, or failed raw-file fetch fails the
+whole index run before pruning; the previous corpus remains available. All sources share the existing
+embedding budgets. These sources use a public User-Agent and GitHub Accept header, never the issue-writing
+token. To restore docs-only ingestion, set both `Cratis__Prompter__Ingestion__ReleaseNotes__Enabled=false`
+and `Cratis__Prompter__Ingestion__Samples__Enabled=false`.
+
 ## ⚙️ Configuration
 
 Configuration binds to the `Cratis:Prompter` section (environment variables use `__` as the delimiter):
@@ -177,6 +204,16 @@ Configuration binds to the `Cratis:Prompter` section (environment variables use 
 | Postgres connection string | `Cratis__Prompter__ConnectionString` | localhost, db/user/pass `prompter` |
 | Docs site to ingest | `Cratis__Prompter__DocsSiteUrl` | `https://cratis.io` |
 | Embedding batch size | `Cratis__Prompter__Voyage__BatchSize` | `128` |
+| Include release notes | `Cratis__Prompter__Ingestion__ReleaseNotes__Enabled` | `true` |
+| Release repositories (indexed array) | `Cratis__Prompter__Ingestion__ReleaseNotes__Repositories__0` (and subsequent indices) | `Chronicle`, `Arc`, `Fundamentals`, `Components`, `cli` |
+| Releases per repository | `Cratis__Prompter__Ingestion__ReleaseNotes__MaxReleasesPerRepository` | `20` |
+| Maximum release body characters | `Cratis__Prompter__Ingestion__ReleaseNotes__MaxBodyCharacters` | `20000` |
+| Include curated samples | `Cratis__Prompter__Ingestion__Samples__Enabled` | `true` |
+| Sample repository | `Cratis__Prompter__Ingestion__Samples__Repository` | `Cratis/Samples` |
+| Sample branch | `Cratis__Prompter__Ingestion__Samples__Branch` | `main` |
+| Sample allowlist (indexed array) | `Cratis__Prompter__Ingestion__Samples__Paths__0` (and subsequent indices) | Curated paths above |
+| Maximum sample file bytes | `Cratis__Prompter__Ingestion__Samples__MaxFileBytes` | `16384` |
+| Maximum sample files | `Cratis__Prompter__Ingestion__Samples__MaxFiles` | `300` |
 | Incremental token ceiling (including retries) | `Cratis__Prompter__Ingestion__MaxIncrementalTokens` | `1000000` |
 | Confirmed full token ceiling (including retries) | `Cratis__Prompter__Ingestion__MaxFullTokens` | `25000000` |
 | Verified model price per million tokens | `Cratis__Prompter__Ingestion__PricePerMillionTokens` | `0` (paid indexing disabled) |

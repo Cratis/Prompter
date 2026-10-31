@@ -63,8 +63,7 @@ public static class DocsGapReport
         if (product is null || product == "unknown")
         {
             var firstPage = row.CitedPages.Count > 0 ? row.CitedPages[0] : null;
-            product = Uri.TryCreate(firstPage, UriKind.Absolute, out var url)
-                ? url.AbsolutePath.Split('/', StringSplitOptions.RemoveEmptyEntries).FirstOrDefault() : null;
+            product = PageProduct(firstPage);
             if (product?.EndsWith(".md", StringComparison.OrdinalIgnoreCase) == true)
             {
                 product = product[..^3];
@@ -73,6 +72,15 @@ public static class DocsGapReport
 
         product = product?.ToLowerInvariant();
         return product is { Length: >= 1 and <= 40 } && product.All(character => character is (>= 'a' and <= 'z') or (>= '0' and <= '9') or '-') ? product : "unknown";
+
+        static string? PageProduct(string? page)
+        {
+            if (!Uri.TryCreate(page, UriKind.Absolute, out var url)) return null;
+            var segments = url.AbsolutePath.Split('/', StringSplitOptions.RemoveEmptyEntries);
+            if (!url.Host.Equals("github.com", StringComparison.OrdinalIgnoreCase)) return segments.FirstOrDefault();
+            var repository = segments.Length > 1 && segments[0].Equals("Cratis", StringComparison.OrdinalIgnoreCase) ? segments[1].ToLowerInvariant() : null;
+            return "chronicle|arc|fundamentals|components|cli|samples".Split('|').Contains(repository, StringComparer.Ordinal) ? repository : "unknown";
+        }
     }
 
     static void AddSection(List<string> lines, string title, IEnumerable<DocsGapRow> rows)

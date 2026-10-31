@@ -100,12 +100,22 @@ public static class DiscordAnswers
             return string.Empty;
         }
 
-        var links = citations.Select(page => $"<{page.Value.Replace(".md", string.Empty, StringComparison.OrdinalIgnoreCase)}>{Note(answer, page)}");
+        var links = citations.Select(page => $"<{(Ingestion.SourceKinds.Of(page) == Ingestion.SourceKind.Documentation ? page.Value.Replace(".md", string.Empty, StringComparison.OrdinalIgnoreCase) : page.Value)}>{Note(answer, page)}");
         return $"Sources: {string.Join(" · ", links)}";
     }
 
-    static string Note(Answer answer, PageUrl page) =>
-        answer.CitationProvenance.FirstOrDefault(provenance => provenance.Page == page) is { } found ? $" ({found.Note})" : string.Empty;
+    static string Note(Answer answer, PageUrl page)
+    {
+        var kind = Ingestion.SourceKinds.Of(page) switch
+        {
+            Ingestion.SourceKind.ReleaseNotes => "release notes",
+            Ingestion.SourceKind.Sample => "sample",
+            _ => string.Empty
+        };
+        var provenance = answer.CitationProvenance.FirstOrDefault(provenance => provenance.Page == page)?.Note;
+        var note = string.Join(" · ", new[] { kind, provenance }.Where(value => !string.IsNullOrEmpty(value)));
+        return note.Length == 0 ? string.Empty : $" ({note})";
+    }
 
     static List<string> Paragraphs(string text)
     {
