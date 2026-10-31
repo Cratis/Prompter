@@ -20,6 +20,8 @@ return await Deployment.RunAsync(() =>
     var readiness = AnsweringReadinessArgs.From(config);
     var metrics = PrivateMetricsArgs.From(config);
     if (!metrics.IsValid) throw new InvalidPrivateMetrics();
+    var routing = PrivateRoutingArgs.From(config);
+    if (!routing.IsValid) throw new InvalidPrivateRouting();
 
     var environment = config.Require("environment");
     var image = config.Require("prompterImage");
@@ -81,6 +83,7 @@ return await Deployment.RunAsync(() =>
         Image = image,
         MetricsEnabled = metrics.Enabled,
         Metrics = metrics,
+        Routing = routing,
         ConnectionString = postgres.ConnectionString,
         DiscordToken = discordToken,
         AnthropicApiKey = anthropicApiKey,
@@ -100,6 +103,7 @@ return await Deployment.RunAsync(() =>
     _ = new PrompterEgress(new PrompterEgressArgs
     {
         Metrics = metrics,
+        Routing = routing,
         Provider = provider,
         Namespace = namespaceName,
         Environment = environment,

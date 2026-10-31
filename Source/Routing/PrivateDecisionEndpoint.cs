@@ -16,10 +16,15 @@ internal static class PrivateDecisionEndpoint
     {
         var endpoint = options.Endpoint;
         if (endpoint is not { IsAbsoluteUri: true }) return false;
-        return IsServiceOrigin(endpoint)
+        return Enum.IsDefined(options.Mode)
+            && IsProbability(options.MinimumConfidence)
+            && IsProbability(options.MinimumMargin)
+            && IsServiceOrigin(endpoint)
             && string.Equals(endpoint.DnsSafeHost, options.AllowedHost, StringComparison.OrdinalIgnoreCase)
             && IsPrivateHost(endpoint.DnsSafeHost);
     }
+
+    static bool IsProbability(double value) => double.IsFinite(value) && value is >= 0 and <= 1;
 
     static bool IsServiceOrigin(Uri endpoint) => (endpoint.Scheme == "http" || endpoint.Scheme == "https")
         && endpoint.AbsolutePath == "/" && endpoint.Query.Length == 0 && endpoint.Fragment.Length == 0 && endpoint.UserInfo.Length == 0;

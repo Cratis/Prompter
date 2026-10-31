@@ -190,6 +190,8 @@ public sealed class PrompterDeployment
     [
         .. environment,
         .. PrivateMetricsEnvironment.Values(args.Metrics with { Enabled = args.MetricsEnabled || args.Metrics.Enabled }, args.Environment)
+            .Select(pair => new EnvVarArgs { Name = pair.Key, Value = pair.Value }),
+        .. PrivateRoutingEnvironment.Values(args.Routing)
             .Select(pair => new EnvVarArgs { Name = pair.Key, Value = pair.Value })
     ];
 

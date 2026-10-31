@@ -14,6 +14,9 @@ public sealed class PrompterEgressArgs
     /// <summary>Gets the explicit private collector identity; absent settings grant nothing.</summary>
     public PrivateMetricsArgs Metrics { get; init; } = new();
 
+    /// <summary>Gets the explicit private routing identity; absent endpoint grants nothing.</summary>
+    public PrivateRoutingArgs Routing { get; init; } = new();
+
     /// <summary>
     /// Gets the Kubernetes provider to deploy through.
     /// </summary>
