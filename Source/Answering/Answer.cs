@@ -27,6 +27,12 @@ public record Answer(
     /// </summary>
     public long? InteractionId { get; init; }
 
+    /// <summary>Gets the model's triage category hint; <see cref="InteractionCategory.Unknown"/> unless generated in the same call.</summary>
+    public InteractionCategory Category { get; init; } = InteractionCategory.Unknown;
+
+    /// <summary>Gets the product the question concerns; <see cref="InteractionProduct.OtherOrUnknown"/> unless generated in the same call.</summary>
+    public InteractionProduct Product { get; init; } = InteractionProduct.OtherOrUnknown;
+
     /// <summary>Gets whether this request fell back to current-only conversation context.</summary>
     public bool ContextDegraded { get; init; }
 

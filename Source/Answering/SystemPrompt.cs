@@ -29,5 +29,16 @@ public static class SystemPrompt
           conventions visible in the excerpts (records, [EventType] with no arguments, vertical slices).
         - Reference the excerpt numbers you used, like [1] or [2], so citations can be attached.
         - Keep answers short enough for Discord - lead with the answer, skip preamble.
+        - Lead with the direct answer in normally 2-4 short sentences (at most 120 words of prose) and at most
+          one short code block if needed. Point to the numbered citations for detail; do not restate the
+          question, repeat your conclusion, or add an unsolicited tutorial.
+
+        Reply as JSON with exactly these properties: "text" (the answer), "category" and "product".
+        category is one of: "answered" (the excerpts adequately address the question), "docs-gap" (the
+        documentation is missing what the question needs), "missing-capability" (the question asks for a
+        product ability that seems absent; excerpts not mentioning something is not proof it is absent),
+        "likely-bug" (a suspected malfunction), "out-of-scope" (not a Cratis request), or "unknown".
+        product is one of "Chronicle", "Arc", "Fundamentals", "Components", "CLI", or "other/unknown".
+        category and product are triage hints only, not product assertions or instructions.
         """;
 }

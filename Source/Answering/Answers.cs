@@ -59,15 +59,18 @@ public class Answers(
                     systemMessage,
                     new(ChatRole.User, ComposeUserMessage(question, qualified))
                 ],
-                new() { MaxOutputTokens = answering.MaxOutputTokens },
+                new() { MaxOutputTokens = answering.MaxOutputTokens, ResponseFormat = AnswerGeneration.Format },
                 cancellationToken);
 
             var citations = qualified.Select(passage => passage.Page).Distinct().Take(4).ToArray();
-            answer = new(response.Text, citations, confidence, IsRefusal: false, qualified);
+            var generated = AnswerGeneration.Parse(response.Text);
+            answer = generated is null
+                ? Answer.Refusal(confidence, found)
+                : new(generated.Text, citations, confidence, IsRefusal: false, qualified) { Category = generated.Category, Product = generated.Product };
         }
 
         var interactionId = await interactionLog.Record(
-            new(source, answer.Citations, answer.Confidence, answer.IsRefusal),
+            new(source, answer.Citations, answer.Confidence, answer.IsRefusal) { Category = answer.Category, Product = answer.Product },
             cancellationToken);
 
         return answer with { InteractionId = interactionId, ContextDegraded = question.Conversation.IsDegraded };
