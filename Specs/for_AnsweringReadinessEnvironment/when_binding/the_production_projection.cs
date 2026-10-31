@@ -31,6 +31,7 @@ public class the_production_projection : Specification
     [Fact] void should_price_the_verified_embedding_model() => _defaults.Protection.Voyage.Covers(_defaults.Voyage.Model, false).ShouldBeTrue();
     [Fact] void should_bound_the_global_ceiling_at_five_dollars() => _defaults.Protection.DailyUsd.ShouldEqual(5m);
     [Fact] void should_enforce_a_local_input_ceiling_below_both_vendor_limits() => _defaults.Protection.Anthropic.MaxInputTokens.ShouldEqual(32000);
+    [Fact] void should_bind_the_explicit_initial_semantic_policy() => _defaults.Answering.MinSemanticSimilarity.ShouldEqual(0.5);
     [Fact] void should_bind_the_explicit_secondary_opt_in() => AccountSelection.Select(_secondary.Anthropic.Answer, null, true, DateTimeOffset.UnixEpoch).ShouldEqual("secondary");
     [Fact] void should_not_enable_issue_draft_secondary_by_answer_opt_in() => _secondary.Anthropic.IssueDraft.AllowSecondary.ShouldBeFalse();
     [Fact] void should_not_project_secrets_or_manufacture_a_quota_reset() => AnsweringReadinessEnvironment.Values(new()).Keys.Any(key => key.EndsWith("ApiKey", StringComparison.Ordinal) || key.EndsWith("ResetAt", StringComparison.Ordinal)).ShouldBeFalse();

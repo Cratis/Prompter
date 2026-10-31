@@ -44,7 +44,8 @@ public class Passages(
             )
             SELECT c.page_url, c.title, c.heading_path, c.content,
                    COALESCE(1.0 / ({RrfConstant} + semantic.rank), 0) +
-                   COALESCE(1.0 / ({RrfConstant} + lexical.rank), 0) AS score
+                   COALESCE(1.0 / ({RrfConstant} + lexical.rank), 0) AS score,
+                   1.0 - (c.embedding <=> $1) AS semantic_similarity
             FROM chunks c
             LEFT JOIN semantic ON c.id = semantic.id
             LEFT JOIN lexical ON c.id = lexical.id
@@ -66,7 +67,8 @@ public class Passages(
                 reader.GetString(1),
                 reader.GetString(2),
                 reader.GetString(3),
-                reader.GetDouble(4)));
+                reader.GetDouble(4),
+                reader.GetDouble(5)));
         }
 
         return passages;

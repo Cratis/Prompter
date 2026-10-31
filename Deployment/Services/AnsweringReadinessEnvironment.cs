@@ -54,6 +54,7 @@ public static class AnsweringReadinessEnvironment
             ["Anthropic__IssueDraft__PreferredAccount"] = args.IssueDraftAccount,
             ["Anthropic__IssueDraft__AllowSecondary"] = Flag(args.IssueDraftAllowSecondary),
             ["Answering__MaxOutputTokens"] = "4096",
+            ["Answering__MinSemanticSimilarity"] = "0.5",
             ["Voyage__Model"] = "voyage-4",
             ["Voyage__Dimensions"] = "1024",
             ["Ingestion__PricePerMillionTokens"] = "0.06",

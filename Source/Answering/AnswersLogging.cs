@@ -7,6 +7,6 @@ namespace Cratis.Prompter.Answering;
 
 internal static partial class AnswersLogging
 {
-    [LoggerMessage(LogLevel.Information, "Refusing to answer - top passage score {Confidence} is below the threshold")]
+    [LoggerMessage(LogLevel.Information, "Refusing to answer - no passage meets the semantic similarity threshold; highest similarity {Confidence}")]
     internal static partial void RefusingToAnswer(this ILogger<Answers> logger, double confidence);
 }

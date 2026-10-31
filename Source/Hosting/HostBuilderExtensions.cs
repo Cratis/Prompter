@@ -52,6 +52,9 @@ public static class HostBuilderExtensions
                 options => options.Discord.AnswerTimeoutIsValid,
                 "Cratis:Prompter:Discord:AnswerTimeoutSeconds must be greater than 0; a value of 0 abandons every answer immediately and replies with the apology instead.")
             .Validate(options => options.Protection.IsValid, "Cratis:Prompter:Protection requires positive bounds and nonnegative allowances.")
+            .Validate(
+                options => options.Answering.SimilarityIsValid,
+                "Cratis:Prompter:Answering:MinSemanticSimilarity must be finite and in (0, 1].")
             .ValidateOnStart();
 
         builder.Services.AddSingleton(sp =>
