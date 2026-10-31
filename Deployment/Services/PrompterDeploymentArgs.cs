@@ -37,6 +37,9 @@ public sealed class PrompterDeploymentArgs
     /// <summary>Gets whether to export private aggregate metrics to the Core collector.</summary>
     public bool MetricsEnabled { get; init; }
 
+    /// <summary>Gets the explicit collector identity; no destination is inferred.</summary>
+    public PrivateMetricsArgs Metrics { get; init; } = new();
+
     /// <summary>
     /// Gets the connection string for the corpus database.
     /// </summary>

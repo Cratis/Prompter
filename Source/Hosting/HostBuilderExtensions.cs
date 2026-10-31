@@ -105,14 +105,22 @@ public static class HostBuilderExtensions
 
         // The per-user question throttle and the clock its refills are measured against. Both are shared
         // across every Discord entry point, so they live as singletons in the common registration.
-        builder.Services.Configure<MetricsOptions>(builder.Configuration.GetSection("Cratis:Prompter:Metrics"));
-        builder.Services.AddSingleton<MetricsExport>();
-        if (builder.Configuration.GetValue<bool>("Cratis:Prompter:Metrics:Enabled")) builder.Services.AddHostedService<DurableMetrics>();
+        AddPrivateMetrics(builder);
         builder.Services.AddSingleton<IIndexHistory, IndexHistory>();
         builder.Services.AddSingleton(TimeProvider.System);
         builder.Services.AddSingleton<Discord.RateLimiter>();
         builder.Services.AddSingleton<Discord.IConversationHistory, Discord.DiscordConversationHistory>();
         builder.Services.AddSingleton<Discord.ConversationContextReader>();
+    }
+
+    static void AddPrivateMetrics(IHostApplicationBuilder builder)
+    {
+        builder.Services.AddOptions<MetricsOptions>()
+            .Bind(builder.Configuration.GetSection("Cratis:Prompter:Metrics"))
+            .Validate(options => !options.Enabled || PrivateMetricsEndpoint.IsAllowed(options), "Private metrics endpoint is not approved.")
+            .ValidateOnStart();
+        builder.Services.AddSingleton<MetricsExport>();
+        if (builder.Configuration.GetValue<bool>("Cratis:Prompter:Metrics:Enabled")) builder.Services.AddHostedService<DurableMetrics>();
     }
 
     static void AddRequestAssistance(IHostApplicationBuilder builder)

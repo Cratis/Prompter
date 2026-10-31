@@ -18,6 +18,8 @@ return await Deployment.RunAsync(() =>
 {
     var config = new Config("prompter-deployment");
     var readiness = AnsweringReadinessArgs.From(config);
+    var metrics = PrivateMetricsArgs.From(config);
+    if (!metrics.IsValid) throw new InvalidPrivateMetrics();
 
     var environment = config.Require("environment");
     var image = config.Require("prompterImage");
@@ -77,7 +79,8 @@ return await Deployment.RunAsync(() =>
         Namespace = namespaceName,
         Environment = environment,
         Image = image,
-        MetricsEnabled = config.GetBoolean("metricsEnabled") ?? false,
+        MetricsEnabled = metrics.Enabled,
+        Metrics = metrics,
         ConnectionString = postgres.ConnectionString,
         DiscordToken = discordToken,
         AnthropicApiKey = anthropicApiKey,
@@ -96,6 +99,7 @@ return await Deployment.RunAsync(() =>
 
     _ = new PrompterEgress(new PrompterEgressArgs
     {
+        Metrics = metrics,
         Provider = provider,
         Namespace = namespaceName,
         Environment = environment,
