@@ -26,6 +26,23 @@ public sealed class PrompterEgress
     /// <param name="args">The arguments describing the policy.</param>
     public PrompterEgress(PrompterEgressArgs args)
     {
+        if (PrivateRoutingEgress.Create(args.Routing, args.Environment) is { } routing)
+        {
+            _ = new NetworkPolicy(
+                $"prompter-private-routing-{args.Environment}",
+                new NetworkPolicyArgs
+                {
+                    Metadata = new ObjectMetaArgs
+                    {
+                        Name = "prompter-private-routing",
+                        Namespace = args.Namespace,
+                        Labels = { ["environment"] = args.Environment, ["app"] = "prompter" }
+                    },
+                    Spec = routing
+                },
+                new CustomResourceOptions { Provider = args.Provider });
+        }
+
         _ = new NetworkPolicy(
             $"prompter-external-https-{args.Environment}",
             new NetworkPolicyArgs

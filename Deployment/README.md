@@ -30,6 +30,36 @@ Postgres is a Deployment on a claim rather than a StatefulSet because the deploy
 has no `statefulsets` permission; one replica on a ReadWriteOnce volume with `Recreate` gives the same
 single-writer guarantee.
 
+## Private Laya routing configuration
+
+Private routing defaults off: without `layaEndpoint`, the bot uses deterministic fallback and no Laya
+policy is created. There is no `Routing.Enabled` setting. This wiring does not activate a live service.
+
+All inputs below are non-secret keys in the `prompter-deployment` Pulumi configuration namespace.
+A configured endpoint requires every identity field and an explicit mode; incomplete or invalid settings
+fail before deployment resources are constructed, without echoing supplied values.
+
+| Key | Required value for configured routing |
+|---|---|
+| `layaEndpoint` | HTTP or HTTPS service origin, with the service port if non-default; no credentials, path, query or fragment |
+| `layaAllowedHost` | Independently approved exact `<service>.<namespace>.svc.cluster.local` host |
+| `layaService`, `layaNamespace` | Exact service identity matching the approved host; no destination defaults |
+| `layaApp`, `layaEnvironment` | Exact destination pod labels |
+| `layaBackendPort` | Verified destination TCP backend port, not an assumed copy of the service port |
+| `layaMode` | Explicit `Active` or `Shadow`; shadow sampling remains zero |
+
+The bot receives only the validated routing origin, independent host, mode, confidence `0.75`, margin
+`0.15` and shadow percentage `0`. Unknown runtime modes and non-finite or out-of-range thresholds are
+rejected without remote calls. Transport limits, one-attempt behavior, no redirects and no proxy use
+remain unchanged. Index Jobs receive no Laya grant.
+
+The separate `prompter-private-routing` egress policy selects only the bot and its environment. Its one
+peer combines the destination namespace and both pod labels (AND), with only the verified TCP backend
+port. For a service on port 80 targeting backend 8080, the policy grants 8080 only, not both ports.
+Operators must verify Service/targetPort mapping and CNI policy semantics before supplying that port.
+Destination ingress approval and the live private Decision API path remain unverified activation blockers;
+this configuration does not create destination ingress or authorize activation.
+
 ## State
 
 Self-managed on UpCloud Object Storage (S3-compatible): `Deployment/Pulumi.yaml`'s `backend.url` points at

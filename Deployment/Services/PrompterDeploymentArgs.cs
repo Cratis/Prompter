@@ -40,6 +40,9 @@ public sealed class PrompterDeploymentArgs
     /// <summary>Gets the explicit collector identity; no destination is inferred.</summary>
     public PrivateMetricsArgs Metrics { get; init; } = new();
 
+    /// <summary>Gets the explicit private routing identity; absent endpoint leaves fallback.</summary>
+    public PrivateRoutingArgs Routing { get; init; } = new();
+
     /// <summary>
     /// Gets the connection string for the corpus database.
     /// </summary>
