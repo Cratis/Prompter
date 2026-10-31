@@ -44,7 +44,7 @@ BEGIN
         END IF;
         SELECT COALESCE(sum(upper_usd), 0) INTO allocated FROM prompter_provider_attempts
             WHERE reservation = parent AND provider = prov;
-        IF allocated + upper_cost > CASE WHEN prov = 'anthropic' THEN reserved.anthropic ELSE reserved.voyage END THEN
+        IF allocated + upper_cost > (CASE WHEN prov = 'anthropic' THEN reserved.anthropic ELSE reserved.voyage END) THEN
             RETURN false;
         END IF;
     ELSE
