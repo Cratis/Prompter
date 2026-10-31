@@ -19,7 +19,13 @@ mode="${PROMPTER_INDEX_MODE:-incremental}"
 confirmation="${PROMPTER_INDEX_CONFIRMATION:-}"
 case "$mode" in
     incremental) index_args='["index"]' ;;
-    scheduled) index_args='["index", "--scheduled"]' ;;
+    scheduled)
+        if [[ "${PROMPTER_SCHEDULED_INDEXING_ENABLED:-}" != 'true' ]]; then
+            echo '::error::Scheduled indexing is disabled.' >&2
+            exit 1
+        fi
+        index_args='["index", "--scheduled"]'
+        ;;
     full)
         if [[ "$confirmation" != 'FULL REINDEX' ]]; then
             echo '::error::Full indexing requires the literal confirmation FULL REINDEX.' >&2
@@ -34,19 +40,30 @@ price="${PROMPTER_INDEX_PRICE_PER_MILLION_TOKENS:-0}"
 run_dollars="${PROMPTER_INDEX_MAX_RUN_DOLLARS:-0}"
 daily_dollars="${PROMPTER_INDEX_MAX_DAILY_DOLLARS:-0}"
 for value in "$price" "$run_dollars" "$daily_dollars"; do
-    if ! [[ "$value" =~ ^[0-9]+([.][0-9]+)?$ ]]; then
-        echo '::error::Index pricing and dollar limits must be nonnegative decimals.' >&2
+    if ! [[ "$value" =~ ^[0-9]{1,2}([.][0-9]{1,6})?$ ]]; then
+        echo '::error::Index pricing and dollar limits must be bounded positive decimals.' >&2
         exit 1
     fi
 done
+if [[ "${PROMPTER_INDEX_MODEL:-}" != 'voyage-4' ]] || ! jq -en \
+    --arg price "$price" --arg run "$run_dollars" --arg day "$daily_dollars" \
+    '($price | tonumber) == 0.06 and ($run | tonumber) > 0 and
+     ($run | tonumber) <= ($day | tonumber) and ($day | tonumber) <= 5' >/dev/null; then
+    echo '::error::Unsupported index model, price or budget ordering.' >&2
+    exit 1
+fi
 
 timeout_seconds="${PROMPTER_INDEX_TIMEOUT_SECONDS:-1500}"
-if ! [[ "$timeout_seconds" =~ ^[1-9][0-9]*$ ]]; then
-    echo '::error::PROMPTER_INDEX_TIMEOUT_SECONDS must be a positive integer.' >&2
+if ! [[ "$timeout_seconds" =~ ^[1-9][0-9]{0,3}$ ]] || (( timeout_seconds > 1500 )); then
+    echo '::error::PROMPTER_INDEX_TIMEOUT_SECONDS must be an integer from 1 to 1500.' >&2
     exit 1
 fi
 
 if [[ "${1:-}" == '--print-manifest' && $# -eq 3 ]]; then
+    if ! [[ "$2" =~ ^[a-zA-Z0-9][a-zA-Z0-9./:@_-]{0,254}$ && "$3" =~ ^[a-z0-9]([a-z0-9-]{0,61}[a-z0-9])?$ ]]; then
+        echo '::error::Invalid index image or Job name.' >&2
+        exit 1
+    fi
     jq -n --arg image "$2" --arg name "$3" --argjson timeout "$timeout_seconds" \
         --argjson index_args "$index_args" --arg price "$price" --arg run_dollars "$run_dollars" --arg daily_dollars "$daily_dollars" '{
         apiVersion: "batch/v1",
@@ -85,6 +102,24 @@ if [[ "${1:-}" == '--print-manifest' && $# -eq 3 ]]; then
                             limits: {cpu: "1", memory: "512Mi"}
                         },
                         env: [
+                            {name: "Cratis__Prompter__Protection__IndexingEnabled", value: "true"},
+                            {name: "Cratis__Prompter__Protection__AnsweringEnabled", value: "false"},
+                            {name: "Cratis__Prompter__Protection__GitHubWritesEnabled", value: "false"},
+                            {name: "Cratis__Prompter__Protection__DailyUsd", value: "5"},
+                            {name: "Cratis__Prompter__Protection__Voyage__DailyUsd", value: "5"},
+                            {name: "Cratis__Prompter__Protection__Voyage__Model", value: "voyage-4"},
+                            {name: "Cratis__Prompter__Protection__Voyage__InputUsdPerMillion", value: "0.06"},
+                            {name: "Cratis__Prompter__Protection__Voyage__OutputUsdPerMillion", value: "0"},
+                            {name: "Cratis__Prompter__Protection__Voyage__MaxInputTokens", value: "32000"},
+                            {name: "Cratis__Prompter__Voyage__Model", value: "voyage-4"},
+                            {name: "Cratis__Prompter__Voyage__Dimensions", value: "1024"},
+                            {name: "Cratis__Prompter__Voyage__BatchSize", value: "128"},
+                            {name: "Cratis__Prompter__Voyage__MaxRetries", value: "3"},
+                            {name: "Cratis__Prompter__Voyage__IndexMaxRetries", value: "5"},
+                            {name: "Cratis__Prompter__Voyage__RetryBaseDelayMilliseconds", value: "500"},
+                            {name: "Cratis__Prompter__Voyage__TimeoutSeconds", value: "60"},
+                            {name: "Cratis__Prompter__Voyage__IndexTimeoutSeconds", value: "120"},
+                            {name: "Cratis__Prompter__Ingestion__MaxIncrementalTokens", value: "200000"},
                             {name: "Cratis__Prompter__Ingestion__PricePerMillionTokens", value: $price},
                             {name: "Cratis__Prompter__Ingestion__MaxRunDollars", value: $run_dollars},
                             {name: "Cratis__Prompter__Ingestion__MaxDailyDollars", value: $daily_dollars},
@@ -133,16 +168,10 @@ if [[ -z "$image" ]]; then
     exit 1
 fi
 job_name="prompter-index-${GITHUB_RUN_ID:-manual-$(date +%s)}-${GITHUB_RUN_ATTEMPT:-1}"
-create_errors="$(mktemp "${RUNNER_TEMP:-${TMPDIR:-/tmp}}/prompter-index-create.XXXXXX")"
-trap 'rm -f "$create_errors"' EXIT
+# Validate before invoking create: an invalid manifest must never reach the API.
+manifest="$("$0" --print-manifest "$image" "$job_name")"
 create_exit=0
-"$0" --print-manifest "$image" "$job_name" | kubectl create -f - 2> "$create_errors" || create_exit=$?
-while IFS= read -r line; do
-    case "$line" in
-        Warning:*) echo "::warning::${line#Warning: }" >&2 ;;
-        *) printf '%s\n' "$line" >&2 ;;
-    esac
-done < "$create_errors"
+kubectl create -f - <<<"$manifest" >/dev/null 2>&1 || create_exit=$?
 if [[ $create_exit -ne 0 ]]; then
     echo '::error::Could not create the index Job.' >&2
     exit "$create_exit"
@@ -172,7 +201,6 @@ while (( SECONDS < wait_deadline )); do
 done
 
 echo "::error::Index Job $job_name failed or exceeded the wait deadline." >&2
-kubectl -n prompter get job "$job_name" -o jsonpath='{range .status.conditions[?(@.type=="Failed")]}{.reason}{": "}{.message}{"\n"}{end}'
 kubectl -n prompter get pods -l "job-name=$job_name" -o jsonpath='{range .items[*]}{range .status.containerStatuses[*]}{.name}{": exitCode="}{.state.terminated.exitCode}{" reason="}{.state.terminated.reason}{"\n"}{end}{end}'
 echo "Read logs locally with load-credentials.sh: kubectl -n prompter logs job/$job_name" >&2
 exit 1

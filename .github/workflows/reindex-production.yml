@@ -31,7 +31,7 @@ permissions:
 
 jobs:
   reindex:
-    if: github.ref == 'refs/heads/main'
+    if: github.ref == 'refs/heads/main' && (github.event_name == 'workflow_dispatch' || (github.event_name == 'schedule' && vars.PROMPTER_SCHEDULED_INDEXING_ENABLED == 'true'))
     runs-on: ${{ vars.RUNNER_FORCE || 'cratis-arc' }}
     environment: production
     timeout-minutes: 30
@@ -52,9 +52,11 @@ jobs:
           KUBECONFIG_CONTENT: ${{ secrets.KUBECONFIG }}
           PROMPTER_INDEX_MODE: ${{ github.event_name == 'schedule' && 'scheduled' || inputs.full && 'full' || 'incremental' }}
           PROMPTER_INDEX_CONFIRMATION: ${{ inputs.confirmation }}
-          PROMPTER_INDEX_PRICE_PER_MILLION_TOKENS: ${{ vars.PROMPTER_INDEX_PRICE_PER_MILLION_TOKENS }}
-          PROMPTER_INDEX_MAX_RUN_DOLLARS: ${{ vars.PROMPTER_INDEX_MAX_RUN_DOLLARS }}
-          PROMPTER_INDEX_MAX_DAILY_DOLLARS: ${{ vars.PROMPTER_INDEX_MAX_DAILY_DOLLARS }}
+          PROMPTER_SCHEDULED_INDEXING_ENABLED: ${{ vars.PROMPTER_SCHEDULED_INDEXING_ENABLED }}
+          PROMPTER_INDEX_MODEL: voyage-4
+          PROMPTER_INDEX_PRICE_PER_MILLION_TOKENS: '0.06'
+          PROMPTER_INDEX_MAX_RUN_DOLLARS: '0.10'
+          PROMPTER_INDEX_MAX_DAILY_DOLLARS: '0.50'
         run: |
           set -euo pipefail
           printf '%s' "$KUBECONFIG_CONTENT" > "$RUNNER_TEMP/kubeconfig"

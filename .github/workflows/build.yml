@@ -22,6 +22,7 @@ on:
       - "global.json"
       - ".github/workflows/build.yml"
       - ".github/workflows/postgres-backups.yml"
+      - ".github/workflows/reindex-production.yml"
       - ".github/scripts/**"
       - "Monitoring/**"
   pull_request:
@@ -37,6 +38,7 @@ on:
       - "global.json"
       - ".github/workflows/build.yml"
       - ".github/workflows/postgres-backups.yml"
+      - ".github/workflows/reindex-production.yml"
       - ".github/scripts/**"
       - "Monitoring/**"
 
@@ -54,6 +56,12 @@ jobs:
         run: node --test Monitoring/specs/*.spec.mjs
       - name: Check failure notifier syntax
         run: node --check .github/scripts/notify-reindex-failure.mjs
+      - name: Check scheduled indexing offline
+        run: node --test Specs/ScheduledIndexing/*.test.mjs
+      - name: Validate index Job manifests
+        run: bash Deployment/scripts/run-index-job.spec.sh
+      - name: Lint index Job scripts
+        run: shellcheck Deployment/scripts/run-index-job.sh Deployment/scripts/run-index-job.spec.sh
   dotnet-build:
     permissions:
       contents: read
