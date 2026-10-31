@@ -23,7 +23,38 @@ public sealed class ConversationContextReader(IConversationHistory history, Time
     /// <param name="cancellationToken">Request cancellation.</param>
     /// <returns>The sanitized latest question with optional untrusted history.</returns>
     /// <exception cref="WorkRefused">The latest request exceeds its separate hard ceiling.</exception>
-    public async Task<Question> For(string current, ConversationLocation location, CancellationToken cancellationToken = default)
+    public Task<Question> For(string current, ConversationLocation location, CancellationToken cancellationToken = default) =>
+        Read(current, location, null, cancellationToken);
+
+    /// <summary>Builds context like the plain overload, also keeping the Prompter message the request replies to.</summary>
+    /// <param name="current">The explicit latest request.</param>
+    /// <param name="location">Only the triggering public channel or thread.</param>
+    /// <param name="anchor">The message being replied to; used only when it is an earlier Prompter message in the same channel.</param>
+    /// <param name="cancellationToken">Request cancellation.</param>
+    /// <returns>The sanitized latest question with optional untrusted history.</returns>
+    /// <exception cref="WorkRefused">The latest request exceeds its separate hard ceiling.</exception>
+    public Task<Question> For(string current, ConversationLocation location, HistoryMessage anchor, CancellationToken cancellationToken = default) =>
+        Read(current, location, anchor, cancellationToken);
+
+    static Question Degraded(Question question) => question with { Conversation = new([], IsDegraded: true) };
+
+    static bool EligibleAnchor(HistoryMessage? anchor, ConversationLocation location) =>
+        anchor is not null && anchor.ChannelId == location.ChannelId && anchor.Id < location.MessageId && anchor.IsSelf && !anchor.IsSystem;
+
+    static string Clip(HistoryMessage message, int remaining)
+    {
+        var content = ConversationText.Sanitize(message.Content);
+        return content.Length > remaining ? content[..remaining] : content;
+    }
+
+    static string AnchorText(HistoryMessage? anchor, ConversationLocation location)
+    {
+        if (!EligibleAnchor(anchor, location)) return string.Empty;
+        var text = ConversationText.Sanitize(anchor!.Content);
+        return text.Length > MaximumHistoryCharacters ? text[..MaximumHistoryCharacters] : text;
+    }
+
+    async Task<Question> Read(string current, ConversationLocation location, HistoryMessage? anchor, CancellationToken cancellationToken)
     {
         if (current.Length > MaximumCurrentCharacters) throw new WorkRefused();
         var question = new Question(ConversationText.Sanitize(current));
@@ -35,7 +66,7 @@ public sealed class ConversationContextReader(IConversationHistory history, Time
             deadline.CancelAfter(TimeSpan.FromSeconds(1));
             if (!await history.IsPublic(location, deadline.Token).WaitAsync(deadline.Token)) return Degraded(question);
             var messages = await history.Before(location, deadline.Token).WaitAsync(deadline.Token);
-            return question with { Conversation = new(Bound(messages, location)) };
+            return question with { Conversation = new(Bound(messages, location, anchor)) };
         }
         catch (Exception)
         {
@@ -44,23 +75,22 @@ public sealed class ConversationContextReader(IConversationHistory history, Time
         }
     }
 
-    static Question Degraded(Question question) => question with { Conversation = new([], IsDegraded: true) };
-
-    ReadOnlyCollection<ConversationMessage> Bound(IReadOnlyList<HistoryMessage> messages, ConversationLocation location)
+    ReadOnlyCollection<ConversationMessage> Bound(IReadOnlyList<HistoryMessage> messages, ConversationLocation location, HistoryMessage? anchor)
     {
-        var remaining = MaximumHistoryCharacters;
-        var selected = new List<ConversationMessage>();
-        foreach (var message in messages.OrderByDescending(message => message.Id).Take(MaximumMessages).Where(message => Eligible(message, location)))
+        var anchored = AnchorText(anchor, location);
+        ulong? anchoredId = anchored.Length > 0 ? anchor!.Id : null;
+        var selected = new List<(ulong Id, ConversationMessage Message)>();
+        if (anchoredId is { } id) selected.Add((id, new("assistant", anchored)));
+        var remaining = MaximumHistoryCharacters - anchored.Length;
+        foreach (var message in messages.OrderByDescending(message => message.Id).Take(MaximumMessages).Where(message => Eligible(message, location) && message.Id != anchoredId))
         {
-            var content = ConversationText.Sanitize(message.Content);
-            if (content.Length > remaining) content = content[..remaining];
+            var content = Clip(message, remaining);
             if (content.Length == 0) continue;
-            selected.Add(new(message.IsSelf ? "assistant" : "user", content));
+            selected.Add((message.Id, new(message.IsSelf ? "assistant" : "user", content)));
             remaining -= content.Length;
-            if (remaining == 0) break;
         }
-        selected.Reverse();
-        return selected.AsReadOnly();
+
+        return selected.OrderBy(entry => entry.Id).Select(entry => entry.Message).ToList().AsReadOnly();
     }
 
     bool Eligible(HistoryMessage message, ConversationLocation location) =>

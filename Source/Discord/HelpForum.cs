@@ -14,13 +14,15 @@ namespace Cratis.Prompter.Discord;
 
 /// <summary>
 /// Answers new threads created in the configured help forum, posting a grounded answer as the first
-/// reply followed by a standing note that a human will follow up.
+/// reply followed by a standing note that a human will follow up. A delivered answer also lets the thread's author
+/// keep asking without a mention (answered by <see cref="Mentions"/>) until another human joins in.
 /// </summary>
 /// <param name="rest">The REST client used to read the starter message and post replies into the thread.</param>
 /// <param name="assistance">Documentation answers and separate advisory hints.</param>
 /// <param name="admission">The cheap shared admission guard.</param>
 /// <param name="work">The global concurrency and durable spend guard.</param>
 /// <param name="context">Request-only bounded conversation history.</param>
+/// <param name="followUps">Records answered threads so their author's follow-ups are answered.</param>
 /// <param name="options">The Prompter options carrying the help-forum channel identifier.</param>
 /// <param name="logger">Logger for diagnostics.</param>
 public class HelpForum(
@@ -29,6 +31,7 @@ public class HelpForum(
     Admission admission,
     PaidWork work,
     ConversationContextReader context,
+    ForumFollowUps followUps,
     IOptions<PrompterOptions> options,
     ILogger<HelpForum> logger) : IGuildThreadCreateGatewayHandler
 {
@@ -94,6 +97,8 @@ public class HelpForum(
             {
                 return;
             }
+
+            followUps.Answered(arg.Thread.Id);
         }
         catch (WorkRefused)
         {
