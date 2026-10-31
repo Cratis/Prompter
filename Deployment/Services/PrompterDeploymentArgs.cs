@@ -11,6 +11,9 @@ namespace Cratis.Prompter.Deployment.Services;
 /// </summary>
 public sealed class PrompterDeploymentArgs
 {
+    /// <summary>Gets the optional explicit installation identity and external key reference.</summary>
+    public GitHubAppArgs GitHubApp { get; init; } = new();
+
     /// <summary>Gets explicit paid workload activation and account selection.</summary>
     public AnsweringReadinessArgs Readiness { get; init; } = new();
 
