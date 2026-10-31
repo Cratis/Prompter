@@ -17,6 +17,8 @@ recorded is anonymous operational signal about each answer:
 | Which surface it was asked on | The surface type (mention, `/ask`, ask channel, forum) — not the message, channel, or user | Understanding which surfaces get used |
 | Which docs pages the answer cited | The page URLs | Measuring grounding and finding documentation gaps |
 | Whether Prompter answered or refused, and how confident it was | A flag and a score | Tracking refusal rate and answer quality |
+| Thread follow-ups | Nothing new is stored. Prompter keeps the thread id and the asker's id in memory for up to 24 hours so the asker can continue without a mention | Answering follow-ups in the thread |
+| Ask a human | Nothing is stored. The button posts a short excerpt of the question to the same channel, which is a normal Discord message | Getting a person to help |
 | Your 👍/👎 | The verdict, attached to that anonymous row | The quality feedback loop |
 
 Your **question and the answer text are not stored** — they are processed to produce the reply and then

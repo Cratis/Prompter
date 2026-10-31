@@ -31,6 +31,12 @@ public class DiscordOptions
     /// </summary>
     public ulong? HelpForumChannelId { get; set; }
 
+    /// <summary>Gets or sets channels where answers start public threads. Empty disables this behavior.</summary>
+    public IList<ulong> AnswerInThreadChannelIds { get; set; } = [];
+
+    /// <summary>Gets or sets the mentionable role for Ask a human. Null disables the button.</summary>
+    public ulong? MaintainerRoleId { get; set; }
+
     /// <summary>
     /// Gets or sets the per-user rate-limiting options.
     /// </summary>
