@@ -12,18 +12,37 @@ are recorded. Existing logs and interaction retention are separate from this exp
 
 ## Enable private metrics
 
-Exporting defaults **off**. Set `Cratis__Prompter__Metrics__Enabled=true` for a standalone process, or
-`prompter-deployment:metricsEnabled: true` in the deployment's nonsecret stack configuration before the
-normal authorized deployment. Set it to `false` to disable exporting. The deployment forwards its configured
-`environment` to `Cratis__Prompter__Metrics__Environment`; standalone processes can set that option directly.
-The OTLP resource includes `service.name=prompter` and `deployment.environment.name`, allowing only
-`production`, `staging`, `development`, or `test`; unset or unrecognized values become `unknown`.
-These are deployment configuration values, never request or user labels. No other OTEL environment variables
-are required: the only destination is
-`http://otel-collector.monitoring.svc.cluster.local:4318/v1/metrics` (OTLP HTTP/protobuf).
-The deployment adds egress only to collector pods in `monitoring` on TCP 4318; Core still owns DNS,
-namespace policies, collector ingress and Prometheus scraping. Confirm those policies permit Prompter
+Exporting defaults **off**. Keep it disabled until the collector, network path, and end-to-end delivery
+are validated; enabling the option alone is not sufficient.
+
+For a standalone process, configure all three options: `Cratis__Prompter__Metrics__Enabled=true`,
+`Cratis__Prompter__Metrics__Endpoint`, and `Cratis__Prompter__Metrics__AllowedHost`. The independently
+approved host must have the form `<service>.<namespace>.svc.cluster.local`, and the endpoint must be
+exactly `http://<service>.<namespace>.svc.cluster.local:4318/v1/metrics` (OTLP HTTP/protobuf), using that
+same host. No credentials, query string, fragment, alternate scheme, port, or path are accepted.
+Set `Enabled=false` to disable exporting.
+
+For deployment, explicitly configure these nonsecret `prompter-deployment` stack keys before the normal
+authorized deployment:
+
+- `metricsEnabled`: enable only after validation; set to `false` to disable exporting.
+- `metricsEndpoint` and `metricsAllowedHost`: the exact approved endpoint and matching host above.
+- `metricsService` and `metricsNamespace`: the actual collector Service and namespace; never guess a namespace.
+- `metricsApp` and `metricsEnvironment`: the collector pods' destination app and environment labels.
+- `metricsBackendPort`: the backend port verified from the actual collector Service, not assumed from the
+  endpoint's port 4318.
+
+The egress rule combines the destination namespace and pod app/environment selectors in the **same peer**:
+namespace **AND** app **AND** environment must match. It permits the verified backend port. Core still owns
+DNS, namespace policies, collector ingress and Prometheus scraping; validate the complete path and delivery
 before activation. No public ports or ingress are added.
+
+The collector destination label `metricsEnvironment` is distinct from the workload's OTLP resource
+environment. The deployment forwards its configured `environment` to `Cratis__Prompter__Metrics__Environment`;
+standalone processes can set that option directly. The OTLP resource includes `service.name=prompter` and
+`deployment.environment.name`, allowing only `production`, `staging`, `development`, or `test`; unset or
+unrecognized values become `unknown`. These are deployment configuration values, never request or user
+labels.
 
 The runtime exports every 30 seconds, with a three-second exporter deadline. CLI commands flush on
 normal exit. Short-lived process counters are best-effort (a kill can lose them). Durable database
