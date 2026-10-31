@@ -52,8 +52,46 @@ public static class AnswerGeneration
         }
         catch (JsonException)
         {
+            return CompleteTextOfTruncatedEnvelope(trimmed);
+        }
+    }
+
+    /// <summary>
+    /// A response that hit the output cap is cut mid-envelope. The schema lists <c language="text">text</c> first, so
+    /// when that string is fully closed it is the model's complete answer and is kept with Unknown signals;
+    /// a cut inside the text itself stays unrecoverable, so the caller takes the honest refusal path.
+    /// </summary>
+    /// <param name="envelope">The trimmed response that failed to parse.</param>
+    /// <returns>The salvaged answer, or <see langword="null"/> when the text is not complete.</returns>
+    static GeneratedAnswer? CompleteTextOfTruncatedEnvelope(string envelope)
+    {
+        var reader = new Utf8JsonReader(System.Text.Encoding.UTF8.GetBytes(envelope), isFinalBlock: false, default);
+        try
+        {
+            var text = ReadFirstTextProperty(ref reader);
+            return string.IsNullOrWhiteSpace(text) ? null : new(text, InteractionCategory.Unknown, InteractionProduct.OtherOrUnknown);
+        }
+        catch (JsonException)
+        {
             return null;
         }
+    }
+
+    static bool Advance(ref Utf8JsonReader reader, JsonTokenType expected) => reader.Read() && reader.TokenType == expected;
+
+    static string? ReadFirstTextProperty(ref Utf8JsonReader reader)
+    {
+        if (!Advance(ref reader, JsonTokenType.StartObject) || !Advance(ref reader, JsonTokenType.PropertyName))
+        {
+            return null;
+        }
+
+        if (!reader.ValueTextEquals("text"))
+        {
+            return null;
+        }
+
+        return Advance(ref reader, JsonTokenType.String) ? reader.GetString() : null;
     }
 
     static string? Text(JsonElement root, string name) =>

@@ -16,11 +16,13 @@ ARG TARGETARCH
 WORKDIR /src
 
 # Restore first, from the project file and root build config only, so the restore layer is reused
-# until a package or build setting changes rather than on every source edit.
+# until a package or build setting changes rather than on every source edit. The packages are restored into
+# the image layer itself (no BuildKit cache mount): a cache mount is not exported by the registry/gha layer
+# cache, so a fresh builder could reuse this layer while the packages were missing and `--no-restore`
+# publish would fail.
 COPY Directory.Build.props Directory.Packages.props global.json .globalconfig .editorconfig ./
 COPY Source/Prompter.csproj Source/
-RUN --mount=type=cache,target=/root/.nuget/packages \
-    case "${TARGETARCH}" in \
+RUN case "${TARGETARCH}" in \
       amd64) dotnet_arch=x64 ;; \
       arm64) dotnet_arch=arm64 ;; \
       *) echo "Unsupported target architecture: ${TARGETARCH}" >&2; exit 1 ;; \
@@ -28,8 +30,7 @@ RUN --mount=type=cache,target=/root/.nuget/packages \
     && dotnet restore Source/Prompter.csproj -a "${dotnet_arch}"
 
 COPY Source/ Source/
-RUN --mount=type=cache,target=/root/.nuget/packages \
-    case "${TARGETARCH}" in \
+RUN case "${TARGETARCH}" in \
       amd64) dotnet_arch=x64 ;; \
       arm64) dotnet_arch=arm64 ;; \
     esac \

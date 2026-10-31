@@ -14,6 +14,8 @@ public class a_hand_off : Specification
 {
     RestClient _rest = null!;
 
+    protected FakeDiscordMessages Discord { get; private set; } = null!;
+
     protected PrompterOptions Options { get; private set; } = null!;
     protected HumanHandOffs HandOffs { get; private set; } = null!;
     protected HandOffClick Click { get; set; } = null!;
@@ -27,7 +29,8 @@ public class a_hand_off : Specification
         Options.Discord.AskChannelId = 2;
         Options.Discord.HelpForumChannelId = 5;
         var config = Microsoft.Extensions.Options.Options.Create(Options);
-        _rest = new RestClient();
+        Discord = new() { Author = 3 };
+        _rest = Discord.Client();
         HandOffs = new(
             _rest,
             new(config, new RateLimiter(config), clock),

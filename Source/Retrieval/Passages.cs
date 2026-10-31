@@ -78,8 +78,21 @@ public class Passages(
         reader.GetDouble(4),
         reader.GetDouble(5))
     {
-        IndexedAt = await reader.GetFieldValueAsync<DateTimeOffset?>(6, cancellationToken),
-        PageLastModifiedAt = await reader.GetFieldValueAsync<DateTimeOffset?>(7, cancellationToken),
-        ProductVersion = await reader.GetFieldValueAsync<string?>(8, cancellationToken)
+        IndexedAt = await NullableField<DateTimeOffset>(reader, 6, cancellationToken),
+        PageLastModifiedAt = await NullableField<DateTimeOffset>(reader, 7, cancellationToken),
+        ProductVersion = await reader.IsDBNullAsync(8, cancellationToken) ? null : reader.GetString(8)
     };
+
+    /// <summary>
+    /// Reads a nullable value column. The page metadata comes from a LEFT JOIN, so it is SQL NULL for a page
+    /// without a row, and Npgsql throws when a NULL is read as a value type.
+    /// </summary>
+    /// <typeparam name="T">The value type.</typeparam>
+    /// <param name="reader">The reader positioned on a row.</param>
+    /// <param name="ordinal">The column ordinal.</param>
+    /// <param name="cancellationToken">Cancels the read.</param>
+    /// <returns>The value, or null for SQL NULL.</returns>
+    static async Task<T?> NullableField<T>(NpgsqlDataReader reader, int ordinal, CancellationToken cancellationToken)
+        where T : struct =>
+        await reader.IsDBNullAsync(ordinal, cancellationToken) ? null : await reader.GetFieldValueAsync<T>(ordinal, cancellationToken);
 }

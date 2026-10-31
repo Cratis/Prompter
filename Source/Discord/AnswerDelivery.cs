@@ -62,7 +62,7 @@ public class AnswerDelivery(RestClient rest, IOptions<PrompterOptions> options, 
     {
         if (target.Thread is null && chunk.First)
         {
-            var reply = new ReplyMessageProperties { Content = chunk.Content };
+            var reply = SafeMessages.Reply(chunk.Content);
             if (chunk.Feedback is { } id)
             {
                 reply.Components = [FeedbackButtonRow.For(id, target.Actions)];
@@ -71,7 +71,7 @@ public class AnswerDelivery(RestClient rest, IOptions<PrompterOptions> options, 
             return;
         }
 
-        var followup = new MessageProperties { Content = chunk.Content };
+        var followup = SafeMessages.Message(chunk.Content);
         if (chunk.Feedback is { } followupId)
         {
             followup.Components = [FeedbackButtonRow.For(followupId, target.Actions)];

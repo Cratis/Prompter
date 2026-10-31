@@ -78,10 +78,8 @@ public class a_disposable_documentation_corpus : Specification
         var mapped = builder.Build();
         await _database.DisposeAsync();
         _database = mapped;
-        await using var migration = typeof(Passages).Assembly.GetManifestResourceStream("Cratis.Prompter.Storage.Migrations.v1_0_0.sql")!;
-        using var reader = new StreamReader(migration);
-        await Execute(await reader.ReadToEndAsync());
         var chunks = new Chunks(_database);
+        await chunks.EnsureSchema();
         await chunks.Upsert(new(new("chronicle"), new("https://cratis.io/chronicle/"), "Chronicle", "Overview", ChronicleContent, new("synthetic")), Vector(new(0.8f, 0.6f, 0, 0)));
         await chunks.Upsert(new(new("orthogonal"), new("https://cratis.io/other/"), "Other", "Unrelated", "An unrelated documentation excerpt.", new("synthetic")), Vector(new(0, 1, 0, 0)));
         await chunks.Upsert(new(new("glossary"), new("https://cratis.io/glossary/"), "Glossary", "Terms", "Glossary terms: Cratis Chronicle guaranteed lottery numbers.", new("synthetic")), Vector(new(0, 0, 1, 0)));

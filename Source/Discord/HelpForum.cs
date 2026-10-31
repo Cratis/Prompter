@@ -162,7 +162,7 @@ public class HelpForum(
         var advice = DiscordAnswers.Advice(reply);
         if (advice.Length > 0)
         {
-            await rest.SendMessageAsync(thread.Id, new MessageProperties { Content = advice });
+            await rest.SendMessageAsync(thread.Id, SafeMessages.Message(advice));
         }
         return true;
     }
@@ -173,15 +173,13 @@ public class HelpForum(
         var content = DiscordAnswers.Format(answer);
         if (answer.InteractionId is { } interactionId)
         {
-            await rest.SendMessageAsync(thread, new MessageProperties
-            {
-                Content = content,
-                Components = [FeedbackButtonRow.For(interactionId, AnswerActions.For(options.Value.Discord, link, reply))]
-            });
+            var message = SafeMessages.Message(content);
+            message.Components = [FeedbackButtonRow.For(interactionId, AnswerActions.For(options.Value.Discord, link, reply))];
+            await rest.SendMessageAsync(thread, message);
         }
         else
         {
-            await rest.SendMessageAsync(thread, content);
+            await rest.SendMessageAsync(thread, SafeMessages.Message(content));
         }
     }
 

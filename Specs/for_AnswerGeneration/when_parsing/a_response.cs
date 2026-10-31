@@ -45,6 +45,9 @@ public class a_response : Specification
     [Fact] void should_classify_plain_text_as_unknown() => AnswerGeneration.Parse("Plain.")!.Category.ShouldEqual(InteractionCategory.Unknown);
     [Fact] void should_reject_an_envelope_without_text() => AnswerGeneration.Parse("""{"category":"answered"}""").ShouldBeNull();
     [Fact] void should_reject_an_envelope_with_non_text() => AnswerGeneration.Parse("""{"text":7}""").ShouldBeNull();
-    [Fact] void should_reject_a_malformed_envelope() => AnswerGeneration.Parse("{\"text\": \"cut off").ShouldBeNull();
+    [Fact] void should_reject_an_envelope_cut_inside_the_text() => AnswerGeneration.Parse("{\"text\": \"cut off").ShouldBeNull();
+    [Fact] void should_keep_the_complete_text_of_an_envelope_cut_after_it() => AnswerGeneration.Parse("{\"text\":\"Use it [1].\",\"category\":\"answ")!.Text.ShouldEqual("Use it [1].");
+    [Fact] void should_classify_a_salvaged_text_as_unknown() => AnswerGeneration.Parse("{\"text\":\"Use it [1].\",\"category\":\"answ")!.Category.ShouldEqual(InteractionCategory.Unknown);
+    [Fact] void should_reject_garbage_after_an_opening_brace() => AnswerGeneration.Parse("{not json").ShouldBeNull();
     [Fact] void should_reject_an_empty_response() => AnswerGeneration.Parse("  ").ShouldBeNull();
 }
