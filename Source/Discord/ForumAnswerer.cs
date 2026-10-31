@@ -79,7 +79,7 @@ public class ForumAnswerer(
         // failure here must not trigger the answer-failed apology on top of a good answer.
         try
         {
-            await rest.SendMessageAsync(thread.Id, HelpForum.FollowUpNote);
+            await rest.SendMessageAsync(thread.Id, SafeMessages.Message(HelpForum.FollowUpNote));
         }
         catch (Exception exception)
         {
@@ -106,7 +106,7 @@ public class ForumAnswerer(
     {
         if (reply)
         {
-            await rest.SendMessageAsync(threadId, options.Value.Discord.RateLimitedReply);
+            await rest.SendMessageAsync(threadId, SafeMessages.Message(options.Value.Discord.RateLimitedReply));
         }
     }
 
@@ -152,7 +152,7 @@ public class ForumAnswerer(
     {
         try
         {
-            await rest.SendMessageAsync(threadId, options.Value.Discord.ErrorReply);
+            await rest.SendMessageAsync(threadId, SafeMessages.Message(options.Value.Discord.ErrorReply));
         }
         catch (Exception exception)
         {

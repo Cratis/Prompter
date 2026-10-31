@@ -206,7 +206,8 @@ if [[ -z "$image" ]]; then
     echo '::error::The deployed Prompter image is empty.' >&2
     exit 1
 fi
-deployed_env="$(kubectl -n prompter get deployment prompter -o json | jq -c '.spec.template.spec.containers[0].env')"
+# Project only the env list: never print the whole Deployment (secrets rule).
+deployed_env="$(kubectl -n prompter get deployment prompter -o jsonpath='{.spec.template.spec.containers[0].env}')"
 job_name="prompter-eval-${GITHUB_RUN_ID:-manual-$(date +%s)}-${GITHUB_RUN_ATTEMPT:-1}"
 # Validate before invoking create: an invalid manifest must never reach the API.
 manifest="$("$0" --print-manifest "$image" "$job_name" <<<"$deployed_env")"

@@ -17,6 +17,7 @@ Configuration binds to the `Cratis:Prompter` section. Environment variables use 
 | Ask channel | `Cratis__Prompter__Discord__AskChannelId` | - |
 | Help forum channel (auto-reply) | `Cratis__Prompter__Discord__HelpForumChannelId` | - |
 | Answer-in-thread channels (off when empty) | `Cratis__Prompter__Discord__AnswerInThreadChannelIds__0`, `__1`, … | - |
+| Delayed forum answers (off when empty) | `Cratis__Prompter__Discord__DelayedForums__0__ChannelId` and `__DelayMinutes` (1 to 1440), repeated per forum with `__1__…` | - / `30` |
 | Maintainer role for Ask a human (off when unset) | `Cratis__Prompter__Discord__MaintainerRoleId` | - |
 | Anthropic API key | `Cratis__Prompter__Anthropic__ApiKey` (or `ANTHROPIC_API_KEY`) | - |
 | Answer model | `Cratis__Prompter__Anthropic__Model` | `claude-sonnet-5` |

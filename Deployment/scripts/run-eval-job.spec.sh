@@ -72,7 +72,7 @@ kubectl() {
     case "$*" in
         'auth can-i create jobs.batch -n prompter') return 0 ;;
         *'get jobs '*) return 0 ;;
-        *'get deployment prompter -o json') printf '{"spec":{"template":{"spec":{"containers":[{"env":%s}]}}}}' "$(jq -c . <<<"$FAKE_ENV")" ;;
+        *'get deployment prompter -o jsonpath={.spec.template.spec.containers[0].env}') jq -c . <<<"$FAKE_ENV" ;;
         *'get deployment prompter '*) printf '%s' 'example.invalid/prompter:spec' ;;
         'create -f -') cat >/dev/null ;;
         *'get job '*) printf '1:' ;;
