@@ -39,6 +39,9 @@ public record Answer(
     /// <summary>Gets whether this request fell back to current-only conversation context.</summary>
     public bool ContextDegraded { get; init; }
 
+    /// <summary>Gets whether secret-shaped input was removed before answering.</summary>
+    public bool SecretsRedacted { get; init; }
+
     /// <summary>
     /// Creates a refusal answer for when the documentation does not cover the question well enough.
     /// </summary>

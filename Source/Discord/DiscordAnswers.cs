@@ -11,6 +11,9 @@ namespace Cratis.Prompter.Discord;
 /// </summary>
 public static class DiscordAnswers
 {
+    /// <summary>Warns without echoing a removed value.</summary>
+    public const string SecretNotice = "A value that looked like a secret was removed before answering. If it was real, rotate it.";
+
     const int MaxMessageLength = 2000;
     const int MaxChunks = 3;
     const string ParagraphSeparator = "\n\n";
@@ -22,11 +25,18 @@ public static class DiscordAnswers
     /// <returns>An optional separate message without remote titles or model-generated text.</returns>
     public static string Advice(ConversationReply reply)
     {
-        if (reply.Related.Count == 0) return reply.Offer;
-        var links = reply.Related.Take(6).Select(issue =>
-            $"- {(issue.RecentlyClosed ? "Recently closed" : "Open")} #{issue.Number}: <{issue.Url}>");
-        var content = "Possibly related issues (not documentation evidence; closed does not mean fixed):\n" + string.Join('\n', links);
-        return reply.Offer.Length == 0 ? content : content + "\n\n" + reply.Offer;
+        var advice = reply.Offer;
+        if (reply.Related.Count > 0)
+        {
+            var links = reply.Related.Take(6).Select(issue =>
+                $"- {(issue.RecentlyClosed ? "Recently closed" : "Open")} #{issue.Number}: <{issue.Url}>");
+            var content = "Possibly related issues (not documentation evidence; closed does not mean fixed):\n" + string.Join('\n', links);
+            advice = reply.Offer.Length == 0 ? content : content + ParagraphSeparator + reply.Offer;
+        }
+
+        return reply.Answer.SecretsRedacted
+            ? SecretNotice + (advice.Length == 0 ? string.Empty : ParagraphSeparator + advice)
+            : advice;
     }
 
     /// <summary>
