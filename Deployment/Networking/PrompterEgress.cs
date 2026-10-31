@@ -17,6 +17,7 @@ namespace Cratis.Prompter.Deployment.Networking;
 /// documentation site and GitHub, so this grants outbound TCP 443 to public addresses only, without
 /// opening the private ranges. Postgres needs nothing extra: same-namespace egress is already allowed.
 /// Re-index Job pods (<c language="csharp">app=prompter-index</c>) need the same outbound HTTPS to fetch cratis.io and call Voyage.
+/// Eval Job pods (<c language="csharp">app=prompter-eval</c>) need the same outbound HTTPS for Anthropic and Voyage.
 /// </remarks>
 public sealed class PrompterEgress
 {
@@ -63,7 +64,7 @@ public sealed class PrompterEgress
                             {
                                 Key = "app",
                                 Operator = "In",
-                                Values = ["prompter", "prompter-index"],
+                                Values = ["prompter", "prompter-index", "prompter-eval"],
                             },
                         ],
                     },

@@ -68,6 +68,7 @@ public class and_a_disposable_database_is_available : Specification
         await Insert(_from.AddDays(6), (5, 0, false, null));
         await Insert(_from.AddTicks(-10), (2, 2, false, null));
         await Insert(_from.AddDays(7), (2, 2, false, null));
+        await Insert(_from.AddDays(1), (0, 0, true, null), "eval");
     }
 
     async Task Because()
@@ -87,14 +88,15 @@ public class and_a_disposable_database_is_available : Specification
         }
     }
 
-    async Task Insert(DateTimeOffset at, (short Category, short Product, bool Refusal, string? Feedback) row)
+    async Task Insert(DateTimeOffset at, (short Category, short Product, bool Refusal, string? Feedback) row, string source = "spec")
     {
-        await using var command = _database.CreateCommand("INSERT INTO interactions (occurred_at, source, cited_pages, confidence, was_refusal, feedback, category, product) VALUES ($1, 'spec', ARRAY['https://cratis.io/arc/events.md'], 0.5, $2, $3, $4, $5)");
+        await using var command = _database.CreateCommand("INSERT INTO interactions (occurred_at, source, cited_pages, confidence, was_refusal, feedback, category, product) VALUES ($1, $6, ARRAY['https://cratis.io/arc/events.md'], 0.5, $2, $3, $4, $5)");
         command.Parameters.AddWithValue(at);
         command.Parameters.AddWithValue(row.Refusal);
         command.Parameters.Add(new NpgsqlParameter { NpgsqlDbType = NpgsqlDbType.Text, Value = (object?)row.Feedback ?? DBNull.Value });
         command.Parameters.AddWithValue(row.Category);
         command.Parameters.AddWithValue(row.Product);
+        command.Parameters.AddWithValue(source);
 
         await command.ExecuteNonQueryAsync();
     }
@@ -106,6 +108,7 @@ public class and_a_disposable_database_is_available : Specification
     }
 
     [Fact] void should_filter_candidates_and_use_a_half_open_window() => Check(_rows.Count == 5);
+    [Fact] void should_exclude_eval_interactions() => Check(_rows.All(row => row.Source != "eval"));
     [Fact] void should_map_metadata() => Check(_rows.Any(row => row.Source == "spec" && row.CitedPages.Count == 1 && row.CitedPages[0] == "https://cratis.io/arc/events.md" && row.Category == "answered" && row.Product == "arc" && row.Feedback == "down" && !row.WasRefusal));
     [Fact] void should_map_legacy_unknown_codes_to_null() => Check(_rows.Any(row => row.WasRefusal && row.Category is null && row.Product is null && row.Feedback is null));
 }
