@@ -28,6 +28,11 @@ public sealed class ConversationAssistance(IRequestClassifier classifier, IAnswe
         cancellationToken.ThrowIfCancellationRequested();
         var answer = await answers.For(question, source, cancellationToken);
         cancellationToken.ThrowIfCancellationRequested();
+        if (answer.Clarification is not null)
+        {
+            // An unresolved question gets no advisory work; the user must pick a product first.
+            return new(answer, [], string.Empty);
+        }
         if (classification is null || !IssueRouting.IsRouted(classification.Product.Value, options.Value.GitHub))
         {
             return new(answer, [], string.Empty);

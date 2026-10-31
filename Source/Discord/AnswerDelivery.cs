@@ -1,6 +1,7 @@
 // Copyright (c) Cratis. All rights reserved.
 // Licensed under the MIT license. See LICENSE file in the project root for full license information.
 
+using Cratis.Prompter.Answering;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
 using NetCord;
@@ -29,7 +30,7 @@ public class AnswerDelivery(RestClient rest, IOptions<PrompterOptions> options, 
         var chunks = DiscordAnswers.Split(reply.Answer);
         for (var index = 0; index < chunks.Count; index++)
         {
-            await SendChunk(target, new(chunks[index], index == 0, index == chunks.Count - 1 ? reply.Answer.InteractionId : null), cancellationToken);
+            await SendChunk(target, new(chunks[index], index == 0, index == chunks.Count - 1 ? reply.Answer : null), cancellationToken);
         }
         var advice = DiscordAnswers.Advice(reply);
         if (advice.Length > 0)
@@ -63,23 +64,23 @@ public class AnswerDelivery(RestClient rest, IOptions<PrompterOptions> options, 
         if (target.Thread is null && chunk.First)
         {
             var reply = SafeMessages.Reply(chunk.Content);
-            if (chunk.Feedback is { } id)
+            if (chunk.Last is { } last && AnswerComponents.For(last, target.Actions) is { Count: > 0 } rows)
             {
-                reply.Components = [FeedbackButtonRow.For(id, target.Actions)];
+                reply.Components = [.. rows];
             }
             await target.Message.ReplyAsync(reply, cancellationToken: cancellationToken);
             return;
         }
 
         var followup = SafeMessages.Message(chunk.Content);
-        if (chunk.Feedback is { } followupId)
+        if (chunk.Last is { } followupLast && AnswerComponents.For(followupLast, target.Actions) is { Count: > 0 } followupRows)
         {
-            followup.Components = [FeedbackButtonRow.For(followupId, target.Actions)];
+            followup.Components = [.. followupRows];
         }
         await rest.SendMessageAsync(target.Thread ?? target.Message.ChannelId, followup, cancellationToken: cancellationToken);
     }
 
     sealed record Target(Message Message, ulong? Thread, AnswerActions Actions);
 
-    sealed record Chunk(string Content, bool First, long? Feedback);
+    sealed record Chunk(string Content, bool First, Answer? Last);
 }

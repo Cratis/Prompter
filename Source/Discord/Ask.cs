@@ -60,25 +60,7 @@ public class Ask(
             await Context.Interaction.SendResponseAsync(InteractionCallback.DeferredMessage());
             deferred = true;
             var reply = await assistance.For(new(ConversationText.Sanitize(question)), "discord-ask", lease.Token);
-            var answer = reply.Answer;
-            var content = DiscordAnswers.Format(answer);
-
-            if (answer.InteractionId is { } interactionId)
-            {
-                var followup = SafeMessages.Followup(content);
-                followup.Components = [FeedbackButtonRow.For(interactionId, AnswerActions.For(options.Value.Discord, new(channel, 0), reply))];
-                await Context.Interaction.SendFollowupMessageAsync(followup);
-            }
-            else
-            {
-                await Context.Interaction.SendFollowupMessageAsync(SafeMessages.Followup(content));
-            }
-
-            var advice = DiscordAnswers.Advice(reply);
-            if (advice.Length > 0)
-            {
-                await Context.Interaction.SendFollowupMessageAsync(SafeMessages.Followup(advice));
-            }
+            await InteractionAnswers.Send(Context.Interaction, reply, AnswerActions.For(options.Value.Discord, new(channel, 0), reply));
         }
         catch (WorkRefused)
         {

@@ -3,6 +3,7 @@
 
 using Cratis.Prompter.Answering;
 using Microsoft.Extensions.AI;
+using Microsoft.Extensions.Options;
 using Npgsql;
 using Pgvector;
 
@@ -14,12 +15,17 @@ namespace Cratis.Prompter.Retrieval;
 /// </summary>
 /// <param name="dataSource">The Postgres data source.</param>
 /// <param name="embeddings">The generator used to embed the question.</param>
+/// <param name="options">The Prompter options, for the documentation site URL a product scope is resolved against.</param>
 public class Passages(
     NpgsqlDataSource dataSource,
-    IEmbeddingGenerator<string, Embedding<float>> embeddings) : IPassages
+    IEmbeddingGenerator<string, Embedding<float>> embeddings,
+    IOptions<PrompterOptions> options) : IPassages
 {
     const int CandidatesPerMethod = 20;
     const int RrfConstant = 60;
+
+    /// <summary>Keeps every candidate when no prefix is given, otherwise only pages under one of the prefixes.</summary>
+    const string ScopeFilter = "(cardinality($4::text[]) = 0 OR EXISTS (SELECT 1 FROM unnest($4::text[]) AS prefix WHERE starts_with(page_url, prefix)))";
 
     /// <inheritdoc/>
     public async Task<IEnumerable<Passage>> Search(Question question, int limit, CancellationToken cancellationToken = default)
@@ -32,13 +38,14 @@ public class Passages(
             WITH semantic AS (
                 SELECT id, RANK() OVER (ORDER BY embedding <=> $1) AS rank
                 FROM chunks
+                WHERE {ScopeFilter}
                 ORDER BY embedding <=> $1
                 LIMIT {CandidatesPerMethod}
             ),
             lexical AS (
                 SELECT id, RANK() OVER (ORDER BY ts_rank_cd(tsv, websearch_to_tsquery('english', $2)) DESC) AS rank
                 FROM chunks
-                WHERE tsv @@ websearch_to_tsquery('english', $2)
+                WHERE tsv @@ websearch_to_tsquery('english', $2) AND {ScopeFilter}
                 ORDER BY ts_rank_cd(tsv, websearch_to_tsquery('english', $2)) DESC
                 LIMIT {CandidatesPerMethod}
             )
@@ -59,6 +66,7 @@ public class Passages(
         command.Parameters.AddWithValue(questionEmbedding);
         command.Parameters.AddWithValue(question.Value);
         command.Parameters.AddWithValue(limit);
+        command.Parameters.AddWithValue(ScopePrefixes(question));
 
         var passages = new List<Passage>();
         await using var reader = await command.ExecuteReaderAsync(cancellationToken);
@@ -95,4 +103,8 @@ public class Passages(
     static async Task<T?> NullableField<T>(NpgsqlDataReader reader, int ordinal, CancellationToken cancellationToken)
         where T : struct =>
         await reader.IsDBNullAsync(ordinal, cancellationToken) ? null : await reader.GetFieldValueAsync<T>(ordinal, cancellationToken);
+
+    string[] ScopePrefixes(Question question) => question.Scope is { } product
+        ? [.. ProductScope.PrefixesFor(product, options.Value.DocsSiteUrl)]
+        : [];
 }
