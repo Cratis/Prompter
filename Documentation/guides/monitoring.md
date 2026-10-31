@@ -3,8 +3,6 @@ title: Monitor Prompter
 description: Private aggregate metrics, dashboards, reindex failure delivery, and operator runbooks.
 ---
 
-# Monitor Prompter
-
 Prompter exports **only aggregate metrics** through Core's private OpenTelemetry collector to Prometheus.
 There is no `/metrics` listener, public scrape route, push gateway, automatic HTTP instrumentation, or
 GenAI prompt/completion capture. Labels are fixed allowlists: provider, model (unrecognized models become
