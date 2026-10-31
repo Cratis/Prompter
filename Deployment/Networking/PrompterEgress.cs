@@ -53,18 +53,7 @@ public sealed class PrompterEgress
                     PolicyTypes = ["Egress"],
                     Egress =
                     [
-                        new NetworkPolicyEgressRuleArgs
-                        {
-                            To =
-                            [
-                                new NetworkPolicyPeerArgs
-                                {
-                                    NamespaceSelector = new LabelSelectorArgs { MatchLabels = { ["kubernetes.io/metadata.name"] = "monitoring" } },
-                                    PodSelector = new LabelSelectorArgs { MatchLabels = { ["app"] = "otel-collector" } }
-                                }
-                            ],
-                            Ports = [new NetworkPolicyPortArgs { Protocol = "TCP", Port = 4318 }]
-                        },
+                        .. PrivateMetricsEgress.Create(args.Metrics) is { } metrics ? new[] { metrics } : [],
                         new NetworkPolicyEgressRuleArgs
                         {
                             To =
