@@ -14,6 +14,7 @@ public class a_history_reader : Specification
     protected static readonly DateTimeOffset Now = new(2026, 6, 5, 12, 0, 0, TimeSpan.Zero);
     CancellationTokenSource _deadline = null!;
 
+    protected ManualClock clock { get; private set; } = null!;
     protected IConversationHistory history { get; private set; } = null!;
     protected ConversationContextReader reader { get; private set; } = null!;
     protected ConversationLocation location { get; } = new(1, 2, 100, Now);
@@ -44,7 +45,8 @@ public class a_history_reader : Specification
         history = Substitute.For<IConversationHistory>();
         history.IsPublic(location, Arg.Any<CancellationToken>()).Returns(true);
         history.Before(location, Arg.Any<CancellationToken>()).Returns(Task.FromResult<IReadOnlyList<HistoryMessage>>([]));
-        reader = new(history, new ControlledTime(Now));
+        clock = new(Now);
+        reader = new(history, clock);
         cancellation = new();
         _deadline = new();
         lease = new(Substitute.For<ISpendLedger>(), Guid.NewGuid(), new(1, 1), cancellation, _deadline, () => { });

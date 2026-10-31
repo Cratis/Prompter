@@ -62,8 +62,8 @@ public sealed class ConversationContextReader(IConversationHistory history, Time
         {
             var lease = WorkLease.Current;
             if (lease?.Token.IsCancellationRequested != false || cancellationToken.IsCancellationRequested) return Degraded(question);
-            using var deadline = CancellationTokenSource.CreateLinkedTokenSource(cancellationToken, lease.Token);
-            deadline.CancelAfter(TimeSpan.FromSeconds(1));
+            using var timeout = new CancellationTokenSource(TimeSpan.FromSeconds(1), time);
+            using var deadline = CancellationTokenSource.CreateLinkedTokenSource(cancellationToken, lease.Token, timeout.Token);
             if (!await history.IsPublic(location, deadline.Token).WaitAsync(deadline.Token)) return Degraded(question);
             var messages = await history.Before(location, deadline.Token).WaitAsync(deadline.Token);
             return question with { Conversation = new(Bound(messages, location, anchor)) };

@@ -48,7 +48,7 @@ public class and_messages_cross_trust_boundaries : given.a_discord_history
         using var deadline = new CancellationTokenSource();
         await using var lease = new WorkLease(Substitute.For<ISpendLedger>(), Guid.NewGuid(), new(1, 1), cancellation, deadline, () => { });
         lease.Activate();
-        var reader = new ConversationContextReader(history, new ControlledTime(Now));
+        var reader = new ConversationContextReader(history, new ManualClock(Now));
 
         var result = await reader.For("current", location, TestContext.Current.CancellationToken);
 
