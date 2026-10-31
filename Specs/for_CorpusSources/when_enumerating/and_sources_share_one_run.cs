@@ -34,7 +34,7 @@ public class and_sources_share_one_run : Specification
     }
 
     [Fact]
-    public async Task should_propagate_a_sample_failure_after_other_sources()
+    public async Task should_isolate_a_sample_failure_after_other_sources()
     {
         using var responses = new Responses(true);
         using var client = new HttpClient(responses) { BaseAddress = new Uri("https://cratis.io/") };
@@ -43,8 +43,9 @@ public class and_sources_share_one_run : Specification
         var source = new CorpusSources(new(client, options, NullLogger<DocsSite>.Instance), new(client, options, NullLogger<ReleaseNotes>.Instance), new(client, options, NullLogger<SampleFiles>.Instance), options);
         var count = 0;
         var error = await Catch.Exception(async () => { await foreach (var page in source.GetPages()) count++; });
-        error.ShouldBeOfExactType<IncompleteCrawl>();
+        error.ShouldBeNull();
         count.ShouldEqual(2);
+        source.FailedSources.Single().ShouldEqual($"https://github.com/{options.Value.Ingestion.Samples.Repository}/blob/");
     }
 
     sealed class Responses(bool failSamples) : HttpMessageHandler

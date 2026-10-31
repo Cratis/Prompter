@@ -28,6 +28,12 @@ public interface IIndexLease : IAsyncDisposable
     /// <returns>The number of stale chunks removed.</returns>
     Task<int> CommitIndex(IReadOnlyCollection<EmbeddedChunk> changed, IReadOnlySet<ChunkId> existing, IReadOnlyCollection<DocumentationMetadata> pages, CancellationToken cancellationToken);
 
+    /// <summary>Publishes healthy sources while retaining failed sources and their original freshness.</summary>
+    /// <param name="snapshot">The new and retained snapshots.</param>
+    /// <param name="cancellationToken">Token for cancellation.</param>
+    /// <returns>The number of stale chunks removed.</returns>
+    Task<int> CommitIndex(IndexSnapshot snapshot, CancellationToken cancellationToken);
+
     /// <summary>
     /// Reserves retry-inclusive exposure and, for scheduled work, the single daily slot.
     /// Reservations are deliberately not refunded after an unknown provider outcome.

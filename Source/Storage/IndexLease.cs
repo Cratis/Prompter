@@ -15,6 +15,7 @@ public sealed class IndexLease(NpgsqlConnection connection) : IIndexLease
 {
     const long LockKey = 0x50524F4D494E44;
     string? _profile;
+    string? _storedProfile;
 
     /// <summary>Acquires without waiting; failure disposes the connection.</summary>
     /// <param name="dataSource">The shared database.</param>
@@ -48,6 +49,7 @@ public sealed class IndexLease(NpgsqlConnection connection) : IIndexLease
         var incompatible = !full && stored != profile;
         if (incompatible) throw new IndexProfileMismatch();
         _profile = profile;
+        _storedProfile = stored;
     }
 
     /// <inheritdoc/>
@@ -81,10 +83,15 @@ public sealed class IndexLease(NpgsqlConnection connection) : IIndexLease
     }
 
     /// <inheritdoc/>
-    public async Task<int> CommitIndex(IReadOnlyCollection<EmbeddedChunk> changed, IReadOnlySet<ChunkId> existing, IReadOnlyCollection<DocumentationMetadata> pages, CancellationToken cancellationToken)
+    public Task<int> CommitIndex(IReadOnlyCollection<EmbeddedChunk> changed, IReadOnlySet<ChunkId> existing, IReadOnlyCollection<DocumentationMetadata> pages, CancellationToken cancellationToken) =>
+        CommitIndex(new(changed, existing, pages), cancellationToken);
+
+    /// <inheritdoc/>
+    public async Task<int> CommitIndex(IndexSnapshot snapshot, CancellationToken cancellationToken)
     {
+        if (snapshot.PreservedSources.Count > 0 && _profile != _storedProfile) throw new IndexProfileMismatch();
         await using var transaction = await connection.BeginTransactionAsync(cancellationToken);
-        foreach (var item in changed)
+        foreach (var item in snapshot.Changed)
         {
             await using var upsert = connection.CreateCommand();
             ChunkCommands.PopulateUpsert(upsert, item.Chunk, item.Vector);
@@ -93,9 +100,9 @@ public sealed class IndexLease(NpgsqlConnection connection) : IIndexLease
 
         await using var remove = connection.CreateCommand();
         remove.CommandText = "DELETE FROM chunks WHERE NOT (id = ANY($1))";
-        remove.Parameters.AddWithValue(existing.Select(id => id.Value).ToArray());
+        remove.Parameters.AddWithValue(snapshot.Existing.Select(id => id.Value).ToArray());
         var removed = await remove.ExecuteNonQueryAsync(cancellationToken);
-        await PublishPages(pages, cancellationToken);
+        await PublishPages(snapshot, cancellationToken);
         if (_profile is not null)
         {
             await using var profile = connection.CreateCommand();
@@ -127,7 +134,7 @@ public sealed class IndexLease(NpgsqlConnection connection) : IIndexLease
         }
     }
 
-    async Task PublishPages(IReadOnlyCollection<DocumentationMetadata> pages, CancellationToken cancellationToken)
+    async Task PublishPages(IndexSnapshot snapshot, CancellationToken cancellationToken)
     {
         // One statement per concern inside the caller's transaction: stamp indexed_at at publication, keep only the snapshot.
         await using var upsert = connection.CreateCommand();
@@ -140,15 +147,16 @@ public sealed class IndexLease(NpgsqlConnection connection) : IIndexLease
                 page_last_modified = EXCLUDED.page_last_modified,
                 product_version = EXCLUDED.product_version
             """;
-        var ordered = pages.ToArray();
+        var ordered = snapshot.Pages.ToArray();
         upsert.Parameters.AddWithValue(ordered.Select(page => page.Page.Value).ToArray());
         upsert.Parameters.AddWithValue(ordered.Select(page => page.PageLastModified?.UtcDateTime).ToArray());
         upsert.Parameters.AddWithValue(ordered.Select(page => page.ProductVersion).ToArray());
         await upsert.ExecuteNonQueryAsync(cancellationToken);
 
         await using var prune = connection.CreateCommand();
-        prune.CommandText = "DELETE FROM documentation_pages WHERE NOT (page_url = ANY($1))";
+        prune.CommandText = "DELETE FROM documentation_pages WHERE NOT (page_url = ANY($1)) AND NOT EXISTS (SELECT 1 FROM unnest($2::text[]) AS retained(prefix) WHERE starts_with(page_url, retained.prefix))";
         prune.Parameters.AddWithValue(ordered.Select(page => page.Page.Value).ToArray());
+        prune.Parameters.AddWithValue(snapshot.PreservedSources.ToArray());
         await prune.ExecuteNonQueryAsync(cancellationToken);
     }
 }
