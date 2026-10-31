@@ -9,8 +9,9 @@ namespace Cratis.Prompter.Ingestion;
 /// <summary>Enumerates every enabled source in one atomic index run.</summary>
 /// <param name="docs">The published documentation.</param>
 /// <param name="releaseNotes">The published release notes.</param>
+/// <param name="samples">The curated samples.</param>
 /// <param name="options">The source configuration.</param>
-public class CorpusSources(DocsSite docs, ReleaseNotes releaseNotes, IOptions<PrompterOptions> options) : IDocsSite
+public class CorpusSources(DocsSite docs, ReleaseNotes releaseNotes, SampleFiles samples, IOptions<PrompterOptions> options) : IDocsSite
 {
     /// <inheritdoc/>
     public async IAsyncEnumerable<DocsPage> GetPages([EnumeratorCancellation] CancellationToken cancellationToken = default)
@@ -19,6 +20,11 @@ public class CorpusSources(DocsSite docs, ReleaseNotes releaseNotes, IOptions<Pr
         if (options.Value.Ingestion.ReleaseNotes.Enabled)
         {
             sources.Add(releaseNotes.GetPages(cancellationToken));
+        }
+
+        if (options.Value.Ingestion.Samples.Enabled)
+        {
+            sources.Add(samples.GetPages(cancellationToken));
         }
 
         foreach (var source in sources)
