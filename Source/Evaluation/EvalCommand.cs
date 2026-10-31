@@ -38,7 +38,11 @@ public sealed class EvalCommand(PaidWork work, IAnswers answers)
         }
 
         var summary = EvalSummary.From(results, arguments, stopped);
-        if (arguments.Out is { } path)
+        if (arguments.Out == "-")
+        {
+            await Console.Out.WriteLineAsync(summary.ReportLine());
+        }
+        else if (arguments.Out is { } path)
         {
             await File.WriteAllTextAsync(path, JsonSerializer.Serialize(summary, _jsonOptions));
         }

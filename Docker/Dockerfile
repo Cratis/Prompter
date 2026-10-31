@@ -29,6 +29,8 @@ RUN case "${TARGETARCH}" in \
     esac \
     && dotnet restore Source/Prompter.csproj -a "${dotnet_arch}"
 
+# The paid eval Job reads the curated, public set from /app/Eval/golden-questions.yaml.
+COPY Eval/golden-questions.yaml Eval/
 COPY Source/ Source/
 RUN case "${TARGETARCH}" in \
       amd64) dotnet_arch=x64 ;; \
