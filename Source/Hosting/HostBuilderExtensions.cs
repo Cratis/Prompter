@@ -113,8 +113,14 @@ public static class HostBuilderExtensions
         builder.Services.AddSingleton<Discord.IConversationHistory, Discord.DiscordConversationHistory>();
         builder.Services.AddSingleton<Discord.ConversationContextReader>();
         builder.Services.AddSingleton<Discord.ForumFollowUps>();
+        AddAnswerActions(builder);
+    }
+
+    static void AddAnswerActions(IHostApplicationBuilder builder)
+    {
         builder.Services.AddSingleton<Discord.AnswerDelivery>();
         builder.Services.AddSingleton<Discord.HumanHandOffs>();
+        builder.Services.AddSingleton<Discord.MaintainerForwards>();
     }
 
     static void AddPrivateMetrics(IHostApplicationBuilder builder)

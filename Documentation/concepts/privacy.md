@@ -19,6 +19,7 @@ recorded is anonymous operational signal about each answer:
 | Whether Prompter answered or refused, and how confident it was | A flag and a score | Tracking refusal rate and answer quality |
 | Thread follow-ups | Nothing new is stored. Prompter keeps the thread id and the asker's id in memory for up to 24 hours so the asker can continue without a mention | Answering follow-ups in the thread |
 | Ask a human | Nothing is stored. The button posts a short excerpt of the question to the same channel, which is a normal Discord message | Getting a person to help |
+| This should be documented, Request this | Nothing is stored. Only when the asker presses the button, Prompter reads the question from Discord and posts its sanitized text with a link to the maintainer channel | Letting maintainers see what the docs lack |
 | Your 👍/👎 | The verdict, attached to that anonymous row | The quality feedback loop |
 
 Your **question and the answer text are not stored** — they are processed to produce the reply and then

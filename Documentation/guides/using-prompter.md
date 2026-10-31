@@ -31,6 +31,11 @@ that thread without mentioning it. When the operator configured a maintainer rol
 **Ask a human** button. Only the person who asked can press it; it pings that role once, in the same channel, with
 a short excerpt of your question and a link to it.
 
+When the operator configured a maintainer channel, a refusal or documentation gap carries a
+**This should be documented** button, and an answer that suggests the capability does not exist yet carries
+**Request this**. Only the person who asked can press either. Pressing it sends the text of your question,
+with a link to it, to the maintainers; it is labeled as a documentation gap or a feature request.
+
 ## Ask a question it can answer
 
 Prompter looks your answer up in the documentation, so a specific question retrieves better than a vague one:

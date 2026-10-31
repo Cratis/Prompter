@@ -1,6 +1,7 @@
 // Copyright (c) Cratis. All rights reserved.
 // Licensed under the MIT license. See LICENSE file in the project root for full license information.
 
+using Cratis.Prompter.Answering;
 using Cratis.Prompter.Routing;
 
 namespace Cratis.Prompter.Discord;
@@ -20,7 +21,7 @@ public sealed record AnswerActions(QuestionLink? Question, bool OfferHuman, bool
 
     /// <summary>Selects actions from primitive reply facts.</summary>
     /// <param name="question">The question location.</param>
-    /// <param name="isRefusal">Whether the answer is a refusal.</param>
+    /// <param name="isRefusal">Whether the answer is a refusal or a documentation gap.</param>
     /// <param name="humanEnabled">Whether a role is configured.</param>
     /// <param name="forwardsEnabled">Whether maintainer forwarding is configured.</param>
     /// <param name="missingCapability">Whether the capability seems missing.</param>
@@ -40,7 +41,19 @@ public sealed record AnswerActions(QuestionLink? Question, bool OfferHuman, bool
     /// <returns>The optional actions.</returns>
     public static AnswerActions For(DiscordOptions options, QuestionLink question, ConversationReply reply)
     {
-        // Phase 2 wires forwards (lane C MaintainerChannelId) and the missing-capability gap (lane A); both are off here.
-        return For(question, reply.Answer.IsRefusal, options.MaintainerRoleId is not null, false, false, RoutingProduct.Unknown.Value);
+        var forwards = options.MaintainerChannelId is not null;
+        var missing = reply.Answer.Category == InteractionCategory.MissingCapability;
+        var documented = reply.Answer.IsRefusal || reply.Answer.Category == InteractionCategory.DocsGap;
+        return For(question, documented, options.MaintainerRoleId is not null, forwards, missing, ProductKey(reply.Answer.Product));
     }
+
+    static string ProductKey(InteractionProduct product) => product switch
+    {
+        InteractionProduct.Chronicle => "chronicle",
+        InteractionProduct.Arc => "arc",
+        InteractionProduct.Fundamentals => "fundamentals",
+        InteractionProduct.Components => "components",
+        InteractionProduct.Cli => "cli",
+        _ => RoutingProduct.Unknown.Value
+    };
 }

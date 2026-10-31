@@ -235,6 +235,12 @@ day and hour are not plumbed through Pulumi. A restart computes the next future 
 across a slot may skip that week. Counts cover the preceding seven days (or less if retention is
 shorter); no question text is stored. Empty weeks still post a confirmation.
 
+The same `maintainerChannelId` enables the asker-consented "This should be documented" and "Request this"
+buttons. Two more optional, non-secret Pulumi keys switch on the other Discord behaviors; unset means off:
+`prompter-deployment:maintainerRoleId` (a mentionable role pinged by "Ask a human") and
+`prompter-deployment:answerInThreadChannelIds` (comma-separated channel ids where answers open a thread).
+Non-numeric values fail the deployment.
+
 The indexer preflights the entire crawl before any paid embedding, stages vectors in memory, then publishes
 all changed chunks and stale deletion in one transaction on the lease-owning session. Partial fetches,
 embedding failures, cancellation or lost sessions cannot publish a partial corpus. This requires enough
