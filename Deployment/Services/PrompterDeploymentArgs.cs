@@ -110,6 +110,11 @@ public sealed class PrompterDeploymentArgs
     public string? HelpForumChannelId { get; init; }
 
     /// <summary>
+    /// Gets the optional operations channel for weekly aggregate gap digests.
+    /// </summary>
+    public string? MaintainerChannelId { get; init; }
+
+    /// <summary>
     /// Gets resources this deployment must be created after — the database it connects to.
     /// </summary>
     public InputList<Resource> DependsOn { get; init; } = [];

@@ -228,6 +228,13 @@ Set `PROMPTER_ALERT_WEBHOOK` to an HTTPS JSON receiver for failure notifications
 GitHub's failed-schedule notifications and freshness alerts remain. Documentation changes never
 redeploy or trigger reindexing. Unchanged chunks are never re-embedded.
 
+For the weekly metadata-only docs-gap digest, set the non-secret Pulumi key
+`prompter-deployment:maintainerChannelId` and deploy. The bot needs View Channel and Send Messages
+in that channel. No channel means no query or post. The default slot is Monday 08:00 UTC;
+day and hour are not plumbed through Pulumi. A restart computes the next future slot, so a restart
+across a slot may skip that week. Counts cover the preceding seven days (or less if retention is
+shorter); no question text is stored. Empty weeks still post a confirmation.
+
 The indexer preflights the entire crawl before any paid embedding, stages vectors in memory, then publishes
 all changed chunks and stale deletion in one transaction on the lease-owning session. Partial fetches,
 embedding failures, cancellation or lost sessions cannot publish a partial corpus. This requires enough

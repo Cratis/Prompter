@@ -32,6 +32,21 @@ public class DiscordOptions
     public ulong? HelpForumChannelId { get; set; }
 
     /// <summary>
+    /// Gets or sets the maintainer channel for digest posts and consented documentation hand-offs. Null disables posts.
+    /// </summary>
+    public ulong? MaintainerChannelId { get; set; }
+
+    /// <summary>
+    /// Gets or sets the UTC weekday for the weekly digest.
+    /// </summary>
+    public DayOfWeek MaintainerDigestDay { get; set; } = DayOfWeek.Monday;
+
+    /// <summary>
+    /// Gets or sets the UTC hour for the weekly digest, clamped to 0 through 23 by the scheduler.
+    /// </summary>
+    public int MaintainerDigestHourUtc { get; set; } = 8;
+
+    /// <summary>
     /// Gets or sets the per-user rate-limiting options.
     /// </summary>
     public RateLimitOptions RateLimit { get; set; } = new();

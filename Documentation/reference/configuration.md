@@ -25,6 +25,9 @@ Configuration binds to the `Cratis:Prompter` section. Environment variables use 
 | Max passages per answer | `Cratis__Prompter__Answering__MaxPassages` | `8` |
 | Refusal threshold | `Cratis__Prompter__Answering__MinScore` | `0.02` |
 | Max answer tokens | `Cratis__Prompter__Answering__MaxOutputTokens` | `1024` |
+| Maintainer channel (weekly metadata-only gap digest) | `Cratis__Prompter__Discord__MaintainerChannelId` | - (digest off) |
+| Weekly digest UTC day | `Cratis__Prompter__Discord__MaintainerDigestDay` | `Monday` |
+| Weekly digest UTC hour (clamped to 0–23) | `Cratis__Prompter__Discord__MaintainerDigestHourUtc` | `8` |
 
 API keys are never committed - use environment variables or a git-ignored
 `Source/appsettings.Development.json`.

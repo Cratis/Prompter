@@ -211,6 +211,9 @@ Configuration binds to the `Cratis:Prompter` section (environment variables use 
 | Channel new issues are announced in | `Cratis__Prompter__GitHub__NotifyChannelId` | — |
 | Label put on issues filed from Discord | `Cratis__Prompter__GitHub__IssueLabel` | `from-discord` |
 | Label that opts an issue out of answers | `Cratis__Prompter__GitHub__OptOutLabel` | `no-prompter` |
+| Maintainer channel (weekly metadata-only gap digest) | `Cratis__Prompter__Discord__MaintainerChannelId` | — (digest off) |
+| Weekly digest UTC day | `Cratis__Prompter__Discord__MaintainerDigestDay` | `Monday` |
+| Weekly digest UTC hour (clamped to 0–23) | `Cratis__Prompter__Discord__MaintainerDigestHourUtc` | `8` |
 
 API keys are never committed — use environment variables or a git-ignored `Source/appsettings.Development.json`.
 
