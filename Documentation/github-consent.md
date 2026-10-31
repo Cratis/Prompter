@@ -23,11 +23,19 @@ All settings below bind under `Cratis:Prompter:GitHub` (environment prefix `Crat
 | --- | --- |
 | `ApiUrl` | Exactly `https://api.github.com/`; enterprise/custom hosts are not supported by this helper. |
 | `Owner` | The approved organization that owns the installation repositories. |
-| `InstallationRepositories` | Explicit `owner/repository` allowlist. Empty denies all. Align default/product routing with this list. |
+| `InstallationRepositories` | Legacy indexed `owner/repository` allowlist, used only if the atomic scalar below is absent. Empty denies all. |
+| `InstallationRepositoriesJson` | Authoritative JSON array of strings replacing the entire bound installation list. `[]` denies all. Align default/product routing with this list. |
 | `AppId` | Approved GitHub App numeric ID. |
 | `InstallationId` | Approved installation numeric ID for that owner. |
 | `AppPrivateKeyPath` | Path to a securely mounted PEM private key, not the PEM itself. |
 | `AllowTokenFallback` | Defaults to false. Only an explicit true permits the legacy `Token`, and only with **no** App configuration present. |
+
+Presence of `InstallationRepositoriesJson` replaces inherited indexed entries after normal options binding,
+before authorization snapshots. Blank, null, malformed, non-array, child-only, and non-string values fail
+closed; blank is not removal. Remove the setting from **all** configuration providers to restore legacy
+indexed binding. Deployment App wiring always supplies this scalar, pins the API and projected key path,
+and forces writes and token fallback off. See [deployment inputs](../Deployment/README.md#offline-github-app-wiring).
+Provisioning, rotation, runtime identity, and live mount verification remain operator work.
 
 Do not put keys/tokens into source configuration, CLI arguments, examples, logs, or reports. Provision a restricted secret mount through the deployment's approved mechanism; restrict file access to the process identity. The `IAppKey` boundary permits another approved secret source without changing token issuance. A partial or broken App configuration never silently falls back to a static token.
 

@@ -102,7 +102,7 @@ public sealed class PrompterDeployment
             Image = args.Image,
             Ports = [new ContainerPortArgs { ContainerPortValue = Port, Name = "http" }],
             Env = WithMetrics([.. env, .. AnsweringReadinessEnvironment.Create(args.Readiness)], args),
-            EnvFrom = [new EnvFromSourceArgs { SecretRef = new SecretEnvSourceArgs { Name = SecretName } }],
+            EnvFrom = [],
 
             // Readiness uses /healthz, which checks the database *and* the gateway connection — exactly the
             // question "should traffic reach this pod". Liveness deliberately does not: /healthz reports
@@ -152,7 +152,7 @@ public sealed class PrompterDeployment
                             Labels = labels,
                             Annotations = { ["checksum/configuration"] = ConfigurationFingerprint.Create(secretData) },
                         },
-                        Spec = new PodSpecArgs { Containers = [container] },
+                        Spec = GitHubAppPod.Create(args.GitHubApp, container),
                     },
                 },
             },
@@ -189,21 +189,26 @@ public sealed class PrompterDeployment
     static List<EnvVarArgs> WithMetrics(List<EnvVarArgs> environment, PrompterDeploymentArgs args) =>
     [
         .. environment,
+        .. GitHubAppPod.Environment(args.GitHubApp, SecretName),
         .. PrivateMetricsEnvironment.Values(args.Metrics with { Enabled = args.MetricsEnabled || args.Metrics.Enabled }, args.Environment)
             .Select(pair => new EnvVarArgs { Name = pair.Key, Value = pair.Value }),
         .. PrivateRoutingEnvironment.Values(args.Routing)
             .Select(pair => new EnvVarArgs { Name = pair.Key, Value = pair.Value })
     ];
 
-    static InputMap<string> SecretData(PrompterDeploymentArgs args) => new()
+    static InputMap<string> SecretData(PrompterDeploymentArgs args)
     {
-        ["Cratis__Prompter__ConnectionString"] = args.ConnectionString,
-        ["Cratis__Prompter__Discord__Token"] = args.DiscordToken,
-        ["Cratis__Prompter__Anthropic__ApiKey"] = args.AnthropicApiKey,
-        ["Cratis__Prompter__Anthropic__SecondaryApiKey"] = args.AnthropicSecondaryApiKey,
-        ["Cratis__Prompter__Voyage__ApiKey"] = args.VoyageApiKey,
-        ["Cratis__Prompter__ReindexSecret"] = args.ReindexSecret,
-        ["Cratis__Prompter__GitHub__Token"] = args.GitHubToken,
-        ["Cratis__Prompter__GitHub__WebhookSecret"] = args.GitHubWebhookSecret,
-    };
+        if (!args.GitHubApp.IsValid) throw new InvalidGitHubApp();
+        return new()
+        {
+            ["Cratis__Prompter__ConnectionString"] = args.ConnectionString,
+            ["Cratis__Prompter__Discord__Token"] = args.DiscordToken,
+            ["Cratis__Prompter__Anthropic__ApiKey"] = args.AnthropicApiKey,
+            ["Cratis__Prompter__Anthropic__SecondaryApiKey"] = args.AnthropicSecondaryApiKey,
+            ["Cratis__Prompter__Voyage__ApiKey"] = args.VoyageApiKey,
+            ["Cratis__Prompter__ReindexSecret"] = args.ReindexSecret,
+            ["Cratis__Prompter__GitHub__Token"] = args.GitHubToken,
+            ["Cratis__Prompter__GitHub__WebhookSecret"] = args.GitHubWebhookSecret,
+        };
+    }
 }

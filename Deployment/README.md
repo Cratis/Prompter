@@ -30,6 +30,29 @@ Postgres is a Deployment on a claim rather than a StatefulSet because the deploy
 has no `statefulsets` permission; one replica on a ReadWriteOnce volume with `Recreate` gives the same
 single-writer guarantee.
 
+## Offline GitHub App wiring
+
+Optional non-secret keys in `prompter-deployment` are `gitHubAppId`, `gitHubInstallationId`,
+`gitHubOwner`, `gitHubInstallationRepositories` (exact comma-separated `owner/repository` names),
+`gitHubAppExternalSecretName`, and `gitHubAppKeyReference`. Supply all six or none. Partial or invalid
+inputs fail before resources are constructed with a fixed error that does not echo inputs.
+
+This stack only references an existing namespace-local Kubernetes Secret and one named key. It never
+reads, imports, or provisions that external Secret or its contents. The pod projects only that key at
+`/var/run/prompter/github-app/private-key.pem`, read-only with mode `0440`, UID/GID and fsGroup `1654`.
+The API is fixed to `https://api.github.com/`. No configurable API host, PEM content, or key path is accepted.
+All known workload credential mappings remain explicit Secret key references; unexpected Secret keys
+are not imported as environment variables.
+
+App mode emits the authoritative `InstallationRepositoriesJson` scalar rather than indexed grants,
+forces `AllowTokenFallback=false` and `Protection:GitHubWritesEnabled=false`, and grants no new routes
+or confirmations. Complete metadata does not authorize writes. With all App inputs absent, no App
+environment, key mount, or pod security changes are added; legacy token/webhook mappings remain.
+
+Provisioning, key rotation, installation permissions, runtime identity verification, and checking actual
+mount readability remain operator work. None are verified by offline wiring or synthetic specifications;
+this is not production activation.
+
 ## Private Laya routing configuration
 
 Private routing defaults off: without `layaEndpoint`, the bot uses deterministic fallback and no Laya

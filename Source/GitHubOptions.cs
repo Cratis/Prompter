@@ -42,6 +42,8 @@ public class GitHubOptions
 
     /// <summary>
     /// Gets or sets the explicit installation allowlist as owner/repository names. Empty denies all.
+    /// The InstallationRepositoriesJson configuration scalar, if present, replaces this entire list after binding;
+    /// it must be a JSON array of strings. An empty array denies all; an invalid value fails authorization.
     /// </summary>
     public IList<string> InstallationRepositories { get; set; } = [];
 

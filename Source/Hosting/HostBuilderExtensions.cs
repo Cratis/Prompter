@@ -38,6 +38,7 @@ public static class HostBuilderExtensions
         builder.Services
             .AddOptions<PrompterOptions>()
             .BindConfiguration(configSection)
+            .PostConfigure(options => GitHubRepositoryConfiguration.Apply(builder.Configuration, options))
             .ValidateAnsweringReadiness(builder.Configuration)
             .Validate(
                 options => options.Discord.RateLimit.IsValid,

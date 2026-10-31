@@ -17,6 +17,8 @@ using KubernetesProvider = Pulumi.Kubernetes.Provider;
 return await Deployment.RunAsync(() =>
 {
     var config = new Config("prompter-deployment");
+    var gitHubApp = GitHubAppArgs.From(config);
+    if (!gitHubApp.IsValid) throw new InvalidGitHubApp();
     var readiness = AnsweringReadinessArgs.From(config);
     var metrics = PrivateMetricsArgs.From(config);
     if (!metrics.IsValid) throw new InvalidPrivateMetrics();
@@ -84,6 +86,7 @@ return await Deployment.RunAsync(() =>
         MetricsEnabled = metrics.Enabled,
         Metrics = metrics,
         Routing = routing,
+        GitHubApp = gitHubApp,
         ConnectionString = postgres.ConnectionString,
         DiscordToken = discordToken,
         AnthropicApiKey = anthropicApiKey,
