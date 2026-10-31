@@ -17,6 +17,7 @@ using KubernetesProvider = Pulumi.Kubernetes.Provider;
 return await Deployment.RunAsync(() =>
 {
     var config = new Config("prompter-deployment");
+    var readiness = AnsweringReadinessArgs.From(config);
 
     var environment = config.Require("environment");
     var image = config.Require("prompterImage");
@@ -27,6 +28,7 @@ return await Deployment.RunAsync(() =>
     // run `pulumi config set` locally. GitHub secret names cannot start with GITHUB_, hence the PROMPTER_ prefix.
     var discordToken = Output.CreateSecret(RequireEnv("PROMPTER_DISCORD_TOKEN"));
     var anthropicApiKey = Output.CreateSecret(RequireEnv("PROMPTER_ANTHROPIC_API_KEY"));
+    var anthropicSecondaryApiKey = OptionalSecretEnv("PROMPTER_ANTHROPIC_SECONDARY_API_KEY");
     var voyageApiKey = Output.CreateSecret(RequireEnv("PROMPTER_VOYAGE_API_KEY"));
     var reindexSecret = Output.CreateSecret(RequireEnv("PROMPTER_REINDEX_SECRET"));
 
@@ -75,9 +77,12 @@ return await Deployment.RunAsync(() =>
         Namespace = namespaceName,
         Environment = environment,
         Image = image,
+        MetricsEnabled = config.GetBoolean("metricsEnabled") ?? false,
         ConnectionString = postgres.ConnectionString,
         DiscordToken = discordToken,
         AnthropicApiKey = anthropicApiKey,
+        AnthropicSecondaryApiKey = anthropicSecondaryApiKey,
+        Readiness = readiness,
         VoyageApiKey = voyageApiKey,
         ReindexSecret = reindexSecret,
         AskChannelId = askChannelId,
@@ -95,6 +100,22 @@ return await Deployment.RunAsync(() =>
         Namespace = namespaceName,
         Environment = environment,
     });
+
+    // No schedule, credentials, image or network grant exists unless deliberately configured.
+    if (config.GetBoolean("postgresBackupsEnabled") == true)
+    {
+        var backupArgs = new PostgresBackupsArgs
+        {
+            Namespace = namespaceName,
+            Environment = environment,
+            Image = config.Require("postgresBackupImage"),
+            Endpoint = config.Require("postgresBackupEndpoint"),
+            StoreCidr = config.Require("postgresBackupStoreCidr"),
+            Bucket = config.Require("postgresBackupBucket"),
+            Recipient = config.Require("postgresBackupRecipient"),
+        };
+        _ = new PostgresBackups(backupArgs, provider);
+    }
 
     return new Dictionary<string, object?>
     {

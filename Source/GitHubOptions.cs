@@ -21,6 +21,31 @@ public class GitHubOptions
     public string Token { get; set; } = string.Empty;
 
     /// <summary>
+    /// Gets or sets explicit permission to use the legacy token if no App is configured.
+    /// </summary>
+    public bool AllowTokenFallback { get; set; }
+
+    /// <summary>
+    /// Gets or sets the GitHub App ID; zero leaves App authentication disabled.
+    /// </summary>
+    public long AppId { get; set; }
+
+    /// <summary>
+    /// Gets or sets the approved organization installation ID.
+    /// </summary>
+    public long InstallationId { get; set; }
+
+    /// <summary>
+    /// Gets or sets the deployment-mounted private key file path, never the key itself.
+    /// </summary>
+    public string AppPrivateKeyPath { get; set; } = string.Empty;
+
+    /// <summary>
+    /// Gets or sets the explicit installation allowlist as owner/repository names. Empty denies all.
+    /// </summary>
+    public IList<string> InstallationRepositories { get; set; } = [];
+
+    /// <summary>
     /// Gets or sets the GitHub API base address.
     /// </summary>
     public string ApiUrl { get; set; } = "https://api.github.com/";
@@ -84,10 +109,12 @@ public class GitHubOptions
     public ulong? NotifyChannelId { get; set; }
 
     /// <summary>
-    /// Gets a value indicating whether issues can be filed. Filing needs a token; without one the
+    /// Gets a value indicating whether issues can be filed. Filing needs an explicit allowlist and an App or approved fallback; otherwise the
     /// <c language="csharp">/issue</c> command tells the user it is not configured instead of failing opaquely.
     /// </summary>
-    public bool FilingEnabled => Token.Length > 0;
+    public bool FilingEnabled => InstallationRepositories.Count > 0 &&
+        (((AppId > 0) && (InstallationId > 0) && !string.IsNullOrWhiteSpace(AppPrivateKeyPath)) ||
+        ((AppId == 0) && (InstallationId == 0) && string.IsNullOrWhiteSpace(AppPrivateKeyPath) && AllowTokenFallback && !string.IsNullOrWhiteSpace(Token)));
 
     /// <summary>
     /// Gets a value indicating whether the webhook endpoint accepts deliveries.

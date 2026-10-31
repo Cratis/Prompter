@@ -1,0 +1,78 @@
+# Copyright (c) Cratis. All rights reserved.
+# Licensed under the MIT license. See LICENSE file in the project root for full license information.
+name: Postgres backups
+
+on:
+  schedule:
+    - cron: "21 4 * * *"
+  workflow_dispatch:
+    inputs:
+      operation:
+        type: choice
+        options: [backup, restore]
+        default: backup
+        required: true
+      backup_id:
+        description: "Restore only: UTC archive id (YYYYMMDDTHHMMSSZ)"
+        type: string
+        required: false
+
+concurrency:
+  group: prompter-postgres-backups
+  cancel-in-progress: false
+
+permissions:
+  contents: read
+
+jobs:
+  backup:
+    if: vars.POSTGRES_BACKUPS_ENABLED == 'true' && github.ref == 'refs/heads/main' && inputs.operation != 'restore'
+    runs-on: ${{ vars.RUNNER_FORCE || 'cratis-arc' }}
+    environment: production
+    timeout-minutes: 70
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - uses: azure/setup-kubectl@bda439f5f36b99b262ebdcd3613869bddb064c8e # v5.2.0
+      - name: Create bounded backup Job
+        env:
+          KUBECONFIG_CONTENT: ${{ secrets.KUBECONFIG }}
+          BACKUPS_ENABLED: "true"
+        run: |
+          set -euo pipefail
+          umask 077
+          export KUBECONFIG="$RUNNER_TEMP/postgres-backup-kubeconfig"
+          trap 'rm -f "$KUBECONFIG"' EXIT
+          printf '%s' "$KUBECONFIG_CONTENT" > "$KUBECONFIG"
+          bash Deployment/scripts/run-postgres-job.sh backup
+      - name: Remove kubeconfig after cancellation
+        if: always()
+        run: rm -f "$RUNNER_TEMP/postgres-backup-kubeconfig"
+
+  restore:
+    if: vars.POSTGRES_BACKUPS_ENABLED == 'true' && github.ref == 'refs/heads/main' && github.event_name == 'workflow_dispatch' && inputs.operation == 'restore'
+    runs-on: ${{ vars.RUNNER_FORCE || 'cratis-arc' }}
+    # Configure required reviewers and main-only branches BEFORE enabling this environment.
+    environment: postgres-restore-verification
+    timeout-minutes: 70
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - uses: azure/setup-kubectl@bda439f5f36b99b262ebdcd3613869bddb064c8e # v5.2.0
+      - name: Verify in fresh local-only Postgres
+        env:
+          KUBECONFIG_CONTENT: ${{ secrets.KUBECONFIG }}
+          BACKUPS_ENABLED: "true"
+          BACKUP_ID: ${{ inputs.backup_id }}
+        run: |
+          set -euo pipefail
+          umask 077
+          export KUBECONFIG="$RUNNER_TEMP/postgres-restore-kubeconfig"
+          trap 'rm -f "$KUBECONFIG"' EXIT
+          printf '%s' "$KUBECONFIG_CONTENT" > "$KUBECONFIG"
+          bash Deployment/scripts/run-postgres-job.sh restore
+      - name: Remove kubeconfig after cancellation
+        if: always()
+        run: rm -f "$RUNNER_TEMP/postgres-restore-kubeconfig"

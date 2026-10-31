@@ -8,14 +8,12 @@ namespace Cratis.Prompter.Specs.for_IssuePreview.when_rendering;
 
 public class and_the_body_is_enormous : Specification
 {
-    string _preview = null!;
+    string? _preview;
 
-    void Because() => _preview = IssuePreview.Text(
-        new("A title", new string('x', 5000), IssueKind.Bug, "chronicle"),
-        "Chronicle",
-        routed: true,
-        []);
+    void Because() => _preview = IssuePreview.Text(new("Cratis", "Chronicle", "Title", new string('x', 1201), []));
 
-    [Fact] void should_stay_within_discords_message_limit() => (_preview.Length <= 2000).ShouldBeTrue();
-    [Fact] void should_show_that_it_was_shortened() => _preview.ShouldContain("…");
+    [Fact] void should_reject_instead_of_truncating() => (_preview is null).ShouldBeTrue();
+    [Fact] void should_reject_an_overlong_title() => (IssuePreview.Text(new("Cratis", "Chronicle", new string('x', 161), "Body", [])) is null).ShouldBeTrue();
+    [Fact] void should_measure_escaped_length() => (IssuePreview.Text(new("Cratis", "Chronicle", "Title", new string('*', 1100), [])) is null).ShouldBeTrue();
+    [Fact] void should_reject_hidden_direction_changes() => (IssuePreview.Text(new("Cratis", "Chronicle", "Title", "a\u202Eb", [])) is null).ShouldBeTrue();
 }

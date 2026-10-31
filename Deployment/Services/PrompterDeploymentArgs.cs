@@ -11,6 +11,9 @@ namespace Cratis.Prompter.Deployment.Services;
 /// </summary>
 public sealed class PrompterDeploymentArgs
 {
+    /// <summary>Gets explicit paid workload activation and account selection.</summary>
+    public AnsweringReadinessArgs Readiness { get; init; } = new();
+
     /// <summary>
     /// Gets the Kubernetes provider to deploy through.
     /// </summary>
@@ -31,6 +34,9 @@ public sealed class PrompterDeploymentArgs
     /// </summary>
     public required string Image { get; init; }
 
+    /// <summary>Gets whether to export private aggregate metrics to the Core collector.</summary>
+    public bool MetricsEnabled { get; init; }
+
     /// <summary>
     /// Gets the connection string for the corpus database.
     /// </summary>
@@ -45,6 +51,11 @@ public sealed class PrompterDeploymentArgs
     /// Gets the Anthropic API key used to generate answers.
     /// </summary>
     public required Output<string> AnthropicApiKey { get; init; }
+
+    /// <summary>
+    /// Gets the optional separately authorized Anthropic account key. Empty keeps fallback off.
+    /// </summary>
+    public Output<string> AnthropicSecondaryApiKey { get; init; } = Output.CreateSecret(string.Empty);
 
     /// <summary>
     /// Gets the Voyage API key used to embed the corpus and queries.

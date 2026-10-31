@@ -21,6 +21,9 @@ on:
       - "Directory.Packages.props"
       - "global.json"
       - ".github/workflows/build.yml"
+      - ".github/workflows/postgres-backups.yml"
+      - ".github/scripts/**"
+      - "Monitoring/**"
   pull_request:
     branches:
       - "main"
@@ -33,13 +36,41 @@ on:
       - "Directory.Packages.props"
       - "global.json"
       - ".github/workflows/build.yml"
+      - ".github/workflows/postgres-backups.yml"
+      - ".github/scripts/**"
+      - "Monitoring/**"
 
 jobs:
+  monitoring-specs:
+    permissions:
+      contents: read
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - name: Validate monitoring artifacts and notification behavior
+        run: node --test Monitoring/specs/*.spec.mjs
+      - name: Check failure notifier syntax
+        run: node --check .github/scripts/notify-reindex-failure.mjs
   dotnet-build:
     permissions:
       contents: read
     runs-on: ubuntu-latest
     timeout-minutes: 30
+    services:
+      ledger:
+        image: postgres:17
+        env:
+          POSTGRES_HOST_AUTH_METHOD: trust
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd pg_isready
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 10
 
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
@@ -53,7 +84,15 @@ jobs:
         run: dotnet build --configuration Release
 
       - name: Run specifications
+        env:
+          PROMPTER_LEDGER_TEST_PORT: "5432"
         run: ./Specs/bin/Release/net10.0/Prompter.Specs
+
+      - name: Check Postgres backup scripts offline
+        run: node --test Specs/PostgresBackups/offline.test.mjs
+
+      - name: Lint Postgres backup scripts
+        run: shellcheck Deployment/scripts/backup-postgres.sh Deployment/scripts/restore-postgres-test.sh Deployment/scripts/postgres-backup-common.sh Deployment/scripts/run-postgres-job.sh
 
   # The image is what actually ships, and nothing verified it until Publish tried to push one — which is
   # how a runtime base-image tag that does not exist got released. Build it here (native architecture, no

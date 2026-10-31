@@ -51,7 +51,7 @@ public partial class DocsSite(HttpClient httpClient, IOptions<PrompterOptions> o
             catch (HttpRequestException exception)
             {
                 logger.FailedFetchingPage(url, exception);
-                continue;
+                throw new IncompleteCrawl();
             }
 
             yield return new(url, markdown);

@@ -1,127 +1,103 @@
-# Eval — the golden Q&A set and the harness
+# Evaluation isolation
 
-`golden-questions.yaml` is Prompter's answer-quality gate (backlog **P-17**). It is a curated set of
-questions phrased the way real Cratis community members ask in Discord, each grounded in — or, for the
-out-of-scope block, deliberately *not* grounded in — the published docs at <https://cratis.io>.
+Offline evaluation is synthetic evidence of parsing, deterministic citation/refusal scoring,
+report generation and baseline rejection rules, **not measured model quality**. It constructs
+no host, database, embedding client, answer client or judge client.
 
-The harness that consumes it is **P-18** (`Prompter.Eval.csproj`, this folder); the CI gate that enforces
-it (**P-19**, `.github/workflows/eval.yml`) runs the harness on demand and fails the build when scores
-regress below the committed floor in `baseline.json` — see [The CI gate](#the-ci-gate) below.
-
-## Running the harness
-
-`Prompter.Eval` is a developer-only console project (referenced in `Prompter.slnx`, never pulled into the
-bot's Docker publish). It runs each golden question through the bot's real `IAnswers` pipeline against the
-live corpus and scores three things per question:
-
-- **Citation-hit** (in-scope): did retrieval surface at least one `expected_pages` entry? Compared after
-  normalizing the ingested `.md` mirror form against the canonical golden form (`Scoring/CitationHit.cs`,
-  `Scoring/PageMatching.cs`).
-- **Refusal-accuracy**: out-of-scope questions must refuse; an in-scope question must not
-  (`Scoring/RefusalAccuracy.cs`). A confident answer to an out-of-scope question is a hard failure.
-- **Groundedness** (in-scope answers): an `IChatClient` judge scores 1–5 whether every claim is supported by
-  the retrieved passages (`Scoring/GroundednessEvaluator.cs`, using `Microsoft.Extensions.AI.Evaluation`,
-  cribbed from `dotnet/eShopSupport`'s `AnswerScoringEvaluator`).
-
-It needs the same infrastructure and keys as the bot: a populated Postgres/pgvector corpus (`docker compose
-up -d` then `dotnet run --project Source -- index`), a Voyage key for retrieval embeddings, and an Anthropic
-key for both the answer and the groundedness judge — supplied the usual way
-(`Cratis__Prompter__Voyage__ApiKey`, `Cratis__Prompter__Anthropic__ApiKey`).
-
-```bash
-dotnet run --project Eval
+```sh
+dotnet build Specs/Prompter.Specs.csproj --configuration Release --no-incremental
+dotnet Specs/bin/Release/net10.0/Prompter.Specs.dll
+node --test Eval/tests/check-baseline.test.mjs
+dotnet Eval/bin/Release/net10.0/Cratis.Prompter.Eval.dll --offline --revision <git-revision> --out Eval/results/offline
+node Eval/check-baseline.mjs --synthetic --report Eval/results/offline/report-offline.json --baseline Eval/offline-baseline.json
 ```
 
-It writes a timestamped markdown + JSON report (per-question rows plus aggregate scores) to
-`Eval/results/`, which is git-ignored. Optional flags: `--golden <path>` and `--out <dir>`.
+The offline JSON/Markdown outputs are reproducible for a given revision. JSON carries fixture
+and corpus hashes, synthetic evidence type, scorer version and canned model identities.
+Missing judge scores, errors, missing required samples, invalid metrics and provenance
+mismatches fail checks. Exit 0 means complete measurement; exit 1 means incomplete scoring;
+exit 2 means invalid invocation or blocked paid execution. Quality regressions are assessed
+separately by the baseline checker (exit 1).
 
-## The CI gate
+## Paid execution is blocked
 
-`.github/workflows/eval.yml` (**P-19**) turns the harness into a regression gate. Because a run costs Voyage
-+ Anthropic calls and a full index of cratis.io, it is **not** on every PR — it runs only on
-`workflow_dispatch` or when a pull request carries the **`eval`** label (add the label to have a PR scored;
-an unlabeled PR never spends API budget). The job stands up a `pgvector/pgvector:0.8.7-pg17` service container
-matching `docker-compose.yml`, indexes the corpus, runs the harness, uploads the report as a workflow
-artifact, and then enforces the baseline.
+There is no implicit paid mode. `--paid`, `--index` and the default invocation fail before any
+external client is constructed, even with approval and credentials. The only recognized
+configuration prefix is `Cratis__PrompterEval__`; production settings, appsettings files,
+user-secrets and CLI credential overrides are never loaded. Do not put secrets in command
+arguments or reports.
 
-It needs two repository secrets (Settings → Secrets and variables → Actions), mapped onto the config the app
-binds:
+`baseline.json` is explicitly **unmeasured**. Its provisional targets are not regression
+floors. Do not replace it with invented numbers or promote offline synthetic scores.
 
-| Secret | Bound to | Used for |
-|---|---|---|
-| `VOYAGE_API_KEY` | `Cratis__Prompter__Voyage__ApiKey` | retrieval embeddings (index + eval) |
-| `ANTHROPIC_API_KEY` | `Cratis__Prompter__Anthropic__ApiKey` | the answer and the groundedness judge |
+Before enabling paid execution, integrate the aggregate budget/admission boundary for
+**indexing, embedding, answering and judging**, with durable usage accounting and fail-closed
+reservation. Pin answer/judge/embedding model identities, a golden fixture hash and an
+isolated disposable corpus manifest; record a real source revision. Validate disposable
+(non-production) storage and cleanup. No live evaluation has been performed here.
 
-`Eval/check-baseline.py` compares the newest `Eval/results/report-*.json` against `Eval/baseline.json`. For
-each metric in the baseline it reads the report's `summary.<metric>` and fails the job if any value is below
-`floor - tolerance`. The tracked metrics — and their keys — are exactly what `EvalReport.ToJson()` emits:
+The manual `paid-preflight` workflow uses the separate GitHub `eval` environment and only
+`EVAL_ANTHROPIC_API_KEY` / `EVAL_VOYAGE_API_KEY`. Repository administrators must configure that
+environment with required reviewers and main-only deployment restrictions; YAML cannot
+enforce these protection settings. It deliberately fails until the accounting/disposable
+corpus integration is reviewed. It has no paid-run or indexing command and uploads no paid
+artifacts. Offline artifacts use an explicit report-only allowlist and three-day retention.
 
-| Baseline metric | Report field | Scale |
-|---|---|---|
-| `citationHitRate` | `summary.citationHitRate` | fraction 0–1 |
-| `refusalAccuracy` | `summary.refusalAccuracy` | fraction 0–1 |
-| `meanGroundedness` | `summary.meanGroundedness` | mean 1–5 |
+## Accounting integration contract
 
-**The committed `baseline.json` currently holds placeholder floors.** They were seeded without a real run
-(the harness needs live keys and a corpus). Regenerate them from an actual run once the secrets exist, and
-commit the observed scores as the real floor:
+Paid execution is unconditionally blocked in `Program.cs`; `PaidApproved=true` cannot enable
+it. `EvalConfiguration.PaidBlockReason` always returns a refusal. No readiness flag is needed
+to preserve that stronger block. Do not replace it with approval alone.
 
-```bash
-docker compose up -d
-dotnet run --project Source -- index         # populate the pgvector corpus
-dotnet run --project Eval                     # writes Eval/results/report-<stamp>.json
-```
+An integration must keep `EvalHost.Configuration()` environment-prefix-only and build fresh
+options from `Cratis__PrompterEval__` values. Add explicit eval protection/pricing/cap settings;
+never merge production `PrompterOptions` or rely on their defaults. Keep corpus storage
+separate from the aggregate ledger's persistence identity: a disposable corpus database must
+not silently create an independent spend allowance. Ledger access must be explicitly supplied
+and authorized without inheriting production credentials.
 
-Open the newest `Eval/results/report-*.json`, copy `summary.citationHitRate`, `summary.refusalAccuracy`, and
-`summary.meanGroundedness` into the `metrics` block of `Eval/baseline.json` (round down a touch so normal
-run-to-run noise doesn't trip the gate — `tolerance` also absorbs a little), and commit. The gate is proven
-the way the plan's "done when" describes it: a deliberately broken prompt drops a metric below its floor and
-fails the workflow; the good prompt stays above it and passes.
+The parent integration points are:
 
-## What's in the set
+- `EvaluationRun.Score()` calls `IAnswers.For()` (answer and retrieval embeddings), then
+  `EvaluationRun.Judge()`. The judge client enters through the constructor's
+  `ChatConfiguration` and `GroundednessEvaluator.EvaluateAsync()`. Both clients must be
+  funded before dispatch; a raw judge `IChatClient` is not an acceptable registration.
+- `ISpendLedger.Reserve(SpendExposure, CancellationToken)` and
+  `Reconcile(Guid, SpendExposure, CancellationToken)` are the existing aggregate ceiling.
+  Refusal, storage failure, cancellation and unknown usage must never permit an unfunded
+  dispatch or refund ambiguous exposure.
+- `PaidWork.BeginInteractive()` provides a `WorkLease`; the caller must `Activate()` it
+  in the dispatch execution context and dispose it. **One lease currently permits only one
+  chat dispatch.** Answer and judge cannot share one interactive lease, nor can retry
+  attempts reuse its consumed chat allowance. The parent must fund each attempt through
+  its shared admission integration before enabling a paid runner.
+- `BudgetedChat.GetResponseAsync()` requires that active lease and validates its configured
+  model, prompt and output bounds. Answer and judge need separately pinned model policies;
+  the current single `Protection.Anthropic` policy must not silently substitute the answer
+  model for the judge model.
+- `IProviderAccounting.Reserve(ProviderDispatch, CancellationToken)` and
+  `Complete(ProviderDispatch, UsageDetails?, string)` are the provider-attempt seam.
+  `AnthropicAccounts` currently accepts null accounting, and `TaskChatPolicy.TaskName()`
+  recognizes only `answer` and `issue-draft`. Paid eval needs mandatory accounting plus
+  reviewed fixed eval answer/judge task attribution; arbitrary task strings currently fall
+  back to `answer`. Do not assume this seam already supplies judge admission.
+- For ingestion, use `Indexer.Run(IndexRequest, CancellationToken)` with `IndexBudget.Preflight`
+  and `IIndexLease` limits **and** the shared funded embedding chain:
+  `ResilientEmbeddingGenerator(BudgetedEmbeddings(VoyageEmbeddings, ledger, evalOptions), ...)`.
+  `BudgetedEmbeddings.GenerateAsync()` reserves through `ISpendLedger` before every retry
+  when no interactive lease is active. The index-only limits do not replace the aggregate
+  ceiling. SDK retries must not introduce hidden unreserved attempts.
 
-| Bucket | Count | Notes |
-|---|---:|---|
-| In-scope (`expected: answer`) | 57 | Must be answered, grounded, and cited |
-| Out-of-scope (`expected: refuse`) | 12 | Must be refused honestly |
+Before removing the hard block, add rejection specs for missing accounting/ledger, missing
+prices or bounds, exhausted answer/judge/index funding, cancellation and storage failure.
+Require explicit paid approval and verified readiness of **all three** funded paths, with
+readiness false by default. Keep the workflow's unconditional paid refusal until those
+registrations and rejection specs land together. This slice does not define a second budget
+or change shared application registration.
 
-In-scope coverage by product:
+## Remaining coverage
 
-| Product | Count | `id` prefix |
-|---|---:|---|
-| Chronicle | 19 | `chr-` |
-| Arc | 13 | `arc-` |
-| Fundamentals | 7 | `fun-` |
-| Components | 8 | `cmp-` |
-| CLI | 6 | `cli-` |
-| Cross-cutting (the stack, FAQ-style) | 4 | `gen-` |
-
-Question types span definition, how-to, configuration, troubleshooting, concept, comparison, and
-getting-started, so the set exercises retrieval and answering across the shapes real questions take.
-
-## Schema and how it's scored
-
-The file header comments in `golden-questions.yaml` are the authoritative schema reference. In short, each
-entry carries a stable `id`, its `product`/`type`, the verbatim `question`, an `expected`
-(`answer` | `refuse`), and — for in-scope entries — `expected_pages`, the real doc URLs (canonical form,
-**without** the `.md` mirror suffix) that should ground a correct answer.
-
-The harness scores two things:
-
-- **In-scope** — retrieval must surface at least one `expected_pages` URL (normalize by stripping a trailing
-  `.md`, since the ingested form is the per-page mirror), *and* the answer must be grounded in the retrieved
-  passages and cite at least one source.
-- **Out-of-scope** — the bot must refuse; a confident, cited-looking answer is a hard failure. These
-  calibrate the refusal threshold (`Answering:MinScore`, P-07).
-
-`expected_pages` are grounding *candidates*, not an exhaustive citation allow-list — a good answer may
-additionally cite closely related pages.
-
-## Maintaining it
-
-- **Never renumber an `id`.** Baselines and regression diffs key off it. Add new questions with fresh ids;
-  retire stale ones by removing the entry, not by reusing its id.
-- **Keep `expected_pages` real.** Every URL must resolve on the live site (excluding `client-snippets/` and
-  `api-reference/`, which ingestion skips). When the docs restructure, fix the URLs here in the same change.
-- Grow the set from real signal over time: Discord history, the docs-gap flywheel (refusals + 👎 answers,
-  P-33), and the FAQ.
+Offline fixtures currently exercise parsing, citation/refusal scoring and report completeness.
+They do not yet exercise provider-sourced groundedness or product routing. The parent must
+wire routing fixtures after the routing slice lands; paid readiness remains blocked. No
+shared application host wiring changes are included in this slice.

@@ -11,7 +11,7 @@
 #   --dry-run   Resolve every value and list the secret names that would be set, setting nothing.
 #
 # Bitwarden items read: the note named by PROMPTER_BW_ENV_ITEM (state backend keys and passphrase, see
-# load-credentials.sh), "Anthropic - Prompter - API Key" (note), "Voyage AI - Cratis" (custom field "prompter-production token"),
+# load-credentials.sh), "Anthropic - Prompter - API Key" (primary note, secondary custom field "woksin-org-api-token-prod"), "Voyage AI - Cratis" (custom field "prompter-production token"),
 # "Prompter - Reindex Secret" (note, `openssl rand -hex 32`) and "Discord - Prompter - Bot token" (note).
 # To rotate the reindex secret, replace the note's value and rerun, then deploy to update the cluster Secret.
 #
@@ -52,9 +52,12 @@ bw_item() { bw list items --search "$1" | jq -r --arg n "$1" '.[] | select(.name
 anthropic_name="Anthropic - Prompter - API Key"
 voyage_name="Voyage AI - Cratis"
 anthropic_key="$(bw_item "${anthropic_name}" | jq -r '.notes // empty' | tr -d '\r\n')"
+anthropic_secondary_field="woksin-org-api-token-prod"
+anthropic_secondary_key="$(bw_item "${anthropic_name}" | jq -r --arg f "${anthropic_secondary_field}" '.fields[]? | select(.name == $f) | .value // empty' | tr -d '\r\n')"
 voyage_field="prompter-production token"
 voyage_key="$(bw_item "${voyage_name}" | jq -r --arg f "${voyage_field}" '.fields[]? | select(.name == $f) | .value // empty' | tr -d '\r\n')"
 if [ -z "${anthropic_key}" ]; then echo "Bitwarden item '${anthropic_name}' has no notes." >&2; exit 1; fi
+if [ -z "${anthropic_secondary_key}" ]; then echo "Bitwarden item '${anthropic_name}' has no '${anthropic_secondary_field}' field." >&2; exit 1; fi
 if [ -z "${voyage_key}" ]; then echo "Bitwarden item '${voyage_name}' has no '${voyage_field}' field." >&2; exit 1; fi
 
 # Sets one secret from stdin. The name is reported; the value never is.
@@ -73,6 +76,7 @@ printf '%s' "${AWS_ACCESS_KEY_ID}" | set_secret STATE_BACKEND_ACCESS_KEY_ID
 printf '%s' "${AWS_SECRET_ACCESS_KEY}" | set_secret STATE_BACKEND_SECRET_ACCESS_KEY
 printf '%s' "${PULUMI_CONFIG_PASSPHRASE}" | set_secret PULUMI_CONFIG_PASSPHRASE
 printf '%s' "${anthropic_key}" | set_secret ANTHROPIC_API_KEY
+printf '%s' "${anthropic_secondary_key}" | set_secret ANTHROPIC_SECONDARY_API_KEY
 printf '%s' "${voyage_key}" | set_secret VOYAGE_API_KEY
 set_secret KUBECONFIG < "${kubeconfig_file}"
 
@@ -91,4 +95,4 @@ if [ -n "${discord_token}" ]; then
 else
   echo "skipped DISCORD_TOKEN (Bitwarden note '${discord_name}' not found)"
 fi
-unset anthropic_key voyage_key reindex_secret discord_token
+unset anthropic_key anthropic_secondary_key voyage_key reindex_secret discord_token

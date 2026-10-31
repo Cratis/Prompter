@@ -48,7 +48,7 @@ internal sealed record QuestionResult(
     public bool Passed =>
         Error is null &&
         RefusalCorrect &&
-        (ExpectedRefusal || (CitationHit == true && Groundedness is double score && score >= GroundednessPassThreshold));
+        (ExpectedRefusal || (CitationHit == true && Groundedness is double score && score >= GroundednessPassThreshold && score <= 5));
 
     /// <summary>
     /// Renders a compact one-line summary of this result for the console.

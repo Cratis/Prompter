@@ -4,7 +4,7 @@
 namespace Cratis.Prompter.Ingestion;
 
 /// <summary>
-/// Represents the outcome of a single index run, returned by <see cref="IIndexer.Run"/> so callers - the CLI
+/// Represents the outcome of a single index run, returned by <see cref="IIndexer.Run(CancellationToken)"/> so callers - the CLI
 /// today, the re-index webhook and scheduled runs later - can report and act on the same summary.
 /// </summary>
 /// <param name="Pages">The number of documentation pages fetched and chunked.</param>

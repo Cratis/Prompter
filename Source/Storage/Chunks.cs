@@ -3,7 +3,6 @@
 
 using Cratis.Prompter.Ingestion;
 using Npgsql;
-using Pgvector;
 
 namespace Cratis.Prompter.Storage;
 
@@ -73,28 +72,13 @@ public class Chunks(NpgsqlDataSource dataSource) : IChunks
     }
 
     /// <inheritdoc/>
+    public Task<IIndexLease> AcquireIndexLease(CancellationToken cancellationToken = default) => IndexLease.Acquire(dataSource, cancellationToken);
+
+    /// <inheritdoc/>
     public async Task Upsert(Chunk chunk, ReadOnlyMemory<float> embedding, CancellationToken cancellationToken = default)
     {
-        await using var command = dataSource.CreateCommand(
-            """
-            INSERT INTO chunks (id, page_url, title, heading_path, content, content_hash, embedding)
-            VALUES ($1, $2, $3, $4, $5, $6, $7)
-            ON CONFLICT (id) DO UPDATE SET
-                page_url = EXCLUDED.page_url,
-                title = EXCLUDED.title,
-                heading_path = EXCLUDED.heading_path,
-                content = EXCLUDED.content,
-                content_hash = EXCLUDED.content_hash,
-                embedding = EXCLUDED.embedding
-            """);
-
-        command.Parameters.AddWithValue(chunk.Id.Value);
-        command.Parameters.AddWithValue(chunk.Page.Value);
-        command.Parameters.AddWithValue(chunk.Title);
-        command.Parameters.AddWithValue(chunk.HeadingPath);
-        command.Parameters.AddWithValue(chunk.Content);
-        command.Parameters.AddWithValue(chunk.Hash.Value);
-        command.Parameters.AddWithValue(new Vector(embedding));
+        await using var command = dataSource.CreateCommand();
+        ChunkCommands.PopulateUpsert(command, chunk, embedding);
 
         await command.ExecuteNonQueryAsync(cancellationToken);
     }

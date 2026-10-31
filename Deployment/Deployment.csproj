@@ -18,6 +18,10 @@
     </PropertyGroup>
 
     <ItemGroup>
+        <EmbeddedResource Include="scripts/backup-postgres.sh;scripts/restore-postgres-test.sh;scripts/postgres-backup-common.sh;scripts/postgres-backup-metadata.sql" LogicalName="PostgresBackups.%(Filename)%(Extension)" />
+    </ItemGroup>
+
+    <ItemGroup>
         <PackageReference Include="Pulumi" />
         <PackageReference Include="Pulumi.Kubernetes" />
         <PackageReference Include="Pulumi.Random" />

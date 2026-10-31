@@ -1,8 +1,7 @@
 // Copyright (c) Cratis. All rights reserved.
 // Licensed under the MIT license. See LICENSE file in the project root for full license information.
 
-using System.Globalization;
-using Cratis.Prompter.Answering;
+using Cratis.Prompter.Protection;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
 using NetCord;
@@ -14,15 +13,15 @@ namespace Cratis.Prompter.Discord;
 /// <summary>
 /// The <c language="csharp">/ask</c> slash command.
 /// </summary>
-/// <param name="answers">The answers Prompter can give.</param>
-/// <param name="rateLimiter">The per-user question throttle, checked before deferring.</param>
-/// <param name="timeProvider">The clock the rate limiter's refills are measured against.</param>
+/// <param name="assistance">Documentation answers and separate advisory hints.</param>
+/// <param name="admission">The cheap shared admission guard.</param>
+/// <param name="work">The global concurrency and durable spend guard.</param>
 /// <param name="options">The Prompter options carrying the rate-limit window, timeout, and reply text.</param>
 /// <param name="logger">Logger for diagnostics.</param>
 public class Ask(
-    IAnswers answers,
-    RateLimiter rateLimiter,
-    TimeProvider timeProvider,
+    ConversationAssistance assistance,
+    Admission admission,
+    PaidWork work,
     IOptions<PrompterOptions> options,
     ILogger<Ask> logger) : ApplicationCommandModule<ApplicationCommandContext>
 {
@@ -41,29 +40,27 @@ public class Ask(
     [SlashCommand("ask", "Ask Prompter a question about Cratis")]
     public async Task Handle(string question)
     {
-        // The rate-limit key is the user id, used only in memory to throttle - it is never stored or logged.
-        var userKey = Context.User.Id.ToString(CultureInfo.InvariantCulture);
-
-        // Check the throttle before deferring: the ephemeral flag is locked at acknowledgement time, so a
-        // rate-limited ask must respond ephemerally here rather than after a public defer.
-        if (!rateLimiter.TryConsume(userKey, timeProvider.GetUtcNow()))
+        var channel = Context.Channel.Id;
+        var decision = admission.TryEnter(new(Context.Interaction.GuildId, channel, Context.User.Id), question);
+        if (!decision.Allowed)
         {
-            logger.RateLimited();
-            await Context.Interaction.SendResponseAsync(
-                InteractionCallback.Message(new()
-                {
-                    Content = options.Value.Discord.RateLimitedReply,
-                    Flags = MessageFlags.Ephemeral
-                }));
+            if (decision.Reply)
+            {
+                await Refuse();
+            }
+
             return;
         }
 
-        await Context.Interaction.SendResponseAsync(InteractionCallback.DeferredMessage());
-
+        var deferred = false;
         try
         {
-            using var timeout = new CancellationTokenSource(TimeSpan.FromSeconds(options.Value.Discord.AnswerTimeoutSeconds));
-            var answer = await answers.For(new(question), "discord-ask", timeout.Token);
+            await using var lease = await work.BeginInteractive();
+            lease.Activate();
+            await Context.Interaction.SendResponseAsync(InteractionCallback.DeferredMessage());
+            deferred = true;
+            var reply = await assistance.For(new(ConversationText.Sanitize(question)), "discord-ask", lease.Token);
+            var answer = reply.Answer;
             var content = DiscordAnswers.Format(answer);
 
             if (answer.InteractionId is { } interactionId)
@@ -78,6 +75,16 @@ public class Ask(
             {
                 await Context.Interaction.SendFollowupMessageAsync(content);
             }
+
+            var advice = DiscordAnswers.Advice(reply);
+            if (advice.Length > 0)
+            {
+                await Context.Interaction.SendFollowupMessageAsync(advice);
+            }
+        }
+        catch (WorkRefused)
+        {
+            await RefuseAfterAdmission(deferred);
         }
         catch (Exception exception)
         {
@@ -87,6 +94,26 @@ public class Ask(
             await TryApologize();
         }
     }
+
+    async Task RefuseAfterAdmission(bool deferred)
+    {
+        if (!admission.MayReply(new(Context.Interaction.GuildId, Context.Channel.Id, Context.User.Id)))
+        {
+            return;
+        }
+
+        if (deferred)
+        {
+            await Context.Interaction.SendFollowupMessageAsync(new() { Content = options.Value.Discord.RateLimitedReply, Flags = MessageFlags.Ephemeral });
+        }
+        else
+        {
+            await Refuse();
+        }
+    }
+
+    async Task Refuse() => await Context.Interaction.SendResponseAsync(
+        InteractionCallback.Message(new() { Content = options.Value.Discord.RateLimitedReply, Flags = MessageFlags.Ephemeral }));
 
     async Task TryApologize()
     {

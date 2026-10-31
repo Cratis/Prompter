@@ -25,6 +25,7 @@ public class and_the_crawl_returns_no_pages : Specification
 
         _embeddings = new RecordingEmbeddingGenerator();
         _chunks = Substitute.For<IChunks>();
+        _chunks.AcquireIndexLease(Arg.Any<CancellationToken>()).Returns(Substitute.For<IIndexLease>());
         _chunks.GetHashes(Arg.Any<CancellationToken>())
             .Returns(existing.ToDictionary(chunk => chunk.Id, chunk => chunk.Hash));
 

@@ -35,6 +35,7 @@
 
   <ItemGroup>
     <None Update="golden-questions.yaml" CopyToOutputDirectory="PreserveNewest" />
+    <EmbeddedResource Include="offline-fixtures.json" LogicalName="offline-fixtures.json" />
   </ItemGroup>
 
 </Project>

@@ -101,7 +101,7 @@ public sealed class PrompterDeployment
             Name = Name,
             Image = args.Image,
             Ports = [new ContainerPortArgs { ContainerPortValue = Port, Name = "http" }],
-            Env = env,
+            Env = WithMetrics([.. env, .. AnsweringReadinessEnvironment.Create(args.Readiness)], args.MetricsEnabled, args.Environment),
             EnvFrom = [new EnvFromSourceArgs { SecretRef = new SecretEnvSourceArgs { Name = SecretName } }],
 
             // Readiness uses /healthz, which checks the database *and* the gateway connection — exactly the
@@ -186,11 +186,19 @@ public sealed class PrompterDeployment
     /// </summary>
     public Service Service { get; }
 
+    static List<EnvVarArgs> WithMetrics(List<EnvVarArgs> environment, bool enabled, string deploymentEnvironment) =>
+    [
+        .. environment,
+        new() { Name = "Cratis__Prompter__Metrics__Enabled", Value = enabled ? "true" : "false" },
+        new() { Name = "Cratis__Prompter__Metrics__Environment", Value = deploymentEnvironment }
+    ];
+
     static InputMap<string> SecretData(PrompterDeploymentArgs args) => new()
     {
         ["Cratis__Prompter__ConnectionString"] = args.ConnectionString,
         ["Cratis__Prompter__Discord__Token"] = args.DiscordToken,
         ["Cratis__Prompter__Anthropic__ApiKey"] = args.AnthropicApiKey,
+        ["Cratis__Prompter__Anthropic__SecondaryApiKey"] = args.AnthropicSecondaryApiKey,
         ["Cratis__Prompter__Voyage__ApiKey"] = args.VoyageApiKey,
         ["Cratis__Prompter__ReindexSecret"] = args.ReindexSecret,
         ["Cratis__Prompter__GitHub__Token"] = args.GitHubToken,

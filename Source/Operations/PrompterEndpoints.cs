@@ -50,12 +50,18 @@ public static class PrompterEndpoints
         CancellationToken cancellationToken)
     {
         var logger = loggerFactory.CreateLogger(GitHubLogCategory);
+        if (!options.Value.Protection.AnsweringEnabled || !options.Value.Protection.GitHubWritesEnabled)
+        {
+            return Results.StatusCode(StatusCodes.Status503ServiceUnavailable);
+        }
 
         // The signature covers the exact bytes GitHub sent, so the body is read raw and verified before
         // anything parses it.
-        await using var buffer = new MemoryStream();
-        await request.Body.CopyToAsync(buffer, cancellationToken);
-        var payload = buffer.ToArray();
+        var payload = await Protection.BoundedBody.Read(request, options.Value.Protection.WebhookBytes, cancellationToken);
+        if (payload is null)
+        {
+            return Results.StatusCode(StatusCodes.Status413PayloadTooLarge);
+        }
 
         if (!WebhookAuth.IsAuthentic(
             request.Headers[WebhookAuth.SignatureHeader].ToString(),
@@ -122,12 +128,28 @@ public static class PrompterEndpoints
         ILoggerFactory loggerFactory)
     {
         var logger = loggerFactory.CreateLogger(ReindexLogCategory);
+        if (!options.Value.Protection.IndexingEnabled)
+        {
+            return Results.StatusCode(StatusCodes.Status503ServiceUnavailable);
+        }
 
         var providedSecret = request.Headers[ReindexSecretHeader].ToString();
         if (!ReindexAuth.IsAuthorized(providedSecret, options.Value.ReindexSecret))
         {
             logger.ReindexUnauthorized();
             return Results.Json(new { status = "unauthorized" }, statusCode: StatusCodes.Status401Unauthorized);
+        }
+
+        var indexRequest = new IndexRequest(
+            Full: request.Query["full"] == "true",
+            Confirmation: request.Headers["X-Reindex-Confirmation"].ToString());
+        try
+        {
+            indexRequest.Validate();
+        }
+        catch (IndexConsentRequired)
+        {
+            return Results.Json(new { status = "full reindex confirmation required" }, statusCode: StatusCodes.Status400BadRequest);
         }
 
         if (!gate.TryEnter())
@@ -146,7 +168,7 @@ public static class PrompterEndpoints
         {
             try
             {
-                var run = await indexer.Run(lifetime.ApplicationStopping);
+                var run = await indexer.Run(indexRequest, lifetime.ApplicationStopping);
                 logger.ReindexCompleted(run.Duration, run.Pages, run.Embedded, run.Unchanged, run.Removed);
             }
             catch (OperationCanceledException)

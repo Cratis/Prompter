@@ -4,9 +4,9 @@
 namespace Cratis.Prompter.Operations;
 
 /// <summary>
-/// A single-flight guard ensuring at most one re-index runs at a time. A full index of the corpus takes
-/// minutes, so a second concurrent trigger must be rejected rather than piled on. The gate is lock-free and
-/// deterministic, keeping it trivial to reason about and test without threads.
+/// A process-local single-flight guard for HTTP triggers, additional to the indexer's database-wide lease.
+/// A full index takes minutes, so a second local trigger is rejected rather than piled on. CLI, other replicas
+/// and Jobs are serialized by the Postgres lease, not by this process-local gate.
 /// </summary>
 public sealed class ReindexGate
 {

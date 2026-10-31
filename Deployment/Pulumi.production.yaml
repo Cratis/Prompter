@@ -1,4 +1,10 @@
 config:
+  prompter-deployment:answeringEnabled: true
+  prompter-deployment:answerPreferredAccount: secondary
+  prompter-deployment:answerAllowSecondary: true
+  prompter-deployment:indexingEnabled: false
+  prompter-deployment:allowedGuilds:
+    - "1182595891576717413"
   prompter-deployment:environment: production
   # Written by the deploy workflow's `init` operation, which commits the generated `encryptionsalt` here.
   # It must stay committed: without it the passphrase cannot decrypt this stack's state.

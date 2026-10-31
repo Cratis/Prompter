@@ -8,17 +8,15 @@ namespace Cratis.Prompter.Specs.for_PendingIssues.when_taking_a_held_draft;
 
 public class and_it_was_already_taken : Specification
 {
-    readonly ControlledTime _time = new(DateTimeOffset.UnixEpoch);
-    PendingIssues _pending = null!;
     PendingIssue? _second;
 
-    void Establish() => _pending = new(_time);
-
-    void Because()
+    async Task Because()
     {
-        var token = _pending.Hold(new("A title", "A body", IssueKind.Bug, "chronicle"), "Chronicle", null);
-        _pending.Take(token);
-        _second = _pending.Take(token);
+        var pending = new PendingIssues(new ControlledTime(DateTimeOffset.UnixEpoch));
+        var scope = new IssueConsent(1, 2, 3);
+        var token = await pending.Present(new("Cratis", "Chronicle", "Title", "Body", []), scope, _ => Task.FromResult(4UL));
+        pending.Take(token, scope, 4);
+        _second = pending.Take(token, scope, 4);
     }
 
     [Fact] void should_not_let_a_double_click_file_twice() => (_second is null).ShouldBeTrue();

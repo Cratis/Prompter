@@ -1,6 +1,7 @@
 // Copyright (c) Cratis. All rights reserved.
 // Licensed under the MIT license. See LICENSE file in the project root for full license information.
 
+using System.Globalization;
 using System.Net;
 
 namespace Cratis.Prompter.Embeddings;
@@ -11,6 +12,11 @@ namespace Cratis.Prompter.Embeddings;
 /// </summary>
 public static class EmbeddingRetry
 {
+    /// <summary>
+    /// AdditionalProperties key for the fixed index task; absent means an interactive query.
+    /// </summary>
+    public const string TaskKey = "PrompterEmbeddingTask";
+
     /// <summary>
     /// Determines whether a failed embedding request should be retried, based on its HTTP status. Rate
     /// limiting (429) and server errors (5xx) are transient, and so is a missing status: a request that never
@@ -33,4 +39,25 @@ public static class EmbeddingRetry
     /// <returns>The delay to wait before the attempt.</returns>
     public static TimeSpan BackoffFor(int attempt, TimeSpan baseDelay) =>
         attempt <= 0 ? baseDelay : baseDelay * Math.Pow(2, attempt);
+
+    /// <summary>
+    /// Reads a Retry-After delta or HTTP date without retaining provider response text.
+    /// </summary>
+    /// <param name="value">The header value.</param>
+    /// <param name="now">The current time.</param>
+    /// <returns>The nonnegative delay, or null for an absent or malformed hint.</returns>
+    public static TimeSpan? RetryAfter(string? value, DateTimeOffset now)
+    {
+        if (long.TryParse(value, NumberStyles.None, CultureInfo.InvariantCulture, out var seconds) && seconds >= 0)
+        {
+            return TimeSpan.FromSeconds(Math.Min(seconds, (long)TimeSpan.MaxValue.TotalSeconds - 1));
+        }
+
+        if (DateTimeOffset.TryParseExact(value, "r", CultureInfo.InvariantCulture, DateTimeStyles.AssumeUniversal, out var date))
+        {
+            return date > now ? date - now : TimeSpan.Zero;
+        }
+
+        return null;
+    }
 }

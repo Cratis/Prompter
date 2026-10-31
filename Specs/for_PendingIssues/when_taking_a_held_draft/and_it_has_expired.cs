@@ -9,17 +9,16 @@ namespace Cratis.Prompter.Specs.for_PendingIssues.when_taking_a_held_draft;
 public class and_it_has_expired : Specification
 {
     readonly ControlledTime _time = new(DateTimeOffset.UnixEpoch);
-    PendingIssues _pending = null!;
     PendingIssue? _taken;
 
-    void Establish() => _pending = new(_time);
-
-    void Because()
+    async Task Because()
     {
-        var token = _pending.Hold(new("A title", "A body", IssueKind.Bug, "chronicle"), "Chronicle", null);
-        _time.Advance(PendingIssues.Lifetime + TimeSpan.FromMinutes(1));
-        _taken = _pending.Take(token);
+        var pending = new PendingIssues(_time);
+        var scope = new IssueConsent(1, 2, 3);
+        var token = await pending.Present(new("Cratis", "Chronicle", "Title", "Body", []), scope, _ => Task.FromResult(4UL));
+        _time.Advance(PendingIssues.Lifetime);
+        _taken = pending.Take(token, scope, 4);
     }
 
-    [Fact] void should_be_gone() => (_taken is null).ShouldBeTrue();
+    [Fact] void should_expire_at_the_boundary() => (_taken is null).ShouldBeTrue();
 }

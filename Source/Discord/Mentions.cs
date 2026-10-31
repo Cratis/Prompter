@@ -1,10 +1,11 @@
 // Copyright (c) Cratis. All rights reserved.
 // Licensed under the MIT license. See LICENSE file in the project root for full license information.
 
-using System.Globalization;
 using Cratis.Prompter.Answering;
+using Cratis.Prompter.Protection;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
+using NetCord;
 using NetCord.Gateway;
 using NetCord.Hosting.Gateway;
 using NetCord.Rest;
@@ -17,9 +18,10 @@ namespace Cratis.Prompter.Discord;
 /// </summary>
 /// <param name="client">The gateway client, used to read the bot's own identity for self-mention detection.</param>
 /// <param name="rest">The REST client used to send follow-up messages.</param>
-/// <param name="answers">The answers Prompter can give.</param>
-/// <param name="rateLimiter">The per-user question throttle, checked before the expensive answer path.</param>
-/// <param name="timeProvider">The clock the rate limiter's refills are measured against.</param>
+/// <param name="assistance">Documentation answers and separate advisory hints.</param>
+/// <param name="admission">The cheap shared admission guard.</param>
+/// <param name="work">The global concurrency and durable spend guard.</param>
+/// <param name="context">Request-only bounded conversation history.</param>
 /// <param name="options">The Prompter options carrying the Discord ask-channel identifier.</param>
 /// <param name="logger">Logger for diagnostics.</param>
 /// <remarks>
@@ -30,9 +32,10 @@ namespace Cratis.Prompter.Discord;
 public class Mentions(
     GatewayClient client,
     RestClient rest,
-    IAnswers answers,
-    RateLimiter rateLimiter,
-    TimeProvider timeProvider,
+    ConversationAssistance assistance,
+    Admission admission,
+    PaidWork work,
+    ConversationContextReader context,
     IOptions<PrompterOptions> options,
     ILogger<Mentions> logger) : IMessageCreateGatewayHandler
 {
@@ -92,66 +95,107 @@ public class Mentions(
         var message = arg;
         try
         {
-            var askChannelId = options.Value.Discord.AskChannelId;
-            var (shouldAnswer, question) = ResolveQuestion(message.Content, client.Id, message.Author.IsBot, message.ChannelId, askChannelId);
-            if (!shouldAnswer)
+            var question = CurrentQuestion(message);
+            if (question is null)
             {
                 return;
             }
 
-            // The rate-limit key is the user id, used only in memory to throttle - it is never stored or logged.
-            var userKey = message.Author.Id.ToString(CultureInfo.InvariantCulture);
-            if (!rateLimiter.TryConsume(userKey, timeProvider.GetUtcNow()))
+            var decision = admission.TryEnter(new(message.GuildId, message.ChannelId, message.Author.Id), question);
+            if (!decision.Allowed)
             {
-                logger.RateLimited();
-                await message.ReplyAsync(options.Value.Discord.RateLimitedReply);
+                await Refuse(message, decision.Reply);
                 return;
             }
 
-            var inAskChannel = askChannelId is { } ask && message.ChannelId == ask;
-            var source = inAskChannel ? "discord-ask-channel" : "discord-mention";
-            logger.AnsweringQuestion(source);
+            await using var lease = await work.BeginInteractive();
+            lease.Activate();
 
-            using var timeout = new CancellationTokenSource(TimeSpan.FromSeconds(options.Value.Discord.AnswerTimeoutSeconds));
-            var answer = await answers.For(new(question), source, timeout.Token);
-
-            // Anchor the answer to the asking message with a reply reference on the first chunk; any further
-            // chunks follow as ordinary messages in the same channel. The 👍/👎 feedback buttons ride on the
-            // last chunk.
-            var chunks = DiscordAnswers.Split(answer);
-            var interactionId = answer.InteractionId;
-            for (var index = 0; index < chunks.Count; index++)
-            {
-                var isLast = index == chunks.Count - 1;
-                var feedback = isLast ? interactionId : null;
-
-                if (index == 0)
-                {
-                    var reply = new ReplyMessageProperties { Content = chunks[index] };
-                    if (feedback is { } replyFeedback)
-                    {
-                        reply.Components = [FeedbackButtonRow.For(replyFeedback)];
-                    }
-
-                    await message.ReplyAsync(reply);
-                }
-                else
-                {
-                    var followup = new MessageProperties { Content = chunks[index] };
-                    if (feedback is { } followupFeedback)
-                    {
-                        followup.Components = [FeedbackButtonRow.For(followupFeedback)];
-                    }
-
-                    await rest.SendMessageAsync(message.ChannelId, followup);
-                }
-            }
+            await Reply(message, question, lease.Token);
+        }
+        catch (WorkRefused)
+        {
+            await Refuse(message, admission.MayReply(new(message.GuildId, message.ChannelId, message.Author.Id)));
         }
         catch (Exception exception)
         {
             logger.AnswerFailed(exception);
             await TryApologize(message);
         }
+    }
+
+    string? CurrentQuestion(Message message)
+    {
+        if (!Supported(message))
+        {
+            return null;
+        }
+
+        var (shouldAnswer, question) = ResolveQuestion(message.Content, client.Id, message.Author.IsBot, message.ChannelId, options.Value.Discord.AskChannelId);
+        return shouldAnswer ? question : null;
+    }
+
+    bool Supported(Message message) =>
+        admission.InScope(message.GuildId, message.ChannelId) && message.WebhookId is null &&
+        message.Type is MessageType.Default or MessageType.Reply &&
+        message.Content.Length <= Math.Min(options.Value.Protection.MaxQuestionCharacters, ConversationContextReader.MaximumCurrentCharacters);
+
+    async Task Refuse(Message message, bool reply)
+    {
+        logger.RateLimited();
+        if (reply)
+        {
+            await message.ReplyAsync(options.Value.Discord.RateLimitedReply);
+        }
+    }
+
+    async Task Reply(Message message, string question, CancellationToken cancellationToken)
+    {
+        var source = message.ChannelId == options.Value.Discord.AskChannelId ? "discord-ask-channel" : "discord-mention";
+        logger.AnsweringQuestion(source);
+        var request = message.GuildId is { } guildId
+            ? await context.For(question, new(guildId, message.ChannelId, message.Id, message.CreatedAt), cancellationToken)
+            : new Question(ConversationText.Sanitize(question)) { Conversation = new([], IsDegraded: true) };
+        var reply = await assistance.For(request, source, cancellationToken);
+        var answer = reply.Answer;
+        var chunks = DiscordAnswers.Split(answer);
+        for (var index = 0; index < chunks.Count; index++)
+        {
+            await SendChunk(message, chunks[index], index == 0, index == chunks.Count - 1 ? answer.InteractionId : null);
+        }
+        await SendAdvice(message, reply);
+    }
+
+    async Task SendAdvice(Message message, ConversationReply reply)
+    {
+        var advice = DiscordAnswers.Advice(reply);
+        if (advice.Length > 0)
+        {
+            await SendChunk(message, advice, first: false, feedback: null);
+        }
+    }
+
+    async Task SendChunk(Message message, string content, bool first, long? feedback)
+    {
+        if (first)
+        {
+            var reply = new ReplyMessageProperties { Content = content };
+            if (feedback is { } id)
+            {
+                reply.Components = [FeedbackButtonRow.For(id)];
+            }
+
+            await message.ReplyAsync(reply);
+            return;
+        }
+
+        var followup = new MessageProperties { Content = content };
+        if (feedback is { } followupId)
+        {
+            followup.Components = [FeedbackButtonRow.For(followupId)];
+        }
+
+        await rest.SendMessageAsync(message.ChannelId, followup);
     }
 
     async Task TryApologize(Message message)

@@ -1,0 +1,15 @@
+{
+  "status": "synthetic",
+  "provenance": {
+    "mode": "offline",
+    "evidence": "synthetic",
+    "fixtureHash": "bd261cf82955b0b5f471f251a60327b9ffd0a33b955bdf4d7fc6c7c465d0e4a0",
+    "corpusHash": "09dd286f8f270cf5616c19339bf6b92bd0b7b46ef2941ece79f35c12dd2d9ea7",
+    "answerModel": "canned-v1",
+    "judgeModel": "canned-score-v1",
+    "embeddingModel": "none",
+    "evaluator": "groundedness-1-to-5-v1"
+  },
+  "metrics": { "citationHitRate": 1, "refusalAccuracy": 1, "meanGroundedness": 4 },
+  "tolerance": 0
+}

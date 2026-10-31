@@ -1,13 +1,16 @@
 // Copyright (c) Cratis. All rights reserved.
 // Licensed under the MIT license. See LICENSE file in the project root for full license information.
 
-using Anthropic;
 using Cratis.Prompter.Answering;
 using Cratis.Prompter.Embeddings;
 using Cratis.Prompter.GitHub;
+using Cratis.Prompter.GitHub.Authentication;
 using Cratis.Prompter.Ingestion;
+using Cratis.Prompter.Protection;
 using Cratis.Prompter.Retrieval;
+using Cratis.Prompter.Routing;
 using Cratis.Prompter.Storage;
+using Cratis.Prompter.Telemetry;
 using Microsoft.Extensions.AI;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
@@ -35,6 +38,7 @@ public static class HostBuilderExtensions
         builder.Services
             .AddOptions<PrompterOptions>()
             .BindConfiguration(configSection)
+            .ValidateAnsweringReadiness(builder.Configuration)
             .Validate(
                 options => options.Discord.RateLimit.IsValid,
                 "Cratis:Prompter:Discord:RateLimit requires WindowMinutes > 0 and MaxQuestions >= 0.")
@@ -47,6 +51,7 @@ public static class HostBuilderExtensions
             .Validate(
                 options => options.Discord.AnswerTimeoutIsValid,
                 "Cratis:Prompter:Discord:AnswerTimeoutSeconds must be greater than 0; a value of 0 abandons every answer immediately and replies with the apology instead.")
+            .Validate(options => options.Protection.IsValid, "Cratis:Prompter:Protection requires positive bounds and nonnegative allowances.")
             .ValidateOnStart();
 
         builder.Services.AddSingleton(sp =>
@@ -64,6 +69,63 @@ public static class HostBuilderExtensions
             client.BaseAddress = new Uri(options.DocsSiteUrl.TrimEnd('/') + "/");
         });
 
+        AddModels(builder);
+
+        // GitHub: filing issues from Discord and answering newly-opened ones. The client is registered
+        // regardless of whether App credentials are configured - the command checks GitHubOptions.FilingEnabled and
+        // says so, which is a better failure than an unresolvable dependency at startup.
+        builder.Services.AddHttpClient<IIssues, Issues>(client =>
+        {
+            client.DefaultRequestHeaders.Accept.Add(new("application/vnd.github+json"));
+
+            // GitHub rejects requests without a user agent, and names the caller in rate-limit responses.
+            client.DefaultRequestHeaders.UserAgent.Add(new("Cratis-Prompter", "1.0"));
+        }).AddHttpMessageHandler<GitHubWriteGate>().AddGitHubAppAuthentication();
+
+        builder.Services.AddTransient<GitHubWriteGate>();
+        AddRequestAssistance(builder);
+        builder.Services.AddSingleton<IssueDrafting>();
+        builder.Services.AddSingleton<IIssueDrafting, ProtectedDrafting>();
+        builder.Services.AddSingleton<PendingIssues>();
+
+        builder.Services.AddSingleton<IChunks, Chunks>();
+        builder.Services.AddSingleton<IInteractionLog, InteractionLog>();
+        builder.Services.AddSingleton<IPassages, Passages>();
+        builder.Services.AddSingleton<Answers>();
+        builder.Services.AddSingleton<IAnswers, ProtectedAnswers>();
+        builder.Services.AddSingleton<Indexer>();
+        builder.Services.AddSingleton<ProtectedIndexer>();
+        builder.Services.AddSingleton<IIndexer>(sp => new ObservedIndexer(sp.GetRequiredService<ProtectedIndexer>(), sp.GetRequiredService<IIndexHistory>()));
+        builder.Services.AddSingleton<ISpendLedger, SpendLedger>();
+        builder.Services.AddSingleton<PaidWork>();
+        builder.Services.AddSingleton<Admission>();
+
+        // The per-user question throttle and the clock its refills are measured against. Both are shared
+        // across every Discord entry point, so they live as singletons in the common registration.
+        builder.Services.Configure<MetricsOptions>(builder.Configuration.GetSection("Cratis:Prompter:Metrics"));
+        builder.Services.AddSingleton<MetricsExport>();
+        if (builder.Configuration.GetValue<bool>("Cratis:Prompter:Metrics:Enabled")) builder.Services.AddHostedService<DurableMetrics>();
+        builder.Services.AddSingleton<IIndexHistory, IndexHistory>();
+        builder.Services.AddSingleton(TimeProvider.System);
+        builder.Services.AddSingleton<Discord.RateLimiter>();
+        builder.Services.AddSingleton<Discord.IConversationHistory, Discord.DiscordConversationHistory>();
+        builder.Services.AddSingleton<Discord.ConversationContextReader>();
+    }
+
+    static void AddRequestAssistance(IHostApplicationBuilder builder)
+    {
+        var routing = new RoutingOptions();
+        builder.Configuration.GetSection("Cratis:Prompter:Routing").Bind(routing);
+        var github = new GitHubOptions();
+        builder.Configuration.GetSection("Cratis:Prompter:GitHub").Bind(github);
+        builder.Services.AddRequestRouting(routing, github.Repositories.Keys.ToArray());
+        builder.Services.AddRelatedIssueSearch();
+        builder.Services.AddSingleton<Discord.ConversationAssistance>();
+    }
+
+    static void AddModels(IHostApplicationBuilder builder)
+    {
+        builder.Services.AddProviderAccounting();
         builder.Services.AddHttpClient<VoyageEmbeddings>((sp, client) =>
         {
             var options = sp.GetRequiredService<IOptions<PrompterOptions>>().Value;
@@ -73,46 +135,23 @@ public static class HostBuilderExtensions
 
         builder.Services.AddSingleton<IEmbeddingGenerator<string, Embedding<float>>>(sp =>
             new ResilientEmbeddingGenerator(
-                sp.GetRequiredService<VoyageEmbeddings>(),
+                new BudgetedEmbeddings(
+                    sp.GetRequiredService<VoyageEmbeddings>(),
+                    sp.GetRequiredService<ISpendLedger>(),
+                    sp.GetRequiredService<IOptions<PrompterOptions>>()),
                 sp.GetRequiredService<IOptions<PrompterOptions>>(),
-                sp.GetRequiredService<ILogger<ResilientEmbeddingGenerator>>()));
+                sp.GetRequiredService<ILogger<ResilientEmbeddingGenerator>>(),
+                sp.GetRequiredService<IProviderAccounting>()));
 
         builder.Services.AddSingleton<IChatClient>(sp =>
         {
             var options = sp.GetRequiredService<IOptions<PrompterOptions>>().Value;
-            var client = options.Anthropic.ApiKey.Length > 0
-                ? new AnthropicClient { ApiKey = options.Anthropic.ApiKey }
-                : new AnthropicClient();
+            var configuration = sp.GetRequiredService<IOptions<PrompterOptions>>();
+            var primary = new BudgetedChat(new AnthropicConnection(options.Anthropic.ApiKey), configuration);
+            var secondary = string.IsNullOrWhiteSpace(options.Anthropic.SecondaryApiKey)
+                ? null : new BudgetedChat(new AnthropicConnection(options.Anthropic.SecondaryApiKey), configuration);
 
-            return client.AsIChatClient(options.Anthropic.Model);
+            return new AnthropicAccounts(primary, secondary, options.Anthropic, sp.GetRequiredService<IProviderAccounting>(), options.Protection.Anthropic);
         });
-
-        // GitHub: filing issues from Discord and answering newly-opened ones. The client is registered
-        // regardless of whether a token is configured - the command checks GitHubOptions.FilingEnabled and
-        // says so, which is a better failure than an unresolvable dependency at startup.
-        builder.Services.AddHttpClient<IIssues, Issues>((sp, client) =>
-        {
-            var options = sp.GetRequiredService<IOptions<PrompterOptions>>().Value;
-            client.BaseAddress = new Uri(options.GitHub.ApiUrl.TrimEnd('/') + "/");
-            client.DefaultRequestHeaders.Authorization = new("Bearer", options.GitHub.Token);
-            client.DefaultRequestHeaders.Accept.Add(new("application/vnd.github+json"));
-
-            // GitHub rejects requests without a user agent, and names the caller in rate-limit responses.
-            client.DefaultRequestHeaders.UserAgent.Add(new("Cratis-Prompter", "1.0"));
-        });
-
-        builder.Services.AddSingleton<IIssueDrafting, IssueDrafting>();
-        builder.Services.AddSingleton<PendingIssues>();
-
-        builder.Services.AddSingleton<IChunks, Chunks>();
-        builder.Services.AddSingleton<IInteractionLog, InteractionLog>();
-        builder.Services.AddSingleton<IPassages, Passages>();
-        builder.Services.AddSingleton<IAnswers, Answers>();
-        builder.Services.AddSingleton<IIndexer, Indexer>();
-
-        // The per-user question throttle and the clock its refills are measured against. Both are shared
-        // across every Discord entry point, so they live as singletons in the common registration.
-        builder.Services.AddSingleton(TimeProvider.System);
-        builder.Services.AddSingleton<Discord.RateLimiter>();
     }
 }
