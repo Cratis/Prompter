@@ -97,7 +97,7 @@ public class a_disposable_documentation_corpus : Specification
         embeddings = Substitute.For<IEmbeddingGenerator<string, Embedding<float>>>();
         embeddings.GenerateAsync(Arg.Any<IEnumerable<string>>(), Arg.Any<EmbeddingGenerationOptions>(), Arg.Any<CancellationToken>())
             .Returns(call => new GeneratedEmbeddings<Embedding<float>>([new(QueryVector(new(call.Arg<IEnumerable<string>>().Single())))]));
-        var real = new Passages(_database!, embeddings);
+        var real = new Passages(_database!, embeddings, Options.Create(new PrompterOptions()));
         var search = Substitute.For<IPassages>();
         search.Search(Arg.Any<Question>(), Arg.Any<int>(), Arg.Any<CancellationToken>()).Returns<Task<IEnumerable<Passage>>>(async call =>
         {

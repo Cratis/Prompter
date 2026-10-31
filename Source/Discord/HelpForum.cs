@@ -170,17 +170,13 @@ public class HelpForum(
     async Task SendAnswer(ulong thread, ConversationReply reply, QuestionLink link)
     {
         var answer = reply.Answer;
-        var content = DiscordAnswers.Format(answer);
-        if (answer.InteractionId is { } interactionId)
+        var message = SafeMessages.Message(DiscordAnswers.Format(answer));
+        var rows = AnswerComponents.For(answer, AnswerActions.For(options.Value.Discord, link, reply));
+        if (rows.Count > 0)
         {
-            var message = SafeMessages.Message(content);
-            message.Components = [FeedbackButtonRow.For(interactionId, AnswerActions.For(options.Value.Discord, link, reply))];
-            await rest.SendMessageAsync(thread, message);
+            message.Components = [.. rows];
         }
-        else
-        {
-            await rest.SendMessageAsync(thread, SafeMessages.Message(content));
-        }
+        await rest.SendMessageAsync(thread, message);
     }
 
     async Task TryApologize(ulong threadId)

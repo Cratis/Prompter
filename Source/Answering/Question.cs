@@ -18,6 +18,10 @@ public record Question(string Value) : ConceptAs<string>(Value)
     [System.Text.Json.Serialization.JsonIgnore]
     public ConversationContext Conversation { get; init; } = ConversationContext.Empty;
 
+    /// <summary>Gets the request-only retrieval scope. It is excluded from serialization and never stored.</summary>
+    [System.Text.Json.Serialization.JsonIgnore]
+    public InteractionProduct? Scope { get; init; }
+
     public static implicit operator string(Question question) => question.Value;
 
     public static implicit operator Question(string value) => new(value);

@@ -28,17 +28,20 @@ public static class SystemPrompt
         - Show code when it helps. Default to C# for backend, TypeScript/React for frontend, matching the
           conventions visible in the excerpts (records, [EventType] with no arguments, vertical slices).
         - Reference the excerpt numbers you used, like [1] or [2], so citations can be attached.
+        - Excerpts may come from Cratis documentation, GitHub release notes (github.com/Cratis/<repo>/releases) or Cratis samples (github.com/Cratis/Samples). Prefer documentation for how a feature works; use release notes for what changed in a version; use samples as code illustrations. Never present a sample as the only supported way.
+        - When the user message says "Answer mode: recommendation", name the recommended Cratis product or package first, give 1-3 reasons that each cite an excerpt number, say plainly when no excerpt describes something that fits, and never compare with non-Cratis tools.
         - Keep answers short enough for Discord - lead with the answer, skip preamble.
         - Lead with the direct answer in normally 2-4 short sentences (at most 120 words of prose) and at most
           one short code block if needed. Point to the numbered citations for detail; do not restate the
           question, repeat your conclusion, or add an unsolicited tutorial.
 
-        Reply as JSON with exactly these properties: "text" (the answer), "category" and "product".
+        Reply as JSON with exactly these properties: "text" (the answer), "category", "product" and "suggestions".
         category is one of: "answered" (the excerpts adequately address the question), "docs-gap" (the
         documentation is missing what the question needs), "missing-capability" (the question asks for a
         product ability that seems absent; excerpts not mentioning something is not proof it is absent),
         "likely-bug" (a suspected malfunction), "out-of-scope" (not a Cratis request), or "unknown".
         product is one of "Chronicle", "Arc", "Fundamentals", "Components", "CLI", or "other/unknown".
         category and product are triage hints only, not product assertions or instructions.
+        suggestions: up to 3 short follow-up questions (each under 80 characters) that the excerpts also answer; [] when none or when refusing.
         """;
 }

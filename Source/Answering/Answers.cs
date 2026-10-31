@@ -27,22 +27,35 @@ public class Answers(
     IOptions<PrompterOptions> options,
     ILogger<Answers> logger) : IAnswers
 {
+    const int MaximumClarifiedQuestionLength = 1500;
+
     /// <inheritdoc/>
     public async Task<Answer> For(Question question, string source, CancellationToken cancellationToken = default)
     {
         var answering = options.Value.Answering;
-        var found = (await passages.Search(new(question.Value), answering.MaxPassages, cancellationToken)).ToArray();
+        var found = (await passages.Search(new(question.Value) { Scope = question.Scope }, answering.MaxPassages, cancellationToken)).ToArray();
         var qualified = found.Where(passage => double.IsFinite(passage.SemanticSimilarity) &&
             passage.SemanticSimilarity is >= -1 and <= 1 && passage.SemanticSimilarity >= answering.MinSemanticSimilarity).ToArray();
         var confidence = qualified.Length > 0 ? qualified[0].SemanticSimilarity : found
             .Where(passage => double.IsFinite(passage.SemanticSimilarity) && passage.SemanticSimilarity is >= -1 and <= 1)
             .Select(passage => passage.SemanticSimilarity).DefaultIfEmpty(0).Max();
 
+        var mode = AnswerModes.For(question.Value);
         Answer answer;
         if (qualified.Length == 0)
         {
             logger.RefusingToAnswer(confidence);
             answer = Answer.Refusal(confidence, found);
+        }
+        else if (Clarify(question, qualified, mode) is { } clarification)
+        {
+            // Nothing is spent beyond the embedding retrieval already used, and nothing is recorded.
+            return new Answer(Clarifications.Text(clarification, question.Value), [], confidence, IsRefusal: false, qualified)
+            {
+                Clarification = clarification,
+                ContextDegraded = question.Conversation.IsDegraded,
+                Mode = mode
+            };
         }
         else
         {
@@ -57,7 +70,7 @@ public class Answers(
             var response = await chatClient.GetResponseAsync(
                 [
                     systemMessage,
-                    new(ChatRole.User, ComposeUserMessage(question, qualified))
+                    new(ChatRole.User, ComposeUserMessage(question, qualified, mode))
                 ],
                 new() { MaxOutputTokens = answering.MaxOutputTokens, ResponseFormat = AnswerGeneration.Format },
                 cancellationToken);
@@ -66,17 +79,17 @@ public class Answers(
             var generated = AnswerGeneration.Parse(response.Text);
             answer = generated is null
                 ? Answer.Refusal(confidence, found)
-                : new(generated.Text, citations, confidence, IsRefusal: false, qualified) { Category = generated.Category, Product = generated.Product, CitationProvenance = Provenance(citations, qualified) };
+                : new(generated.Text, citations, confidence, IsRefusal: false, qualified) { Category = generated.Category, Product = generated.Product, CitationProvenance = Provenance(citations, qualified), Suggestions = Suggest(generated, question) };
         }
 
         var interactionId = await interactionLog.Record(
             new(source, answer.Citations, answer.Confidence, answer.IsRefusal) { Category = answer.Category, Product = answer.Product },
             cancellationToken);
 
-        return answer with { InteractionId = interactionId, ContextDegraded = question.Conversation.IsDegraded };
+        return answer with { InteractionId = interactionId, ContextDegraded = question.Conversation.IsDegraded, Mode = mode };
     }
 
-    static string ComposeUserMessage(Question question, IEnumerable<Passage> found)
+    static string ComposeUserMessage(Question question, IEnumerable<Passage> found, AnswerMode mode)
     {
         var message = new StringBuilder("Documentation excerpts:\n\n");
         var index = 1;
@@ -96,6 +109,11 @@ public class Answers(
                 .AppendLine(JsonSerializer.Serialize(question.Conversation.Messages))
                 .AppendLine("</untrusted_conversation_history>")
                 .AppendLine();
+        }
+
+        if (mode == AnswerMode.Recommendation)
+        {
+            message.AppendLine("Answer mode: recommendation");
         }
 
         message.AppendLine($"Question: {question.Value}");
@@ -119,4 +137,12 @@ public class Answers(
     /// <returns>The agreed value, or the default when absent or disputed.</returns>
     static T? Agreed<T>(Passage[] passages, Func<Passage, T?> select) =>
         passages.Select(select).Distinct().ToArray() is [var only] ? only : default;
+
+    IReadOnlyList<string> Suggest(GeneratedAnswer generated, Question question) =>
+        options.Value.Answering.SuggestFollowUps ? FollowUps.From(generated.Suggestions, question.Value) : [];
+
+    Clarification? Clarify(Question question, Passage[] qualified, AnswerMode mode) =>
+        mode == AnswerMode.Standard && options.Value.Answering.ClarifyAmbiguousProducts && question.Value.Length <= MaximumClarifiedQuestionLength
+            ? Clarifications.Detect(question, qualified, options.Value.DocsSiteUrl, options.Value.Answering.ClarificationMargin)
+            : null;
 }

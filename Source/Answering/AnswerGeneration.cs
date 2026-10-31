@@ -21,9 +21,10 @@ public static class AnswerGeneration
           "properties": {
             "text": { "type": "string" },
             "category": { "type": "string", "enum": ["answered", "docs-gap", "missing-capability", "likely-bug", "out-of-scope", "unknown"] },
-            "product": { "type": "string", "enum": ["Chronicle", "Arc", "Fundamentals", "Components", "CLI", "other/unknown"] }
+            "product": { "type": "string", "enum": ["Chronicle", "Arc", "Fundamentals", "Components", "CLI", "other/unknown"] },
+            "suggestions": { "type": "array", "items": { "type": "string" } }
           },
-          "required": ["text", "category", "product"],
+          "required": ["text", "category", "product", "suggestions"],
           "additionalProperties": false
         }
         """).RootElement.Clone();
@@ -47,7 +48,7 @@ public static class AnswerGeneration
             using var document = JsonDocument.Parse(trimmed);
             var root = document.RootElement;
             return root.ValueKind == JsonValueKind.Object && Text(root, "text") is { } text && !string.IsNullOrWhiteSpace(text)
-                ? new GeneratedAnswer(text, Category(Text(root, "category")), Product(Text(root, "product")))
+                ? new GeneratedAnswer(text, Category(Text(root, "category")), Product(Text(root, "product"))) { Suggestions = Suggestions(root) }
                 : null;
         }
         catch (JsonException)
@@ -93,6 +94,11 @@ public static class AnswerGeneration
 
         return Advance(ref reader, JsonTokenType.String) ? reader.GetString() : null;
     }
+
+    static string[] Suggestions(JsonElement root) =>
+        root.TryGetProperty("suggestions", out var value) && value.ValueKind == JsonValueKind.Array
+            ? [.. value.EnumerateArray().Where(item => item.ValueKind == JsonValueKind.String).Select(item => item.GetString()!)]
+            : [];
 
     static string? Text(JsonElement root, string name) =>
         root.TryGetProperty(name, out var value) && value.ValueKind == JsonValueKind.String ? value.GetString() : null;

@@ -39,6 +39,15 @@ public record Answer(
     /// <summary>Gets whether this request fell back to current-only conversation context.</summary>
     public bool ContextDegraded { get; init; }
 
+    /// <summary>Gets the follow-up questions the same excerpts also answer, already filtered and bounded; empty when there are none.</summary>
+    public IReadOnlyList<string> Suggestions { get; init; } = [];
+
+    /// <summary>Gets the "which product do you mean?" question when the answer is a clarification instead of an answer; otherwise <see langword="null"/>.</summary>
+    public Clarification? Clarification { get; init; }
+
+    /// <summary>Gets the shape of answer the question asked for.</summary>
+    public AnswerMode Mode { get; init; } = AnswerMode.Standard;
+
     /// <summary>
     /// Creates a refusal answer for when the documentation does not cover the question well enough.
     /// </summary>

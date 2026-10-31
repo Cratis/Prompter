@@ -7,4 +7,8 @@ namespace Cratis.Prompter.Answering;
 /// <param name="Text">The answer text; never a raw structured envelope.</param>
 /// <param name="Category">The triage category, <see cref="InteractionCategory.Unknown"/> when not recoverable.</param>
 /// <param name="Product">The product, <see cref="InteractionProduct.OtherOrUnknown"/> when not recoverable.</param>
-public record GeneratedAnswer(string Text, InteractionCategory Category, InteractionProduct Product);
+public record GeneratedAnswer(string Text, InteractionCategory Category, InteractionProduct Product)
+{
+    /// <summary>Gets the follow-up questions the model proposed, unfiltered; empty when none were recoverable.</summary>
+    public IReadOnlyList<string> Suggestions { get; init; } = [];
+}

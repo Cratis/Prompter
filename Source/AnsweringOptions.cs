@@ -33,4 +33,21 @@ public class AnsweringOptions
     /// Gets or sets the maximum number of output tokens for a generated answer.
     /// </summary>
     public int MaxOutputTokens { get; set; } = 768;
+
+    /// <summary>
+    /// Gets or sets whether grounded answers carry up to three short follow-up question buttons.
+    /// </summary>
+    public bool SuggestFollowUps { get; set; } = true;
+
+    /// <summary>
+    /// Gets or sets whether a question that names no product and has near-tied evidence across products is answered
+    /// with a "which product?" question before any model call.
+    /// </summary>
+    public bool ClarifyAmbiguousProducts { get; set; } = true;
+
+    /// <summary>
+    /// Gets or sets how close, in cosine similarity, the second product's best passage must be to the best passage
+    /// for the question to count as ambiguous between products.
+    /// </summary>
+    public double ClarificationMargin { get; set; } = 0.03;
 }
