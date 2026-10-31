@@ -26,7 +26,7 @@ Configuration binds to the `Cratis:Prompter` section. Environment variables use 
 | Embedding dimensions | `Cratis__Prompter__Voyage__Dimensions` | `1024` (must match the database schema) |
 | Max passages per answer | `Cratis__Prompter__Answering__MaxPassages` | `8` |
 | Refusal threshold | `Cratis__Prompter__Answering__MinScore` | `0.02` |
-| Max answer tokens | `Cratis__Prompter__Answering__MaxOutputTokens` | `1024` |
+| Max answer tokens | `Cratis__Prompter__Answering__MaxOutputTokens` | `768` |
 | Maintainer channel (weekly metadata-only gap digest) | `Cratis__Prompter__Discord__MaintainerChannelId` | - (digest off) |
 | Weekly digest UTC day | `Cratis__Prompter__Discord__MaintainerDigestDay` | `Monday` |
 | Weekly digest UTC hour (clamped to 0–23) | `Cratis__Prompter__Discord__MaintainerDigestHourUtc` | `8` |

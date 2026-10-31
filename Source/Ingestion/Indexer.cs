@@ -44,12 +44,14 @@ public class Indexer(
         var existing = await chunks.GetHashes(cancellationToken);
         var seen = new HashSet<ChunkId>();
         var changed = new List<Chunk>();
+        var metadata = new List<DocumentationMetadata>();
         var pages = 0;
         var unchanged = 0;
 
         await foreach (var page in docsSite.GetPages(cancellationToken))
         {
             pages++;
+            metadata.Add(page.Metadata);
             foreach (var chunk in MarkdownChunker.Chunk(page.Url, page.Markdown))
             {
                 seen.Add(chunk.Id);
@@ -76,7 +78,7 @@ public class Indexer(
             await lease.Reserve(budget, options.Value.Ingestion.MaxDailyDollars, false, cancellationToken);
             logger.IndexExposureReserved(budget.Tokens, budget.Dollars);
             var staged = await Embed(changed, lease, cancellationToken);
-            removed = await lease.CommitIndex(staged, seen, cancellationToken);
+            removed = await lease.CommitIndex(staged, seen, metadata, cancellationToken);
         }
 
         var run = new IndexRun(pages, changed.Count, unchanged, removed, Stopwatch.GetElapsedTime(start));

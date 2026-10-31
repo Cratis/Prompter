@@ -18,8 +18,8 @@ public class InteractionLog(NpgsqlDataSource dataSource, IOptions<PrompterOption
     {
         await using var command = dataSource.CreateCommand(
             """
-            INSERT INTO interactions (source, cited_pages, confidence, was_refusal)
-            VALUES ($1, $2, $3, $4)
+            INSERT INTO interactions (source, cited_pages, confidence, was_refusal, category, product)
+            VALUES ($1, $2, $3, $4, $5, $6)
             RETURNING id
             """);
 
@@ -27,6 +27,8 @@ public class InteractionLog(NpgsqlDataSource dataSource, IOptions<PrompterOption
         command.Parameters.AddWithValue(interaction.CitedPages.Select(page => page.Value).ToArray());
         command.Parameters.AddWithValue(interaction.Confidence);
         command.Parameters.AddWithValue(interaction.WasRefusal);
+        command.Parameters.AddWithValue((short)interaction.Category);
+        command.Parameters.AddWithValue((short)interaction.Product);
 
         return (long)(await command.ExecuteScalarAsync(cancellationToken))!;
     }

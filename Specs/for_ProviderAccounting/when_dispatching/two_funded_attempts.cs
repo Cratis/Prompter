@@ -26,5 +26,5 @@ public class two_funded_attempts : given.durable_accounting
     [Fact] void should_dispatch_both_attempts_in_one_lease() => Provider.Received(2).GetResponseAsync(Arg.Any<IEnumerable<ChatMessage>>(), Arg.Any<ChatOptions?>(), Arg.Any<CancellationToken>());
     [Fact] void should_claim_first_attempt_from_prepaid_parent() => Store.Received(1).Reserve(_first, Arg.Is<Guid?>(id => id.HasValue), Arg.Any<decimal>(), Arg.Any<CancellationToken>());
     [Fact] void should_fund_retry_independently() => Store.Received(1).Reserve(_second, null, Arg.Any<decimal>(), Arg.Any<CancellationToken>());
-    [Fact] void should_not_refund_unknown_first_attempt_from_known_retry() => Ledger.Received(1).Reconcile(Arg.Any<Guid>(), new(Options.Protection.Anthropic.Cost(Options.Protection.Anthropic.MaxInputTokens, Options.Answering.MaxOutputTokens), 0), Arg.Any<CancellationToken>());
+    [Fact] void should_not_refund_unknown_first_attempt_from_known_retry() => Ledger.Received(1).Reconcile(Arg.Any<Guid>(), new(Options.Protection.AnthropicAnswer.Cost(Options.Protection.AnthropicAnswer.MaxInputTokens, Options.Answering.MaxOutputTokens), 0), Arg.Any<CancellationToken>());
 }

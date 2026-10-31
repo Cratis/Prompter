@@ -21,6 +21,10 @@ public class a_paid_work : Specification
         Options.Protection.Anthropic.InputUsdPerMillion = 1;
         Options.Protection.Anthropic.OutputUsdPerMillion = 2;
         Options.Protection.Anthropic.MaxInputTokens = 32000;
+        Options.Protection.AnthropicAnswer.Model = Options.Anthropic.Answer.Model!;
+        Options.Protection.AnthropicAnswer.InputUsdPerMillion = 1;
+        Options.Protection.AnthropicAnswer.OutputUsdPerMillion = 2;
+        Options.Protection.AnthropicAnswer.MaxInputTokens = 32000;
         Options.Protection.Voyage.Model = Options.Voyage.Model;
         Options.Protection.Voyage.InputUsdPerMillion = 1;
         Options.Protection.Voyage.MaxInputTokens = 16000;

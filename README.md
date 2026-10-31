@@ -194,9 +194,9 @@ Configuration binds to the `Cratis:Prompter` section (environment variables use 
 | Default task model | `Cratis__Prompter__Anthropic__Model` | `claude-sonnet-5-5` |
 | Optional secondary Anthropic key | `Cratis__Prompter__Anthropic__SecondaryApiKey` | — (disabled) |
 | Provider-confirmed primary allocation reset | `Cratis__Prompter__Anthropic__PrimaryQuotaResetAt` | — |
-| Answer model override | `Cratis__Prompter__Anthropic__Answer__Model` | default task model |
-| Answer adaptive effort | `Cratis__Prompter__Anthropic__Answer__Effort` | `high` |
-| Answer output-token ceiling (includes thinking) | `Cratis__Prompter__Anthropic__Answer__MaxOutputTokens` | `4096` |
+| Answer model override | `Cratis__Prompter__Anthropic__Answer__Model` | `claude-haiku-5-5` (priced by `Protection__AnthropicAnswer__*`; default input `0.20` worst cache-write, output `0.50` USD per million) |
+| Answer adaptive effort | `Cratis__Prompter__Anthropic__Answer__Effort` | empty (none) |
+| Answer output-token ceiling  | `Cratis__Prompter__Anthropic__Answer__MaxOutputTokens` | `768` |
 | Answer provider deadline (seconds, max 60) | `Cratis__Prompter__Anthropic__Answer__TimeoutSeconds` | `60` |
 | Answer secondary-account opt-in | `Cratis__Prompter__Anthropic__Answer__AllowSecondary` | `false` |
 | Issue-draft model override | `Cratis__Prompter__Anthropic__IssueDraft__Model` | default task model |
@@ -211,6 +211,7 @@ Configuration binds to the `Cratis:Prompter` section (environment variables use 
 | GitHub webhook secret (answer issues) | `Cratis__Prompter__GitHub__WebhookSecret` | — |
 | Repositories whose issues may be answered | `Cratis__Prompter__GitHub__AnsweringRepositories__0` | — (none) |
 | Channel new issues are announced in | `Cratis__Prompter__GitHub__NotifyChannelId` | — |
+| Anonymous public related-issue links (off switch) | `Cratis__Prompter__GitHub__PublicRelatedIssuesEnabled` | `true` |
 | Label put on issues filed from Discord | `Cratis__Prompter__GitHub__IssueLabel` | `from-discord` |
 | Label that opts an issue out of answers | `Cratis__Prompter__GitHub__OptOutLabel` | `no-prompter` |
 | Maintainer channel (weekly metadata-only gap digest) | `Cratis__Prompter__Discord__MaintainerChannelId` | — (digest off) |

@@ -10,7 +10,7 @@ public class and_pricing_is_not_verified : given.a_paid_work
 {
     Exception? _error;
 
-    void Establish() => Options.Protection.Anthropic.Model = "another-model";
+    void Establish() => Options.Protection.AnthropicAnswer.Model = "another-model";
 
     async Task Because() => _error = await Catch.Exception(async () =>
     {

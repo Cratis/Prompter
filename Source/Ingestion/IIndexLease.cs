@@ -23,9 +23,10 @@ public interface IIndexLease : IAsyncDisposable
     /// <summary>Atomically publishes a complete run on the owning session.</summary>
     /// <param name="changed">All staged changes.</param>
     /// <param name="existing">All identifiers discovered in the complete crawl.</param>
+    /// <param name="pages">The explicit provenance of every page in the complete crawl; stamped at publication, pruned to this snapshot.</param>
     /// <param name="cancellationToken">Token for cancellation.</param>
     /// <returns>The number of stale chunks removed.</returns>
-    Task<int> CommitIndex(IReadOnlyCollection<EmbeddedChunk> changed, IReadOnlySet<ChunkId> existing, CancellationToken cancellationToken);
+    Task<int> CommitIndex(IReadOnlyCollection<EmbeddedChunk> changed, IReadOnlySet<ChunkId> existing, IReadOnlyCollection<DocumentationMetadata> pages, CancellationToken cancellationToken);
 
     /// <summary>
     /// Reserves retry-inclusive exposure and, for scheduled work, the single daily slot.

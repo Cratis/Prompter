@@ -21,6 +21,14 @@ public static class RelatedIssueRegistration
             client.DefaultRequestHeaders.Accept.Add(new("application/vnd.github+json"));
             client.DefaultRequestHeaders.UserAgent.Add(new("Cratis-Prompter", "1.0"));
         }).AddHttpMessageHandler<GitHubWriteGate>().AddGitHubAppAuthentication();
+        services.AddSingleton<PublicIssueSearchLimits>();
+        services.AddHttpClient<IPublicRelatedIssues, PublicRelatedIssues>(client =>
+        {
+            client.BaseAddress = new("https://api.github.com/");
+            client.Timeout = Timeout.InfiniteTimeSpan;
+            client.DefaultRequestHeaders.Accept.Add(new("application/vnd.github+json"));
+            client.DefaultRequestHeaders.UserAgent.Add(new("Cratis-Prompter", "1.0"));
+        }).ConfigurePrimaryHttpMessageHandler(() => new HttpClientHandler { AllowAutoRedirect = false, UseCookies = false });
         return services;
     }
 }

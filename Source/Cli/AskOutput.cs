@@ -41,7 +41,7 @@ public static class AskOutput
         }
 
         lines.Add(answer.Text);
-        lines.AddRange(answer.Citations.Select(citation => $"  - {citation.Value}"));
+        lines.AddRange(answer.Citations.Select(citation => $"  - {citation.Value}{Note(answer, citation)}"));
 
         return lines;
     }
@@ -52,6 +52,9 @@ public static class AskOutput
     /// <param name="answer">The answer to derive the exit code from.</param>
     /// <returns><c language="csharp">1</c> when the answer is a refusal, otherwise <c language="csharp">0</c>.</returns>
     public static int ExitCode(Answer answer) => answer.IsRefusal ? 1 : 0;
+
+    static string Note(Answer answer, PageUrl page) =>
+        answer.CitationProvenance.FirstOrDefault(provenance => provenance.Page == page) is { } found ? $" — {found.Note}" : string.Empty;
 
     static string Score(double score) => score.ToString("F3", CultureInfo.InvariantCulture);
 

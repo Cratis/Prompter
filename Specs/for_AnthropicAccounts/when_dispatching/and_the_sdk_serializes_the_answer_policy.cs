@@ -29,10 +29,10 @@ public class and_the_sdk_serializes_the_answer_policy : Specification
         _body = JsonDocument.Parse(_http.Body);
     }
 
-    [Fact] void should_send_sonnet_55() => _body.RootElement.GetProperty("model").GetString().ShouldEqual("claude-sonnet-5-5");
-    [Fact] void should_send_adaptive_thinking() => _body.RootElement.GetProperty("thinking").GetProperty("type").GetString().ShouldEqual("adaptive");
-    [Fact] void should_send_high_effort() => _body.RootElement.GetProperty("output_config").GetProperty("effort").GetString().ShouldEqual("high");
-    [Fact] void should_send_bounded_output() => _body.RootElement.GetProperty("max_tokens").GetInt32().ShouldEqual(4096);
+    [Fact] void should_send_haiku_55() => _body.RootElement.GetProperty("model").GetString().ShouldEqual("claude-haiku-5-5");
+    [Fact] void should_not_send_thinking() => _body.RootElement.TryGetProperty("thinking", out _).ShouldBeFalse();
+    [Fact] void should_not_send_effort() => _body.RootElement.TryGetProperty("output_config", out _).ShouldBeFalse();
+    [Fact] void should_send_bounded_output() => _body.RootElement.GetProperty("max_tokens").GetInt32().ShouldEqual(768);
     [Fact] void should_omit_temperature() => _body.RootElement.TryGetProperty("temperature", out _).ShouldBeFalse();
     [Fact] void should_capture_input_usage() => _response.Usage!.InputTokenCount.ShouldEqual(5);
     [Fact] void should_capture_output_usage() => _response.Usage!.OutputTokenCount.ShouldEqual(2);

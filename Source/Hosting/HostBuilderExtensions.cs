@@ -166,7 +166,7 @@ public static class HostBuilderExtensions
             var secondary = string.IsNullOrWhiteSpace(options.Anthropic.SecondaryApiKey)
                 ? null : new BudgetedChat(new AnthropicConnection(options.Anthropic.SecondaryApiKey), configuration);
 
-            return new AnthropicAccounts(primary, secondary, options.Anthropic, sp.GetRequiredService<IProviderAccounting>(), options.Protection.Anthropic);
+            return new AnthropicAccounts(primary, secondary, options.Anthropic, sp.GetRequiredService<IProviderAccounting>(), options.Protection.Anthropic, options.Protection.AnthropicAnswer);
         });
     }
 }

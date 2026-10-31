@@ -51,6 +51,18 @@ public class ProtectionOptions
     /// <summary>Gets or sets verified conservative Anthropic prices and limits.</summary>
     public ProviderBudget Anthropic { get; set; } = new();
 
+    /// <summary>
+    /// Gets or sets the verified Anthropic prices and limits for answer generation. The default prices the
+    /// default answer model, Haiku 5.5, at its published standard rates for prompts up to 100,000 tokens.
+    /// </summary>
+    public ProviderBudget AnthropicAnswer { get; set; } = new()
+    {
+        Model = "claude-haiku-5-5",
+        InputUsdPerMillion = 0.20m,
+        OutputUsdPerMillion = 0.50m,
+        MaxInputTokens = 32000
+    };
+
     /// <summary>Gets or sets verified conservative Voyage prices and limits.</summary>
     public ProviderBudget Voyage { get; set; } = new();
 

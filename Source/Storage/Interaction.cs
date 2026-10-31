@@ -1,6 +1,8 @@
 // Copyright (c) Cratis. All rights reserved.
 // Licensed under the MIT license. See LICENSE file in the project root for full license information.
 
+using Cratis.Prompter.Answering;
+
 namespace Cratis.Prompter.Storage;
 
 /// <summary>
@@ -16,4 +18,11 @@ public record Interaction(
     string Source,
     IEnumerable<PageUrl> CitedPages,
     double Confidence,
-    bool WasRefusal);
+    bool WasRefusal)
+{
+    /// <summary>Gets the stable-valued triage category; <see cref="InteractionCategory.Unknown"/> by default.</summary>
+    public InteractionCategory Category { get; init; } = InteractionCategory.Unknown;
+
+    /// <summary>Gets the stable-valued product; <see cref="InteractionProduct.OtherOrUnknown"/> by default.</summary>
+    public InteractionProduct Product { get; init; } = InteractionProduct.OtherOrUnknown;
+}
