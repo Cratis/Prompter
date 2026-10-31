@@ -17,4 +17,11 @@ public interface IConversationHistory
     /// <param name="cancellationToken">The request's history deadline.</param>
     /// <returns>Transient plain-text candidates.</returns>
     Task<IReadOnlyList<HistoryMessage>> Before(ConversationLocation location, CancellationToken cancellationToken);
+
+    /// <summary>Reads a bounded number of preceding messages from this scope only.</summary>
+    /// <param name="location">The exact requested scope and exclusive upper message id.</param>
+    /// <param name="limit">The maximum number of messages to read.</param>
+    /// <param name="cancellationToken">The request's history deadline.</param>
+    /// <returns>Transient plain-text candidates.</returns>
+    Task<IReadOnlyList<HistoryMessage>> Before(ConversationLocation location, int limit, CancellationToken cancellationToken);
 }

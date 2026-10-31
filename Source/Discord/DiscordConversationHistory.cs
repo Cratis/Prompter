@@ -27,10 +27,15 @@ public sealed class DiscordConversationHistory(GatewayClient client) : IConversa
     }
 
     /// <inheritdoc/>
-    public async Task<IReadOnlyList<HistoryMessage>> Before(ConversationLocation location, CancellationToken cancellationToken)
+    public Task<IReadOnlyList<HistoryMessage>> Before(ConversationLocation location, CancellationToken cancellationToken) =>
+        Before(location, 10, cancellationToken);
+
+    /// <inheritdoc/>
+    public async Task<IReadOnlyList<HistoryMessage>> Before(ConversationLocation location, int limit, CancellationToken cancellationToken)
     {
+        if (limit <= 0) return [];
         var messages = new List<HistoryMessage>();
-        var pagination = new PaginationProperties<ulong> { From = location.MessageId, Direction = PaginationDirection.Before, BatchSize = 10 };
+        var pagination = new PaginationProperties<ulong> { From = location.MessageId, Direction = PaginationDirection.Before, BatchSize = Math.Min(limit, 100) };
         await foreach (var message in client.Rest.GetMessagesAsync(
             location.ChannelId,
             pagination,
@@ -44,7 +49,7 @@ public sealed class DiscordConversationHistory(GatewayClient client) : IConversa
                 message.Author.IsBot,
                 message.Author.IsBot && message.Author.Id == client.Id,
                 message.Type is not MessageType.Default and not MessageType.Reply));
-            if (messages.Count == 10) break;
+            if (messages.Count == limit) break;
         }
         return messages.AsReadOnly();
     }
