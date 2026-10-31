@@ -67,11 +67,10 @@ public static class HostBuilderExtensions
             return dataSourceBuilder.Build();
         });
 
-        builder.Services.AddHttpClient<IDocsSite, DocsSite>((sp, client) =>
-        {
-            var options = sp.GetRequiredService<IOptions<PrompterOptions>>().Value;
-            client.BaseAddress = new Uri(options.DocsSiteUrl.TrimEnd('/') + "/");
-        });
+        builder.Services.AddHttpClient<DocsSite>((sp, client) =>
+            client.BaseAddress = new Uri(sp.GetRequiredService<IOptions<PrompterOptions>>().Value.DocsSiteUrl.TrimEnd('/') + "/"));
+        builder.Services.AddHttpClient<ReleaseNotes>(client => client.Timeout = TimeSpan.FromSeconds(30));
+        builder.Services.AddTransient<IDocsSite, CorpusSources>();
 
         AddModels(builder);
 
