@@ -18,7 +18,7 @@ public class and_two_products_tie : given.a_grounded_answerer
         Found(new Passage(new("https://cratis.io/chronicle/a/"), "T", "H", "c", 0.02, 0.80), new Passage(new("https://cratis.io/arc/b/"), "T", "H", "c", 0.01, 0.79));
     }
 
-    async Task Because() => result = await answers.For(new("How do I handle commands?"), "cli", TestContext.Current.CancellationToken);
+    async Task Because() => result = await answers.For(new("How do I handle commands?") { AllowClarification = true }, "discord-ask", TestContext.Current.CancellationToken);
 
     [Fact] void should_not_call_the_model() => chat.DidNotReceive().GetResponseAsync(Arg.Any<IEnumerable<ChatMessage>>(), Arg.Any<ChatOptions>(), Arg.Any<CancellationToken>());
     [Fact] void should_not_record_the_interaction() => interactions.DidNotReceive().Record(Arg.Any<Interaction>(), Arg.Any<CancellationToken>());

@@ -33,11 +33,20 @@ public class AnswerDelivery(RestClient rest, IOptions<PrompterOptions> options, 
     /// <param name="reply">The generated answer and advice.</param>
     /// <param name="cancellationToken">Cancels delivery.</param>
     /// <returns>The new thread identifier, or null for a normal reply.</returns>
-    public async Task<ulong?> Deliver(RestMessage message, ulong? guildId, bool inThread, string question, ConversationReply reply, CancellationToken cancellationToken)
+    public Task<ulong?> Deliver(RestMessage message, ulong? guildId, bool inThread, string question, ConversationReply reply, CancellationToken cancellationToken) =>
+        Deliver(message, new(guildId, inThread, question), reply, cancellationToken);
+
+    /// <summary>Delivers an answer while respecting the requester's relationship to the selected author.</summary>
+    /// <param name="message">The referenced question.</param>
+    /// <param name="context">The location and author relationship.</param>
+    /// <param name="reply">The answer and optional advice.</param>
+    /// <param name="cancellationToken">The cancellation token.</param>
+    /// <returns>The newly created thread, if any.</returns>
+    public async Task<ulong?> Deliver(RestMessage message, AnswerContext context, ConversationReply reply, CancellationToken cancellationToken)
     {
         var actions = AnswerActions.For(options.Value.Discord, new(message.ChannelId, message.Id), reply);
-        var thread = ShouldThread(guildId, inThread, message.ChannelId) ? await TryOpenThread(message, question, cancellationToken) : null;
-        var target = new Target(message, thread, actions);
+        var thread = context.OwnMessage && ShouldThread(context.GuildId, context.InThread, message.ChannelId) ? await TryOpenThread(message, context.Question, cancellationToken) : null;
+        var target = new Target(message, thread, actions, context.OwnMessage);
         var chunks = DiscordAnswers.Split(reply.Answer);
         for (var index = 0; index < chunks.Count; index++)
         {
@@ -74,7 +83,7 @@ public class AnswerDelivery(RestClient rest, IOptions<PrompterOptions> options, 
     {
         if (target.Thread is null && chunk.First)
         {
-            var reply = SafeMessages.Reply(chunk.Content);
+            var reply = SafeMessages.Reply(chunk.Content, target.OwnMessage);
             if (chunk.Last is { } last && AnswerComponents.For(last, target.Actions) is { Count: > 0 } rows)
             {
                 reply.Components = [.. rows];
@@ -91,7 +100,7 @@ public class AnswerDelivery(RestClient rest, IOptions<PrompterOptions> options, 
         await rest.SendMessageAsync(target.Thread ?? target.Message.ChannelId, followup, cancellationToken: cancellationToken);
     }
 
-    sealed record Target(RestMessage Message, ulong? Thread, AnswerActions Actions);
+    sealed record Target(RestMessage Message, ulong? Thread, AnswerActions Actions, bool OwnMessage);
 
     sealed record Chunk(string Content, bool First, Answer? Last);
 }

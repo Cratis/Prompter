@@ -142,7 +142,7 @@ public class Answers(
         options.Value.Answering.SuggestFollowUps ? FollowUps.From(generated.Suggestions, question.Value) : [];
 
     Clarification? Clarify(Question question, Passage[] qualified, AnswerMode mode) =>
-        mode == AnswerMode.Standard && options.Value.Answering.ClarifyAmbiguousProducts && question.Value.Length <= MaximumClarifiedQuestionLength
+        question.AllowClarification && mode == AnswerMode.Standard && options.Value.Answering.ClarifyAmbiguousProducts && question.Value.Length <= MaximumClarifiedQuestionLength
             ? Clarifications.Detect(question, qualified, options.Value.DocsSiteUrl, options.Value.Answering.ClarificationMargin)
             : null;
 }

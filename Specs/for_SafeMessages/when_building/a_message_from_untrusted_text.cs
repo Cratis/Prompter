@@ -17,5 +17,6 @@ public class a_message_from_untrusted_text : Specification
     [Fact] void should_allow_no_mentions_in_a_message() => Nobody(SafeMessages.Message(Hostile).AllowedMentions!).ShouldBeTrue();
     [Fact] void should_allow_no_mentions_in_a_followup() => Nobody(SafeMessages.Followup(Hostile).AllowedMentions!).ShouldBeTrue();
     [Fact] void should_allow_no_mentions_in_a_reply() => Nobody(SafeMessages.Reply(Hostile).AllowedMentions!).ShouldBeTrue();
+    [Fact] void should_not_notify_a_third_party_author() => SafeMessages.Reply(Hostile, mentionAsker: false).AllowedMentions!.ReplyMention.ShouldBeFalse();
     [Fact] void should_still_notify_the_asker_the_reply_references() => SafeMessages.Reply(Hostile).AllowedMentions!.ReplyMention.ShouldBeTrue();
 }

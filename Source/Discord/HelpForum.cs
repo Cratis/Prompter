@@ -157,7 +157,7 @@ public class HelpForum(
 
         logger.AnsweringForumThread(thread.Id);
         var request = await context.For(question, new(thread.GuildId, thread.Id, starter.Id, starter.CreatedAt), cancellationToken);
-        var reply = await assistance.For(request, "discord-forum", cancellationToken);
+        var reply = await assistance.For(request with { AllowClarification = true }, "discord-forum", cancellationToken);
         await SendAnswer(thread.Id, reply, new(thread.Id, starter.Id));
         var advice = DiscordAnswers.Advice(reply);
         if (advice.Length > 0)

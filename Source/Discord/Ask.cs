@@ -4,7 +4,6 @@
 using Cratis.Prompter.Protection;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
-using NetCord;
 using NetCord.Rest;
 using NetCord.Services.ApplicationCommands;
 
@@ -41,7 +40,7 @@ public class Ask(
     public async Task Handle(string question)
     {
         var channel = Context.Channel.Id;
-        var decision = admission.TryEnter(new(Context.Interaction.GuildId, channel, Context.User.Id), question);
+        var decision = ChannelAdmission.TryEnter(admission, new(Context.Interaction.GuildId, channel, Context.User.Id), Context.Channel, question);
         if (!decision.Allowed)
         {
             if (decision.Reply)
@@ -59,7 +58,7 @@ public class Ask(
             lease.Activate();
             await Context.Interaction.SendResponseAsync(InteractionCallback.DeferredMessage());
             deferred = true;
-            var reply = await assistance.For(new(ConversationText.Sanitize(question)), "discord-ask", lease.Token);
+            var reply = await assistance.For(new(ConversationText.Sanitize(question)) { AllowClarification = true }, "discord-ask", lease.Token);
             await InteractionAnswers.Send(Context.Interaction, reply, AnswerActions.For(options.Value.Discord, new(channel, 0), reply));
         }
         catch (WorkRefused)
@@ -84,7 +83,7 @@ public class Ask(
 
         if (deferred)
         {
-            await Context.Interaction.SendFollowupMessageAsync(new() { Content = options.Value.Discord.RateLimitedReply, Flags = MessageFlags.Ephemeral });
+            await Context.Interaction.SendFollowupMessageAsync(SafeMessages.Ephemeral(options.Value.Discord.RateLimitedReply));
         }
         else
         {
@@ -93,13 +92,13 @@ public class Ask(
     }
 
     async Task Refuse() => await Context.Interaction.SendResponseAsync(
-        InteractionCallback.Message(new() { Content = options.Value.Discord.RateLimitedReply, Flags = MessageFlags.Ephemeral }));
+        InteractionCallback.Message(SafeMessages.Ephemeral(options.Value.Discord.RateLimitedReply)));
 
     async Task TryApologize()
     {
         try
         {
-            await Context.Interaction.SendFollowupMessageAsync(options.Value.Discord.ErrorReply);
+            await Context.Interaction.SendFollowupMessageAsync(SafeMessages.Followup(options.Value.Discord.ErrorReply));
         }
         catch (Exception exception)
         {

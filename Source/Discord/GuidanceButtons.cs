@@ -78,7 +78,7 @@ public class GuidanceButtons(
             return;
         }
 
-        var decision = admission.TryEnter(new(guildId, Context.Channel.Id, Context.User.Id), text);
+        var decision = ChannelAdmission.TryEnter(admission, new(guildId, Context.Channel.Id, Context.User.Id), Context.Channel, text);
         if (!decision.Allowed)
         {
             if (decision.Reply)
@@ -98,7 +98,7 @@ public class GuidanceButtons(
             deferred = true;
             var location = new ConversationLocation(guildId, Context.Channel.Id, interaction.Id, interaction.CreatedAt);
             var anchor = new HistoryMessage(Context.Interaction.Message.Id, Context.Channel.Id, Context.Interaction.Message.CreatedAt, Context.Interaction.Message.Content, IsBot: true, IsSelf: true, IsSystem: false);
-            var request = (await reader.For(ConversationText.Sanitize(text), location, anchor, lease.Token)) with { Scope = scope };
+            var request = (await reader.For(ConversationText.Sanitize(text), location, anchor, lease.Token)) with { Scope = scope, AllowClarification = true };
             var reply = await assistance.For(request, source, lease.Token);
             await InteractionAnswers.Send(interaction, reply, AnswerActions.For(options.Value.Discord, new(Context.Channel.Id, 0), reply));
         }
@@ -108,7 +108,7 @@ public class GuidanceButtons(
             if (admission.MayReply(new(guildId, Context.Channel.Id, Context.User.Id)))
             {
                 await (deferred
-                    ? interaction.SendFollowupMessageAsync(new() { Content = options.Value.Discord.RateLimitedReply, Flags = MessageFlags.Ephemeral })
+                    ? interaction.SendFollowupMessageAsync(SafeMessages.Ephemeral(options.Value.Discord.RateLimitedReply))
                     : Notify(options.Value.Discord.RateLimitedReply));
             }
         }
@@ -120,13 +120,13 @@ public class GuidanceButtons(
     }
 
     async Task Notify(string content) => await Context.Interaction.SendResponseAsync(
-        InteractionCallback.Message(new() { Content = content, Flags = MessageFlags.Ephemeral }));
+        InteractionCallback.Message(SafeMessages.Ephemeral(content)));
 
     async Task TryApologize()
     {
         try
         {
-            await Context.Interaction.SendFollowupMessageAsync(options.Value.Discord.ErrorReply);
+            await Context.Interaction.SendFollowupMessageAsync(SafeMessages.Ephemeral(options.Value.Discord.ErrorReply));
         }
         catch (Exception exception)
         {

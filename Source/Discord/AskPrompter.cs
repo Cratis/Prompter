@@ -56,7 +56,7 @@ public class AskPrompter(
             return;
         }
 
-        var decision = admission.TryEnter(new(guild, Context.Channel.Id, Context.User.Id), target.Content);
+        var decision = ChannelAdmission.TryEnter(admission, new(guild, Context.Channel.Id, Context.User.Id), Context.Channel, target.Content);
         if (!decision.Allowed)
         {
             if (decision.Reply) await Acknowledge(options.Value.Discord.RateLimitedReply, false);
@@ -72,8 +72,8 @@ public class AskPrompter(
             deferred = true;
             var inThread = Context.Channel is GuildThread;
             var question = await reader.ForSelection(target.Content, new(guild, target.ChannelId, target.Id, target.CreatedAt), inThread, lease.Token);
-            var reply = await assistance.For(question, "discord-message-command", lease.Token);
-            await delivery.Deliver(target, guild, inThread, target.Content, reply, lease.Token);
+            var reply = await assistance.For(question with { AllowClarification = true }, "discord-message-command", lease.Token);
+            await delivery.Deliver(target, new(guild, inThread, target.Content, Context.User.Id == target.Author.Id), reply, lease.Token);
             await Acknowledge("Answered.", true);
         }
         catch (WorkRefused)

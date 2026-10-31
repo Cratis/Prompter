@@ -20,7 +20,7 @@ public class and_clarification_is_disabled : given.a_grounded_answerer
         _custom = new(passages, chat, interactions, Options.Create(new PrompterOptions { Answering = { ClarifyAmbiguousProducts = false } }), NullLogger<Answers>.Instance);
     }
 
-    async Task Because() => result = await _custom.For(new("How do I handle commands?"), "cli", TestContext.Current.CancellationToken);
+    async Task Because() => result = await _custom.For(new("How do I handle commands?") { AllowClarification = true }, "discord-ask", TestContext.Current.CancellationToken);
 
     [Fact] void should_not_clarify() => result.Clarification.ShouldBeNull();
 }

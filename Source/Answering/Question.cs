@@ -22,6 +22,10 @@ public record Question(string Value) : ConceptAs<string>(Value)
     [System.Text.Json.Serialization.JsonIgnore]
     public InteractionProduct? Scope { get; init; }
 
+    /// <summary>Gets whether the interactive caller can resolve a product clarification.</summary>
+    [System.Text.Json.Serialization.JsonIgnore]
+    public bool AllowClarification { get; init; }
+
     public static implicit operator string(Question question) => question.Value;
 
     public static implicit operator Question(string value) => new(value);
