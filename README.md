@@ -185,6 +185,8 @@ Configuration binds to the `Cratis:Prompter` section (environment variables use 
 | Discord bot token | `Cratis__Prompter__Discord__Token` | — |
 | Ask channel (mention-free questions) | `Cratis__Prompter__Discord__AskChannelId` | — |
 | Help forum channel (auto-reply) | `Cratis__Prompter__Discord__HelpForumChannelId` | — |
+| Answer-in-thread channels (off when empty) | `Cratis__Prompter__Discord__AnswerInThreadChannelIds__0` | — |
+| Maintainer role for Ask a human (off when unset) | `Cratis__Prompter__Discord__MaintainerRoleId` | — |
 | Rate limit — questions per window | `Cratis__Prompter__Discord__RateLimit__MaxQuestions` | `5` |
 | Rate limit — window length (minutes) | `Cratis__Prompter__Discord__RateLimit__WindowMinutes` | `10` |
 | Answer timeout (seconds) | `Cratis__Prompter__Discord__AnswerTimeoutSeconds` | `60` |

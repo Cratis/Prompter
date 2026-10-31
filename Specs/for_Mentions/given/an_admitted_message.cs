@@ -99,7 +99,7 @@ public class an_admitted_message : for_PaidWork.given.a_paid_work
         var assistance = new ConversationAssistance(Classifier, Answers, Substitute.For<IRelatedIssues>(), config);
         FollowUps = new(config, Clock);
         Answers.For(Arg.Any<Question>(), Arg.Any<string>(), Arg.Any<CancellationToken>()).Returns(Task.FromCanceled<Answer>(new(true)));
-        Mentions = new(_client, _client.Rest, assistance, Admission, Work, new(History, Clock), FollowUps, config, NullLogger<Mentions>.Instance);
+        Mentions = new(_client, new(_client.Rest, config, NullLogger<AnswerDelivery>.Instance), assistance, Admission, Work, new(History, Clock), FollowUps, config, NullLogger<Mentions>.Instance);
         Message = Build(100, 2, 3, "current question");
     }
 }

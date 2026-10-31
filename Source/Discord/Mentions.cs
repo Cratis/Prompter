@@ -18,7 +18,7 @@ namespace Cratis.Prompter.Discord;
 /// answers replies to Prompter's own messages and follow-ups from the author of a help-forum thread it answered.
 /// </summary>
 /// <param name="client">The gateway client, used to read the bot's own identity for self-mention detection.</param>
-/// <param name="rest">The REST client used to send follow-up messages.</param>
+/// <param name="delivery">The answer delivery and optional thread creation.</param>
 /// <param name="assistance">Documentation answers and separate advisory hints.</param>
 /// <param name="admission">The cheap shared admission guard.</param>
 /// <param name="work">The global concurrency and durable spend guard.</param>
@@ -33,7 +33,7 @@ namespace Cratis.Prompter.Discord;
 /// </remarks>
 public class Mentions(
     GatewayClient client,
-    RestClient rest,
+    AnswerDelivery delivery,
     ConversationAssistance assistance,
     Admission admission,
     PaidWork work,
@@ -178,8 +178,11 @@ public class Mentions(
 
     bool ParentInScope(Message message) => message.Channel is not GuildThread parent || admission.InScope(message.GuildId, parent.ParentId);
 
+    ForumThread? FollowUpThread(Message message) => HelpForumThread(message) ??
+        (followUps.AskerOf(message.ChannelId) is { } asker ? new(message.ChannelId, asker, false) : null);
+
     bool IsAuthorFollowUp(Message message) =>
-        HelpForumThread(message) is { } forum && message.Author.Id == forum.OwnerId && followUps.Accepts(forum.Id);
+        FollowUpThread(message) is { } forum && message.Author.Id == forum.OwnerId && followUps.Accepts(forum.Id);
 
     string SourceOf(Message message, bool repliesToBot)
     {
@@ -193,7 +196,12 @@ public class Mentions(
             return "discord-mention";
         }
 
-        return repliesToBot ? "discord-reply" : "discord-forum-follow-up";
+        if (repliesToBot)
+        {
+            return "discord-reply";
+        }
+
+        return HelpForumThread(message) is not null ? "discord-forum-follow-up" : "discord-thread-follow-up";
     }
 
     bool MentionsBot(string content) =>
@@ -201,7 +209,7 @@ public class Mentions(
 
     void HandOffToHelpers(Message message)
     {
-        if (HelpForumThread(message) is { IsStarter: false } forum && IsHelper(message, forum.OwnerId))
+        if (FollowUpThread(message) is { IsStarter: false } forum && IsHelper(message, forum.OwnerId))
         {
             followUps.HandOff(forum.Id);
         }
@@ -251,49 +259,15 @@ public class Mentions(
         logger.AnsweringQuestion(source);
         var request = await BuildRequest(message, asked, cancellationToken);
         var reply = await assistance.For(request, source, cancellationToken);
-        var answer = reply.Answer;
-        var chunks = DiscordAnswers.Split(answer);
-        for (var index = 0; index < chunks.Count; index++)
+        var thread = await delivery.Deliver(message, asked.Question, reply, cancellationToken);
+        if (thread is { } opened)
         {
-            await SendChunk(message, chunks[index], index == 0, index == chunks.Count - 1 ? answer.InteractionId : null);
+            followUps.Opened(opened, message.Author.Id);
         }
-        await SendAdvice(message, reply);
-        if (HelpForumThread(message) is { } forum && message.Author.Id == forum.OwnerId)
+        else if (FollowUpThread(message) is { } forum && message.Author.Id == forum.OwnerId)
         {
             followUps.Answered(forum.Id);
         }
-    }
-
-    async Task SendAdvice(Message message, ConversationReply reply)
-    {
-        var advice = DiscordAnswers.Advice(reply);
-        if (advice.Length > 0)
-        {
-            await SendChunk(message, advice, first: false, feedback: null);
-        }
-    }
-
-    async Task SendChunk(Message message, string content, bool first, long? feedback)
-    {
-        if (first)
-        {
-            var reply = new ReplyMessageProperties { Content = content };
-            if (feedback is { } id)
-            {
-                reply.Components = [FeedbackButtonRow.For(id)];
-            }
-
-            await message.ReplyAsync(reply);
-            return;
-        }
-
-        var followup = new MessageProperties { Content = content };
-        if (feedback is { } followupId)
-        {
-            followup.Components = [FeedbackButtonRow.For(followupId)];
-        }
-
-        await rest.SendMessageAsync(message.ChannelId, followup);
     }
 
     async Task TryApologize(Message message)

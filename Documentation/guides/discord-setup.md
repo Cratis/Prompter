@@ -53,6 +53,8 @@ Turn on **Developer Mode** in Discord (User Settings, under Advanced), then righ
 | Surface | Setting |
 |---|---|
 | Help forum (auto-reply to new posts) | `Cratis__Prompter__Discord__HelpForumChannelId` |
+| Channels where answers start a thread (optional) | `Cratis__Prompter__Discord__AnswerInThreadChannelIds__0`, `__1`, … |
+| Maintainer role for the Ask a human button (optional; make the role mentionable) | `Cratis__Prompter__Discord__MaintainerRoleId` |
 | Ask channel (every message is a question) | `Cratis__Prompter__Discord__AskChannelId` |
 
 Mentions and `/ask` work everywhere the bot can read and need no channel configuration. The full settings

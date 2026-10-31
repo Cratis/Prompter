@@ -16,6 +16,8 @@ Configuration binds to the `Cratis:Prompter` section. Environment variables use 
 | Discord bot token | `Cratis__Prompter__Discord__Token` | - |
 | Ask channel | `Cratis__Prompter__Discord__AskChannelId` | - |
 | Help forum channel (auto-reply) | `Cratis__Prompter__Discord__HelpForumChannelId` | - |
+| Answer-in-thread channels (off when empty) | `Cratis__Prompter__Discord__AnswerInThreadChannelIds__0`, `__1`, … | - |
+| Maintainer role for Ask a human (off when unset) | `Cratis__Prompter__Discord__MaintainerRoleId` | - |
 | Anthropic API key | `Cratis__Prompter__Anthropic__ApiKey` (or `ANTHROPIC_API_KEY`) | - |
 | Answer model | `Cratis__Prompter__Anthropic__Model` | `claude-sonnet-5` |
 | Voyage API key | `Cratis__Prompter__Voyage__ApiKey` | - |

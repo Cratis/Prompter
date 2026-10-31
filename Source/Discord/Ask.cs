@@ -68,7 +68,7 @@ public class Ask(
                 await Context.Interaction.SendFollowupMessageAsync(new()
                 {
                     Content = content,
-                    Components = [FeedbackButtonRow.For(interactionId)]
+                    Components = [FeedbackButtonRow.For(interactionId, AnswerActions.For(options.Value.Discord, new(channel, 0), reply))]
                 });
             }
             else
