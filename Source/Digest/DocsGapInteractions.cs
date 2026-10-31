@@ -19,6 +19,7 @@ public class DocsGapInteractions(NpgsqlDataSource dataSource) : IDocsGapInteract
             WHEN 4 THEN 'components' WHEN 5 THEN 'cli' END
         FROM interactions
         WHERE occurred_at >= $1 AND occurred_at < $2
+          AND source <> 'eval'
           AND (was_refusal OR feedback = 'down' OR category IN (2,3,4))
         LIMIT 10000
         """;

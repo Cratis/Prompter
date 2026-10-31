@@ -19,7 +19,42 @@ mismatches fail checks. Exit 0 means complete measurement; exit 1 means incomple
 exit 2 means invalid invocation or blocked paid execution. Quality regressions are assessed
 separately by the baseline checker (exit 1).
 
-## Paid execution is blocked
+## Protected application eval command
+
+The application now has a separate `eval` command using its existing indexed corpus,
+protected answer pipeline, admission control and durable spend ledger. It does not index
+or run a judge model. **It makes paid embedding and answer calls** and requires `--paid`:
+
+```sh
+dotnet run --project Source -- eval --paid --limit 5 --max-cost 0.50 --out report.json
+```
+
+Without `--paid`, it exits 2 before constructing a host or external clients. Supply `--set`
+when running outside a source checkout; otherwise the command walks up to `Prompter.slnx`
+and uses `Eval/golden-questions.yaml`. Optional `--case` and `--limit` select cases.
+Threshold defaults are `--min-pass-rate 0.8`, `--min-retrieval-hit-rate 0.8`,
+`--min-refusal-accuracy 0.9`; `--max-cost` defaults to $2.00. Invalid flags exit 2.
+
+Cases run sequentially under interactive leases with source `eval` (excluded from the
+weekly docs-gap digest). Spend is checked between cases, so one case can overshoot the cap;
+unknown dispatched chat outcomes count their reserved maximum, not zero. The durable
+application budget remains the hard safety gate. There is no implicit refill or override.
+Exit 0 requires all thresholds and the cost cap; quality failure, an empty selection or a
+cap stop exits 1. Reports include IDs, cited pages, scores and cost, never raw questions
+or generated text. Only use trusted curated case IDs and documentation URLs.
+
+Answer cases pass with an expected-page citation, correct non-refusal and every optional
+`must_mention` term (case-insensitive). Refusal cases pass only with a refusal. Retrieval
+hit rate is measured separately over answer cases; refusal accuracy includes all cases.
+The 15 initial term lists were checked against published Markdown pages, not inferred
+from model output. These deterministic checks do not measure factual quality by themselves.
+
+The application redacts recognizable secret shapes before retrieval, answering and issue
+drafting, using `[REDACTED_SECRET]`; Discord advice recommends rotating real credentials.
+This heuristic is not a general secret detector: arbitrary opaque values and unfamiliar
+formats may be missed. Never deliberately send real credentials to the bot or eval set.
+
+## Legacy paid execution is blocked
 
 There is no implicit paid mode. `--paid`, `--index` and the default invocation fail before any
 external client is constructed, even with approval and credentials. The only recognized

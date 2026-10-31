@@ -12,6 +12,8 @@
 # -----------------------------------------------------------------------------
 # Schema (one entry per question, all under the top-level `questions:` list)
 # -----------------------------------------------------------------------------
+#   must_mention   Optional list of terms the answer text must contain, case-insensitive;
+#                  only terms that appear verbatim on an expected page.
 #   id             Stable, unique identifier. Never renumber — results,
 #                  baselines (Eval/baseline.json) and regression diffs key off it.
 #                  Prefix encodes the product: chr-/arc-/fun-/cmp-/cli-/gen-/oos-.
@@ -73,6 +75,7 @@ questions:
   # ===========================================================================
 
   - id: chr-001
+    must_mention: [event sourcing]
     product: chronicle
     type: comparison
     question: "what's the deal with event sourcing vs just using CRUD? why would I even bother?"
@@ -84,6 +87,7 @@ questions:
     rationale: "The single most common newcomer question. Both pages exist and directly frame ES against CRUD."
 
   - id: chr-002
+    must_mention: [IEventLog]
     product: chronicle
     type: how-to
     question: "How do I append an event in Chronicle from C#?"
@@ -95,6 +99,7 @@ questions:
     rationale: "Core write path. appending.md documents IEventLog.Append and AppendResult."
 
   - id: chr-003
+    must_mention: [EventSourceId]
     product: chronicle
     type: definition
     question: "what exactly is an EventSourceId? is it basically a primary key?"
@@ -290,6 +295,7 @@ questions:
   # ===========================================================================
 
   - id: arc-001
+    must_mention: [CQRS]
     product: arc
     type: definition
     question: "what is Arc and what problem does it actually solve?"
@@ -312,6 +318,7 @@ questions:
     rationale: "your-first-command.md shows the [Command] record with an embedded Handle() method."
 
   - id: arc-003
+    must_mention: [feature]
     product: arc
     type: definition
     question: "everyone keeps saying 'vertical slice' — what does that actually mean in Cratis?"
@@ -437,6 +444,7 @@ questions:
   # ===========================================================================
 
   - id: fun-001
+    must_mention: [ConceptAs]
     product: fundamentals
     type: definition
     question: "what's a Concept / ConceptAs<T> in Cratis, and why would I wrap a plain string or guid in one?"
@@ -447,6 +455,7 @@ questions:
     rationale: "concepts.md defines ConceptAs<T> as a single-value primitive wrapper for domain typing."
 
   - id: fun-002
+    must_mention: [Result]
     product: fundamentals
     type: how-to
     question: "how do I return success or failure from a method without throwing exceptions? does Cratis have a Result type?"
@@ -458,6 +467,7 @@ questions:
     rationale: "result.md documents Result / Result<TError> / Result<TResult,TError> with Match/Switch."
 
   - id: fun-003
+    must_mention: [Option]
     product: fundamentals
     type: definition
     question: "is there an Option or Maybe type in Cratis so I can avoid null checks everywhere?"
@@ -516,6 +526,7 @@ questions:
   # ===========================================================================
 
   - id: cmp-001
+    must_mention: [PrimeReact]
     product: components
     type: definition
     question: "what is Cratis Components? is it just PrimeReact under the hood?"
@@ -527,6 +538,7 @@ questions:
     rationale: "why-components.md: React components built on PrimeReact that talk to Arc's generated proxies."
 
   - id: cmp-002
+    must_mention: [CratisComponentsProvider]
     product: components
     type: getting-started
     question: "how do I get started with Cratis Components — what do I npm install and how do I set up the provider?"
@@ -537,6 +549,7 @@ questions:
     rationale: "getting-started.md lists @cratis/components + primereact + primeicons and CratisComponentsProvider."
 
   - id: cmp-003
+    must_mention: [CommandForm]
     product: components
     type: how-to
     question: "how do I build a form that runs one of my Arc commands using the components?"
@@ -559,6 +572,7 @@ questions:
     rationale: "data-table-for-query.md documents DataTableForQuery with query/emptyMessage/dataKey + Column."
 
   - id: cmp-005
+    must_mention: [StepperCommandDialog]
     product: components
     type: how-to
     question: "how do I make a multi-step / wizard style form?"
@@ -607,6 +621,7 @@ questions:
   # ===========================================================================
 
   - id: cli-001
+    must_mention: [dotnet tool install]
     product: cli
     type: getting-started
     question: "how do I install the Cratis CLI?"
@@ -618,6 +633,7 @@ questions:
     rationale: "getting-started.md gives brew, native binary, and 'dotnet tool install -g Cratis.Cli'."
 
   - id: cli-002
+    must_mention: [retry-partition]
     product: cli
     type: troubleshooting
     question: "one of my observers is stuck / failing. how do I retry or replay it from the command line?"
@@ -629,6 +645,7 @@ questions:
     rationale: "fix-a-stuck-observer walks diagnose -> failed-partitions -> retry-partition/replay-partition."
 
   - id: cli-003
+    must_mention: [cratis chronicle events]
     product: cli
     type: how-to
     question: "how do I check from the terminal that my events actually got appended?"
