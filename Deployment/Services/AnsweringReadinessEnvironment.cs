@@ -1,6 +1,7 @@
 // Copyright (c) Cratis. All rights reserved.
 // Licensed under the MIT license. See LICENSE file in the project root for full license information.
 
+using System.Globalization;
 using Pulumi.Kubernetes.Types.Inputs.Core.V1;
 
 namespace Cratis.Prompter.Deployment.Services;
@@ -54,7 +55,7 @@ public static class AnsweringReadinessEnvironment
             ["Anthropic__IssueDraft__PreferredAccount"] = args.IssueDraftAccount,
             ["Anthropic__IssueDraft__AllowSecondary"] = Flag(args.IssueDraftAllowSecondary),
             ["Answering__MaxOutputTokens"] = "4096",
-            ["Answering__MinSemanticSimilarity"] = "0.5",
+            ["Answering__MinSemanticSimilarity"] = args.MinSemanticSimilarity.ToString(CultureInfo.InvariantCulture),
             ["Voyage__Model"] = "voyage-4",
             ["Voyage__Dimensions"] = "1024",
             ["Ingestion__PricePerMillionTokens"] = "0.06",

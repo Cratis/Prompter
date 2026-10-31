@@ -11,8 +11,11 @@ with an explicitly reviewed `Cratis__Prompter__Answering__MinSemanticSimilarity`
 reinterpret or copy the old `0.02` RRF threshold as a cosine cutoff. This is a user-observable
 policy migration, not an SDK compatibility promise.
 
-The CLI default and explicit production projection are **0.5, an uncalibrated initial policy**.
-The new cutoff must be finite and in `(0, 1]`; startup validation rejects invalid values. RRF
+The CLI/runtime and deployment defaults remain **0.5**. The public Pulumi key
+`prompter-deployment:minSemanticSimilarity` explicitly sets production to **0.4**, a reversible,
+unvalidated initial trial, not a calibrated threshold or a claim of answer quality. Deployment
+projects it as `Cratis__Prompter__Answering__MinSemanticSimilarity` using invariant culture.
+The cutoff must be finite and in `(0, 1]`; deployment and startup validation reject invalid values. RRF
 continues to order candidates. Every answer-context passage must independently pass the cosine
 cutoff and have finite similarity in `[-1, 1]`. No qualifying passages means refusal without chat.
 The existing top-eight candidate limit, lexical query parsing, prompt trust boundary, and citation
@@ -24,6 +27,15 @@ confidence is the highest valid retrieved similarity (zero without valid candida
 interaction confidence remains RRF and must not be mixed with new values for calibration.
 
 ## Acceptance remains unverified
+
+Two live retrieval observations motivated the bounded trial: the documentation positive's cosine
+similarity was **0.437856**, and the deliberately unanswerable negative's was **0.354734**.
+Public diagnostic candidates included `compare.md` (**0.438**), Chronicle integration documentation
+(**0.426**), and CLI Chronicle documentation (**0.420**). These were relevant but only partially
+grounding passages, not adequate proof that the question can be answered. The 0.4 trial makes the
+positive eligible for retrieval; the model must still refuse if admitted passages do not support
+the answer. These observations establish neither calibration nor answer quality. Revert the public
+Pulumi setting to 0.5 to restore the default policy; application defaults need no change.
 
 Offline fixtures verify implementation behavior only. Production recall and answer quality remain
 unknown. Separately authorized bounded live acceptance must include both a known documentation

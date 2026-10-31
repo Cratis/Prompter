@@ -17,6 +17,9 @@ public sealed record AnsweringReadinessArgs
     /// <summary>Gets the explicitly approved guild list. Empty permits no guilds.</summary>
     public IReadOnlyList<string> AllowedGuilds { get; init; } = [];
 
+    /// <summary>Gets the minimum cosine similarity required for answer-context passages.</summary>
+    public double MinSemanticSimilarity { get; init; } = 0.5;
+
     /// <summary>Gets the answer account, using a closed runtime vocabulary.</summary>
     public string AnswerAccount { get; init; } = "primary";
 
@@ -39,6 +42,7 @@ public sealed record AnsweringReadinessArgs
         {
             AnsweringEnabled = config.GetBoolean("answeringEnabled") ?? false,
             IndexingEnabled = config.GetBoolean("indexingEnabled") ?? false,
+            MinSemanticSimilarity = ReadMinSemanticSimilarity(config),
             AllowedGuilds = config.GetObject<string[]>("allowedGuilds") ?? [],
             AnswerAccount = config.Get("answerPreferredAccount") ?? "primary",
             IssueDraftAccount = config.Get("issueDraftPreferredAccount") ?? "primary",
@@ -48,4 +52,6 @@ public sealed record AnsweringReadinessArgs
         AnsweringReadinessValidation.Validate(args);
         return args;
     }
+
+    static double ReadMinSemanticSimilarity(Config config) => config.GetDouble("minSemanticSimilarity") ?? 0.5;
 }
