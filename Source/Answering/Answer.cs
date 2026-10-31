@@ -27,6 +27,9 @@ public record Answer(
     /// </summary>
     public long? InteractionId { get; init; }
 
+    /// <summary>Gets the index provenance of each cited page, in citation order; empty when there are no citations.</summary>
+    public IReadOnlyList<CitationProvenance> CitationProvenance { get; init; } = [];
+
     /// <summary>Gets the model's triage category hint; <see cref="InteractionCategory.Unknown"/> unless generated in the same call.</summary>
     public InteractionCategory Category { get; init; } = InteractionCategory.Unknown;
 

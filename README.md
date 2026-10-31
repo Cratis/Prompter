@@ -208,6 +208,7 @@ Configuration binds to the `Cratis:Prompter` section (environment variables use 
 | GitHub webhook secret (answer issues) | `Cratis__Prompter__GitHub__WebhookSecret` | — |
 | Repositories whose issues may be answered | `Cratis__Prompter__GitHub__AnsweringRepositories__0` | — (none) |
 | Channel new issues are announced in | `Cratis__Prompter__GitHub__NotifyChannelId` | — |
+| Anonymous public related-issue links (off switch) | `Cratis__Prompter__GitHub__PublicRelatedIssuesEnabled` | `true` |
 | Label put on issues filed from Discord | `Cratis__Prompter__GitHub__IssueLabel` | `from-discord` |
 | Label that opts an issue out of answers | `Cratis__Prompter__GitHub__OptOutLabel` | `no-prompter` |
 

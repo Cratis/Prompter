@@ -7,4 +7,8 @@ namespace Cratis.Prompter.GitHub;
 /// <param name="Number">The validated issue number.</param>
 /// <param name="Url">The locally constructed canonical issue link.</param>
 /// <param name="RecentlyClosed">Whether the issue was closed in the last 90 days.</param>
-public sealed record RelatedIssue(int Number, string Url, bool RecentlyClosed);
+public sealed record RelatedIssue(int Number, string Url, bool RecentlyClosed)
+{
+    /// <summary>Gets the fixed repository name for public hints; empty for authenticated single-repository hints.</summary>
+    public string Repository { get; init; } = string.Empty;
+}

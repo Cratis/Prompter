@@ -100,9 +100,12 @@ public static class DiscordAnswers
             return string.Empty;
         }
 
-        var links = citations.Select(page => $"<{page.Value.Replace(".md", string.Empty, StringComparison.OrdinalIgnoreCase)}>");
+        var links = citations.Select(page => $"<{page.Value.Replace(".md", string.Empty, StringComparison.OrdinalIgnoreCase)}>{Note(answer, page)}");
         return $"Sources: {string.Join(" · ", links)}";
     }
+
+    static string Note(Answer answer, PageUrl page) =>
+        answer.CitationProvenance.FirstOrDefault(provenance => provenance.Page == page) is { } found ? $" ({found.Note})" : string.Empty;
 
     static List<string> Paragraphs(string text)
     {

@@ -111,6 +111,12 @@ public class GitHubOptions
     public ulong? NotifyChannelId { get; set; }
 
     /// <summary>
+    /// Gets or sets a value indicating whether anonymous public related-issue links are shown. On by default because
+    /// it needs no credentials; set to false to turn the lookup off.
+    /// </summary>
+    public bool PublicRelatedIssuesEnabled { get; set; } = true;
+
+    /// <summary>
     /// Gets a value indicating whether issues can be filed. Filing needs an explicit allowlist and an App or approved fallback; otherwise the
     /// <c language="csharp">/issue</c> command tells the user it is not configured instead of failing opaquely.
     /// </summary>
