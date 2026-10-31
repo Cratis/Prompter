@@ -8,6 +8,9 @@ namespace Cratis.Prompter.Ingestion;
 /// </summary>
 public interface IDocsSite
 {
+    /// <summary>Gets the URL prefixes whose previous snapshot must be retained after source failures.</summary>
+    IReadOnlyCollection<string> FailedSources => [];
+
     /// <summary>
     /// Gets all documentation pages from the site by walking its <c language="csharp">llms.txt</c> index and fetching
     /// the markdown mirror of every page.

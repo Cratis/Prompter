@@ -67,6 +67,8 @@ public class Indexer(
             }
         }
 
+        var failed = docsSite.FailedSources;
+        seen.UnionWith(existing.Keys.Where(id => failed.Any(prefix => id.Value.StartsWith(prefix, StringComparison.Ordinal))));
         var removed = 0;
         if (seen.Count == 0)
         {
@@ -78,10 +80,22 @@ public class Indexer(
             await lease.Reserve(budget, options.Value.Ingestion.MaxDailyDollars, false, cancellationToken);
             logger.IndexExposureReserved(budget.Tokens, budget.Dollars);
             var staged = await Embed(changed, lease, cancellationToken);
-            removed = await lease.CommitIndex(staged, seen, metadata, cancellationToken);
+            var snapshot = new IndexSnapshot(staged, seen, metadata) { PreservedSources = failed.ToArray() };
+            removed = await Publish(lease, snapshot, cancellationToken);
         }
 
         var run = new IndexRun(pages, changed.Count, unchanged, removed, Stopwatch.GetElapsedTime(start));
+        return Complete(run, failed);
+    }
+
+    static Task<int> Publish(IIndexLease lease, IndexSnapshot snapshot, CancellationToken cancellationToken) =>
+        snapshot.PreservedSources.Count == 0
+            ? lease.CommitIndex(snapshot.Changed, snapshot.Existing, snapshot.Pages, cancellationToken)
+            : lease.CommitIndex(snapshot, cancellationToken);
+
+    IndexRun Complete(IndexRun run, IReadOnlyCollection<string> failed)
+    {
+        if (failed.Count > 0) throw new DegradedIndex(run, failed.ToArray());
         logger.IndexRunCompleted(run.Pages, run.Embedded, run.Unchanged, run.Removed, run.Duration);
         return run;
     }

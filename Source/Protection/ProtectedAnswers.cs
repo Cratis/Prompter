@@ -15,6 +15,12 @@ public sealed class ProtectedAnswers(Answers inner, PaidWork work, IOptions<Prom
     /// <inheritdoc/>
     public async Task<Answer> For(Question question, string source, CancellationToken cancellationToken = default)
     {
+        var current = SecretRedaction.Redact(question.Value);
+        var messages = question.Conversation.Messages.Select(message =>
+            message with { Content = SecretRedaction.Redact(message.Content).Text }).ToArray();
+        var redacted = current.Removed || current.Text.Contains(SecretRedaction.Marker, StringComparison.Ordinal) ||
+            messages.Any(message => message.Content.Contains(SecretRedaction.Marker, StringComparison.Ordinal));
+        question = question with { Value = current.Text, Conversation = question.Conversation with { Messages = messages } };
         if (question.Value.Length > options.Value.Protection.MaxQuestionCharacters || !options.Value.Protection.AnsweringEnabled)
         {
             throw new WorkRefused();
@@ -23,11 +29,13 @@ public sealed class ProtectedAnswers(Answers inner, PaidWork work, IOptions<Prom
         if (WorkLease.Current is { } active)
         {
             using var linked = CancellationTokenSource.CreateLinkedTokenSource(cancellationToken, active.Token);
-            return await inner.For(question, source, linked.Token);
+            var answer = await inner.For(question, source, linked.Token);
+            return answer with { SecretsRedacted = redacted };
         }
 
         await using var lease = await work.BeginInteractive(cancellationToken);
         lease.Activate();
-        return await inner.For(question, source, lease.Token);
+        var result = await inner.For(question, source, lease.Token);
+        return result with { SecretsRedacted = redacted };
     }
 }

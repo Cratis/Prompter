@@ -8,6 +8,12 @@ namespace Cratis.Prompter;
 /// </summary>
 public class IngestionOptions
 {
+    /// <summary>Gets or sets the public release-note source options.</summary>
+    public ReleaseNotesOptions ReleaseNotes { get; set; } = new();
+
+    /// <summary>Gets or sets the curated sample source options.</summary>
+    public SamplesOptions Samples { get; set; } = new();
+
     /// <summary>
     /// Gets or sets the path segments whose pages are excluded from ingestion. Any sitemap URL containing
     /// one of these segments is skipped. Defaults exclude Chronicle's generated client snippets and the

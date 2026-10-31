@@ -157,7 +157,7 @@ public class HelpForum(
 
         logger.AnsweringForumThread(thread.Id);
         var request = await context.For(question, new(thread.GuildId, thread.Id, starter.Id, starter.CreatedAt), cancellationToken);
-        var reply = await assistance.For(request, "discord-forum", cancellationToken);
+        var reply = await assistance.For(request with { AllowClarification = true }, "discord-forum", cancellationToken);
         await SendAnswer(thread.Id, reply, new(thread.Id, starter.Id));
         var advice = DiscordAnswers.Advice(reply);
         if (advice.Length > 0)
@@ -170,17 +170,13 @@ public class HelpForum(
     async Task SendAnswer(ulong thread, ConversationReply reply, QuestionLink link)
     {
         var answer = reply.Answer;
-        var content = DiscordAnswers.Format(answer);
-        if (answer.InteractionId is { } interactionId)
+        var message = SafeMessages.Message(DiscordAnswers.Format(answer));
+        var rows = AnswerComponents.For(answer, AnswerActions.For(options.Value.Discord, link, reply));
+        if (rows.Count > 0)
         {
-            var message = SafeMessages.Message(content);
-            message.Components = [FeedbackButtonRow.For(interactionId, AnswerActions.For(options.Value.Discord, link, reply))];
-            await rest.SendMessageAsync(thread, message);
+            message.Components = [.. rows];
         }
-        else
-        {
-            await rest.SendMessageAsync(thread, SafeMessages.Message(content));
-        }
+        await rest.SendMessageAsync(thread, message);
     }
 
     async Task TryApologize(ulong threadId)

@@ -15,6 +15,8 @@ public sealed class ProtectedDrafting(IssueDrafting inner, PaidWork work, IOptio
     /// <inheritdoc/>
     public async Task<IssueDraft?> Draft(string conversation, string? hint, CancellationToken cancellationToken = default)
     {
+        conversation = SecretRedaction.Redact(conversation).Text;
+        hint = hint is null ? null : SecretRedaction.Redact(hint).Text;
         if ((long)conversation.Length + (hint?.Length ?? 0) > options.Value.Protection.MaxQuestionCharacters)
         {
             throw new WorkRefused();

@@ -258,7 +258,7 @@ public class Mentions(
         var source = asked.Source;
         logger.AnsweringQuestion(source);
         var request = await BuildRequest(message, asked, cancellationToken);
-        var reply = await assistance.For(request, source, cancellationToken);
+        var reply = await assistance.For(request with { AllowClarification = true }, source, cancellationToken);
         var thread = await delivery.Deliver(message, asked.Question, reply, cancellationToken);
         if (thread is { } opened)
         {

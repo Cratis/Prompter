@@ -1,6 +1,7 @@
 // Copyright (c) Cratis. All rights reserved.
 // Licensed under the MIT license. See LICENSE file in the project root for full license information.
 
+using Cratis.Prompter.Answering;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
 using NetCord;
@@ -21,15 +22,35 @@ public class AnswerDelivery(RestClient rest, IOptions<PrompterOptions> options, 
     /// <param name="reply">The generated answer and advice.</param>
     /// <param name="cancellationToken">Cancels delivery.</param>
     /// <returns>The new thread identifier, or null for a normal reply.</returns>
-    public async Task<ulong?> Deliver(Message message, string question, ConversationReply reply, CancellationToken cancellationToken)
+    public Task<ulong?> Deliver(Message message, string question, ConversationReply reply, CancellationToken cancellationToken) =>
+        Deliver(message, message.GuildId, message.Channel is GuildThread, question, reply, cancellationToken);
+
+    /// <summary>Delivers an answer publicly to a selected message, opening a thread only where configured.</summary>
+    /// <param name="message">The selected message.</param>
+    /// <param name="guildId">The guild containing the selected message.</param>
+    /// <param name="inThread">Whether the message is already in a thread.</param>
+    /// <param name="question">The question, used transiently for a thread name.</param>
+    /// <param name="reply">The generated answer and advice.</param>
+    /// <param name="cancellationToken">Cancels delivery.</param>
+    /// <returns>The new thread identifier, or null for a normal reply.</returns>
+    public Task<ulong?> Deliver(RestMessage message, ulong? guildId, bool inThread, string question, ConversationReply reply, CancellationToken cancellationToken) =>
+        Deliver(message, new(guildId, inThread, question), reply, cancellationToken);
+
+    /// <summary>Delivers an answer while respecting the requester's relationship to the selected author.</summary>
+    /// <param name="message">The referenced question.</param>
+    /// <param name="context">The location and author relationship.</param>
+    /// <param name="reply">The answer and optional advice.</param>
+    /// <param name="cancellationToken">The cancellation token.</param>
+    /// <returns>The newly created thread, if any.</returns>
+    public async Task<ulong?> Deliver(RestMessage message, AnswerContext context, ConversationReply reply, CancellationToken cancellationToken)
     {
         var actions = AnswerActions.For(options.Value.Discord, new(message.ChannelId, message.Id), reply);
-        var thread = ShouldThread(message) ? await TryOpenThread(message, question, cancellationToken) : null;
-        var target = new Target(message, thread, actions);
+        var thread = context.OwnMessage && ShouldThread(context.GuildId, context.InThread, message.ChannelId) ? await TryOpenThread(message, context.Question, cancellationToken) : null;
+        var target = new Target(message, thread, actions, context.OwnMessage);
         var chunks = DiscordAnswers.Split(reply.Answer);
         for (var index = 0; index < chunks.Count; index++)
         {
-            await SendChunk(target, new(chunks[index], index == 0, index == chunks.Count - 1 ? reply.Answer.InteractionId : null), cancellationToken);
+            await SendChunk(target, new(chunks[index], index == 0, index == chunks.Count - 1 ? reply.Answer : null), cancellationToken);
         }
         var advice = DiscordAnswers.Advice(reply);
         if (advice.Length > 0)
@@ -39,10 +60,10 @@ public class AnswerDelivery(RestClient rest, IOptions<PrompterOptions> options, 
         return thread;
     }
 
-    bool ShouldThread(Message message) => message.GuildId is not null && message.Channel is not GuildThread &&
-        options.Value.Discord.AnswerInThreadChannelIds.Contains(message.ChannelId);
+    bool ShouldThread(ulong? guildId, bool inThread, ulong channelId) => guildId is not null && !inThread &&
+        options.Value.Discord.AnswerInThreadChannelIds.Contains(channelId);
 
-    async Task<ulong?> TryOpenThread(Message message, string question, CancellationToken cancellationToken)
+    async Task<ulong?> TryOpenThread(RestMessage message, string question, CancellationToken cancellationToken)
     {
         try
         {
@@ -62,24 +83,24 @@ public class AnswerDelivery(RestClient rest, IOptions<PrompterOptions> options, 
     {
         if (target.Thread is null && chunk.First)
         {
-            var reply = SafeMessages.Reply(chunk.Content);
-            if (chunk.Feedback is { } id)
+            var reply = SafeMessages.Reply(chunk.Content, target.OwnMessage);
+            if (chunk.Last is { } last && AnswerComponents.For(last, target.Actions) is { Count: > 0 } rows)
             {
-                reply.Components = [FeedbackButtonRow.For(id, target.Actions)];
+                reply.Components = [.. rows];
             }
             await target.Message.ReplyAsync(reply, cancellationToken: cancellationToken);
             return;
         }
 
         var followup = SafeMessages.Message(chunk.Content);
-        if (chunk.Feedback is { } followupId)
+        if (chunk.Last is { } followupLast && AnswerComponents.For(followupLast, target.Actions) is { Count: > 0 } followupRows)
         {
-            followup.Components = [FeedbackButtonRow.For(followupId, target.Actions)];
+            followup.Components = [.. followupRows];
         }
         await rest.SendMessageAsync(target.Thread ?? target.Message.ChannelId, followup, cancellationToken: cancellationToken);
     }
 
-    sealed record Target(Message Message, ulong? Thread, AnswerActions Actions);
+    sealed record Target(RestMessage Message, ulong? Thread, AnswerActions Actions, bool OwnMessage);
 
-    sealed record Chunk(string Content, bool First, long? Feedback);
+    sealed record Chunk(string Content, bool First, Answer? Last);
 }

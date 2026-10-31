@@ -11,6 +11,9 @@ namespace Cratis.Prompter.Discord;
 /// </summary>
 public static class DiscordAnswers
 {
+    /// <summary>Warns without echoing a removed value.</summary>
+    public const string SecretNotice = "A value that looked like a secret was removed before answering. If it was real, rotate it.";
+
     const int MaxMessageLength = 2000;
     const int MaxChunks = 3;
     const string ParagraphSeparator = "\n\n";
@@ -22,11 +25,18 @@ public static class DiscordAnswers
     /// <returns>An optional separate message without remote titles or model-generated text.</returns>
     public static string Advice(ConversationReply reply)
     {
-        if (reply.Related.Count == 0) return reply.Offer;
-        var links = reply.Related.Take(6).Select(issue =>
-            $"- {(issue.RecentlyClosed ? "Recently closed" : "Open")} #{issue.Number}: <{issue.Url}>");
-        var content = "Possibly related issues (not documentation evidence; closed does not mean fixed):\n" + string.Join('\n', links);
-        return reply.Offer.Length == 0 ? content : content + "\n\n" + reply.Offer;
+        var advice = reply.Offer;
+        if (reply.Related.Count > 0)
+        {
+            var links = reply.Related.Take(6).Select(issue =>
+                $"- {(issue.RecentlyClosed ? "Recently closed" : "Open")} #{issue.Number}: <{issue.Url}>");
+            var content = "Possibly related issues (not documentation evidence; closed does not mean fixed):\n" + string.Join('\n', links);
+            advice = reply.Offer.Length == 0 ? content : content + ParagraphSeparator + reply.Offer;
+        }
+
+        return reply.Answer.SecretsRedacted
+            ? SecretNotice + (advice.Length == 0 ? string.Empty : ParagraphSeparator + advice)
+            : advice;
     }
 
     /// <summary>
@@ -100,12 +110,22 @@ public static class DiscordAnswers
             return string.Empty;
         }
 
-        var links = citations.Select(page => $"<{page.Value.Replace(".md", string.Empty, StringComparison.OrdinalIgnoreCase)}>{Note(answer, page)}");
+        var links = citations.Select(page => $"<{(Ingestion.SourceKinds.Of(page) == Ingestion.SourceKind.Documentation ? page.Value.Replace(".md", string.Empty, StringComparison.OrdinalIgnoreCase) : page.Value)}>{Note(answer, page)}");
         return $"Sources: {string.Join(" · ", links)}";
     }
 
-    static string Note(Answer answer, PageUrl page) =>
-        answer.CitationProvenance.FirstOrDefault(provenance => provenance.Page == page) is { } found ? $" ({found.Note})" : string.Empty;
+    static string Note(Answer answer, PageUrl page)
+    {
+        var kind = Ingestion.SourceKinds.Of(page) switch
+        {
+            Ingestion.SourceKind.ReleaseNotes => "release notes",
+            Ingestion.SourceKind.Sample => "sample",
+            _ => string.Empty
+        };
+        var provenance = answer.CitationProvenance.FirstOrDefault(provenance => provenance.Page == page)?.Note;
+        var note = string.Join(" · ", new[] { kind, provenance }.Where(value => !string.IsNullOrEmpty(value)));
+        return note.Length == 0 ? string.Empty : $" ({note})";
+    }
 
     static List<string> Paragraphs(string text)
     {

@@ -19,6 +19,7 @@
     <PackageReference Include="NetCord.Services" />
     <PackageReference Include="Npgsql" />
     <PackageReference Include="Pgvector" />
+    <PackageReference Include="YamlDotNet" />
   </ItemGroup>
   <ItemGroup>
     <EmbeddedResource Include="Storage/Migrations/**/*.sql" />

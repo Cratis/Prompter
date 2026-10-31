@@ -13,6 +13,6 @@ public class and_content_contains_sensitive_text : given.a_history_reader
 
     async Task Because() => result = await Read("<@123> explain api_key=" + new string('x', 24));
 
-    [Fact] void should_strip_mentions_and_scrub_history() => result.Conversation.Messages.Single().Content.ShouldEqual("[redacted]");
-    [Fact] void should_scrub_the_current_request_too() => result.Value.ShouldEqual("explain [redacted]");
+    [Fact] void should_strip_mentions_and_scrub_history() => result.Conversation.Messages.Single().Content.ShouldEqual("[REDACTED_SECRET]");
+    [Fact] void should_scrub_the_current_request_too() => result.Value.ShouldEqual("explain api_key=[REDACTED_SECRET]");
 }
