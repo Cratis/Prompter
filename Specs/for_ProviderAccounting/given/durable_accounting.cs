@@ -16,7 +16,7 @@ public class durable_accounting : for_PaidWork.given.a_paid_work
     protected BudgetedChat Chat { get; private set; } = null!;
 
     protected ProviderDispatch Dispatch(int attempt = 1, Guid? operation = null) =>
-        new(operation ?? Guid.NewGuid(), "anthropic", "primary", "answer", attempt, 100, Options.Answering.MaxOutputTokens, Options.Anthropic.Model, Options.Anthropic.Answer.Effort);
+        new(operation ?? Guid.NewGuid(), "anthropic", "primary", "answer", attempt, 100, Options.Answering.MaxOutputTokens, Options.Anthropic.Answer.Model!, Options.Anthropic.Answer.Effort);
 
     protected async Task Send(ProviderDispatch dispatch, UsageDetails? usage = null)
     {

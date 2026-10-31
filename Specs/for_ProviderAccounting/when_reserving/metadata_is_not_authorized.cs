@@ -37,7 +37,7 @@ public class metadata_is_not_authorized : given.durable_accounting
 
         if (invalid == "price")
         {
-            Options.Protection.Anthropic.InputUsdPerMillion = 0;
+            Options.Protection.AnthropicAnswer.InputUsdPerMillion = 0;
         }
 
         if (invalid == "ceiling")

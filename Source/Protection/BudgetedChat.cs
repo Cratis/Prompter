@@ -2,6 +2,7 @@
 // Licensed under the MIT license. See LICENSE file in the project root for full license information.
 
 using System.Text;
+using Cratis.Prompter.Answering;
 using Microsoft.Extensions.AI;
 using Microsoft.Extensions.Options;
 
@@ -19,12 +20,14 @@ public sealed class BudgetedChat(IChatClient inner, IOptions<PrompterOptions> co
         CancellationToken cancellationToken = default)
     {
         var config = configuration.Value;
-        var budget = config.Protection.Anthropic;
+        var task = TaskChatPolicy.TaskName(options);
+        var budget = ChatPricing.ForTask(config, task);
+        var model = ChatPricing.Model(config, task);
         var lease = WorkLease.Current ?? throw new WorkRefused();
         var input = messages.ToArray();
-        CheckModel(options);
+        CheckModel(options, model, budget);
         CheckInput(input, budget.MaxInputTokens);
-        var bounded = BoundOutput(options, config.Answering.MaxOutputTokens);
+        var bounded = BoundOutput(options, ChatPricing.OutputCeiling(config, task));
 
         using var linked = CancellationTokenSource.CreateLinkedTokenSource(cancellationToken, lease.Token);
         linked.Token.ThrowIfCancellationRequested();
@@ -35,7 +38,7 @@ public sealed class BudgetedChat(IChatClient inner, IOptions<PrompterOptions> co
         }
         else
         {
-            scope.Consume(new("anthropic", bounded.ModelId ?? config.Anthropic.Model, budget.Cost(budget.MaxInputTokens, bounded.MaxOutputTokens!.Value)));
+            scope.Consume(new("anthropic", bounded.ModelId ?? model, budget.Cost(budget.MaxInputTokens, bounded.MaxOutputTokens!.Value)));
         }
 
         var result = await base.GetResponseAsync(input, bounded, linked.Token);
@@ -95,15 +98,15 @@ public sealed class BudgetedChat(IChatClient inner, IOptions<PrompterOptions> co
         return bounded;
     }
 
-    void CheckModel(ChatOptions? request)
+    void CheckModel(ChatOptions? request, string model, ProviderBudget budget)
     {
         var config = configuration.Value;
-        if (!config.Protection.AnsweringEnabled || !config.Protection.Anthropic.Covers(config.Anthropic.Model, true))
+        if (!config.Protection.AnsweringEnabled || !budget.Covers(model, true))
         {
             throw new WorkRefused();
         }
 
-        if (request?.Tools is { Count: > 0 } || !string.Equals(request?.ModelId ?? config.Anthropic.Model, config.Anthropic.Model, StringComparison.Ordinal))
+        if (request?.Tools is { Count: > 0 } || !string.Equals(request?.ModelId ?? model, model, StringComparison.Ordinal))
         {
             throw new WorkRefused();
         }

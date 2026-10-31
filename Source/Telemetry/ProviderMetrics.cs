@@ -38,7 +38,7 @@ public static class ProviderMetrics
     public static TagList Labels(ProviderDispatch dispatch, string outcome) => new()
     {
         { "provider", Allow(dispatch.Provider, "anthropic", "voyage") },
-        { "model", Allow(dispatch.Model, "claude-sonnet-5-5", "claude-haiku-4-5", "claude-haiku-4-5-20251001", "voyage-4") },
+        { "model", Allow(dispatch.Model, "claude-sonnet-5-5", "claude-haiku-5-5", "claude-haiku-4-5", "claude-haiku-4-5-20251001", "voyage-4") },
         { "task", Allow(dispatch.Task, "answer", "issue-draft", "query", "index") },
         { "account", Allow(dispatch.Account, "primary", "secondary") },
         { "operation", dispatch.Provider switch { "anthropic" => "chat", "voyage" => "embedding", _ => "other" } },

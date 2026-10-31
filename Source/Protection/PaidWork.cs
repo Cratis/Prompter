@@ -58,7 +58,7 @@ public sealed class PaidWork(ISpendLedger ledger, IOptions<PrompterOptions> opti
             throw Refused("disabled");
         }
 
-        if (!config.Protection.Anthropic.Covers(config.Anthropic.Model, true) || !config.Protection.Voyage.Covers(config.Voyage.Model, false))
+        if (!ChatPricing.Covered(config) || !config.Protection.Voyage.Covers(config.Voyage.Model, false))
         {
             throw Refused("pricing");
         }
@@ -83,7 +83,7 @@ public sealed class PaidWork(ISpendLedger ledger, IOptions<PrompterOptions> opti
         var config = options.Value;
         var limits = config.Protection;
         var exposure = new SpendExposure(
-            limits.Anthropic.Cost(limits.Anthropic.MaxInputTokens, config.Answering.MaxOutputTokens),
+            ChatPricing.MaximumExposure(config),
             limits.Voyage.Cost((long)limits.Voyage.MaxInputTokens * (config.Voyage.MaxRetries + 1)));
         CancellationTokenSource? deadline = null;
         CancellationTokenSource? linked = null;

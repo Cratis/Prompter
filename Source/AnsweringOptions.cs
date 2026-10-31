@@ -32,5 +32,5 @@ public class AnsweringOptions
     /// <summary>
     /// Gets or sets the maximum number of output tokens for a generated answer.
     /// </summary>
-    public int MaxOutputTokens { get; set; } = 1024;
+    public int MaxOutputTokens { get; set; } = 768;
 }

@@ -87,7 +87,7 @@ public static class TaskChatPolicy
             return;
         }
 
-        var approvedTask = task == "issue-draft" && configuration.HaikuIssueDraftApproved;
+        var approvedTask = task == "answer" || (task == "issue-draft" && configuration.HaikuIssueDraftApproved);
         var compatibleModel = model == "claude-haiku-5-5" && policy.Effort.Length == 0;
         if (!approvedTask || !compatibleModel)
         {

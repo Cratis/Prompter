@@ -18,7 +18,7 @@ public class the_retry_has_no_funding : given.durable_accounting
         Provider.GetResponseAsync(Arg.Any<IEnumerable<ChatMessage>>(), Arg.Any<ChatOptions?>(), Arg.Any<CancellationToken>()).Returns<Task<ChatResponse>>(_ => throw new AnthropicCapacityFailure(TimeSpan.Zero));
         await using var lease = await Work.BeginInteractive();
         lease.Activate();
-        using var router = new AnthropicAccounts(Chat, null, Options.Anthropic, Accounting, Options.Protection.Anthropic);
+        using var router = new AnthropicAccounts(Chat, null, Options.Anthropic, Accounting, Options.Protection.Anthropic, Options.Protection.AnthropicAnswer);
         _failure = await Catch.Exception(() => router.GetResponseAsync([new(ChatRole.User, "question")]));
     }
 

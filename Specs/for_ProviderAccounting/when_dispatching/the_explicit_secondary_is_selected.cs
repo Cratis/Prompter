@@ -22,7 +22,7 @@ public class the_explicit_secondary_is_selected : given.durable_accounting
         await using var lease = await Work.BeginInteractive();
         lease.Activate();
         using var protectedSecondary = new BudgetedChat(_secondary, Microsoft.Extensions.Options.Options.Create(Options));
-        using var router = new AnthropicAccounts(Chat, protectedSecondary, Options.Anthropic, Accounting, Options.Protection.Anthropic);
+        using var router = new AnthropicAccounts(Chat, protectedSecondary, Options.Anthropic, Accounting, Options.Protection.Anthropic, Options.Protection.AnthropicAnswer);
         await router.GetResponseAsync([new(ChatRole.User, "question")]);
     }
 

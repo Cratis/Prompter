@@ -24,7 +24,7 @@ Configuration binds to the `Cratis:Prompter` section. Environment variables use 
 | Embedding dimensions | `Cratis__Prompter__Voyage__Dimensions` | `1024` (must match the database schema) |
 | Max passages per answer | `Cratis__Prompter__Answering__MaxPassages` | `8` |
 | Refusal threshold | `Cratis__Prompter__Answering__MinScore` | `0.02` |
-| Max answer tokens | `Cratis__Prompter__Answering__MaxOutputTokens` | `1024` |
+| Max answer tokens | `Cratis__Prompter__Answering__MaxOutputTokens` | `768` |
 
 API keys are never committed - use environment variables or a git-ignored
 `Source/appsettings.Development.json`.

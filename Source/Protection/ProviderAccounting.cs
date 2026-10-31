@@ -86,7 +86,7 @@ public sealed class ProviderAccounting(IProviderAttemptStore store, IOptions<Pro
         }
 
         var chat = dispatch.Provider == "anthropic";
-        var budget = chat ? options.Value.Protection.Anthropic : options.Value.Protection.Voyage;
+        var budget = chat ? ChatPricing.ForTask(options.Value, dispatch.Task) : options.Value.Protection.Voyage;
         var input = usage!.InputTokenCount!.Value;
         var output = usage.OutputTokenCount ?? (chat ? -1 : 0);
         if (!WithinBounds(dispatch, usage, (long)budget.MaxInputTokens * count))
