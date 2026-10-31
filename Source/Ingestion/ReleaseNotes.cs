@@ -42,7 +42,6 @@ public class ReleaseNotes(HttpClient httpClient, IOptions<PrompterOptions> optio
             var prefix = $"https://github.com/Cratis/{repository}/releases/tag/";
             var supported = releases.Take(settings.MaxReleasesPerRepository).Where(note =>
                 Supported(note, settings.MaxBodyCharacters) && note.HtmlUrl?.StartsWith(prefix, StringComparison.OrdinalIgnoreCase) == true).ToArray();
-            if (supported.Length == 0) throw new IncompleteCrawl();
             foreach (var note in supported)
             {
                 yield return new(new PageUrl(note.HtmlUrl), Markdown(repository, note));

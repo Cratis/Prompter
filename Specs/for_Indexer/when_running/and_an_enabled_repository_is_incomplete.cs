@@ -36,10 +36,12 @@ public class and_an_enabled_repository_is_incomplete : given.an_indexer
         var source = new CorpusSources(new(client, config, NullLogger<DocsSite>.Instance), new(client, config, NullLogger<ReleaseNotes>.Instance), new(client, config, NullLogger<SampleFiles>.Instance), config);
         Indexer = Create(source);
         var error = await Catch.Exception(async () => await Indexer.Run(TestContext.Current.CancellationToken));
-        if (outcome == "complete")
+        if (outcome == "complete" || outcome == "empty" || outcome == "skipped")
         {
+            // A valid response without publishable releases is an empty result for that repository, not a failure.
+            var expected = outcome == "complete" ? 3 : 2;
             error.ShouldBeNull();
-            await Lease.Received(1).CommitIndex(Arg.Any<IReadOnlyCollection<EmbeddedChunk>>(), Arg.Is<IReadOnlySet<ChunkId>>(ids => !ids.Contains(retained) && ids.Count == 3), Arg.Is<IReadOnlyCollection<DocumentationMetadata>>(pages => pages.Count == 3), Arg.Any<CancellationToken>());
+            await Lease.Received(1).CommitIndex(Arg.Any<IReadOnlyCollection<EmbeddedChunk>>(), Arg.Is<IReadOnlySet<ChunkId>>(ids => !ids.Contains(retained) && ids.Count == expected), Arg.Is<IReadOnlyCollection<DocumentationMetadata>>(pages => pages.Count == expected), Arg.Any<CancellationToken>());
         }
         else
         {
