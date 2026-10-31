@@ -145,7 +145,8 @@ dotnet run -- ask "How do I append an event in Chronicle?" # answer from the CLI
 
 Run it as the Discord bot — bot mode also serves `GET /healthz` and the shared-secret `POST /reindex`
 in-cluster/local endpoint, and sweeps expired interactions on a daily retention job. Production re-indexes
-nightly and on demand via the **Reindex - Production** workflow, without a public route.
+daily at 03:52 UTC once `PROMPTER_SCHEDULED_INDEXING_ENABLED` is set to `true`, and on demand via the
+**Reindex - Production** workflow, without a public route. Documentation changes never trigger reindexing.
 All entry points share a non-waiting Postgres advisory lease. A complete crawl and retry-inclusive
 UTF-8 byte/token budget check precede embedding; a failed batch or crawl leaves the last-good corpus intact.
 Plain `index` is incremental. A manual full replacement requires
@@ -210,6 +211,9 @@ Configuration binds to the `Cratis:Prompter` section (environment variables use 
 | Channel new issues are announced in | `Cratis__Prompter__GitHub__NotifyChannelId` | — |
 | Label put on issues filed from Discord | `Cratis__Prompter__GitHub__IssueLabel` | `from-discord` |
 | Label that opts an issue out of answers | `Cratis__Prompter__GitHub__OptOutLabel` | `no-prompter` |
+| Maintainer channel (weekly metadata-only gap digest) | `Cratis__Prompter__Discord__MaintainerChannelId` | — (digest off) |
+| Weekly digest UTC day | `Cratis__Prompter__Discord__MaintainerDigestDay` | `Monday` |
+| Weekly digest UTC hour (clamped to 0–23) | `Cratis__Prompter__Discord__MaintainerDigestHourUtc` | `8` |
 
 API keys are never committed — use environment variables or a git-ignored `Source/appsettings.Development.json`.
 
@@ -317,7 +321,8 @@ not zero usage. Hooks carry fixed provider/account/task labels and no prompts, a
 
 The Pulumi stack projects verified standard-global Sonnet 5.5 and Voyage 4 prices. Defaults keep both paid
 workloads disabled. The committed production settings explicitly enable secondary-account answering only
-for guild `1182595891576717413`; indexing remains disabled, including nightly indexing admission.
+for guild `1182595891576717413`; indexing remains disabled in the bot pod. Scheduled indexing Jobs run
+only when the repository variable `PROMPTER_SCHEDULED_INDEXING_ENABLED` is `true`.
 These are desired configuration settings, not evidence of deployment or live usability.
 
 Non-secret `prompter-deployment` settings `answeringEnabled` and `indexingEnabled` control paid workloads.

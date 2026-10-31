@@ -206,21 +206,34 @@ same outbound HTTPS access as the bot, without joining the bot's Service. The da
 also serializes CLI, HTTP and Jobs across processes; contention fails immediately. The shared workflow
 concurrency group is `prompter-production-operations`, with no cancellation or deletion of an active Job.
 
-Before enabling changed-content indexing, set repository variables
-`PROMPTER_INDEX_PRICE_PER_MILLION_TOKENS`, `PROMPTER_INDEX_MAX_RUN_DOLLARS` and
-`PROMPTER_INDEX_MAX_DAILY_DOLLARS` to verified Voyage model pricing and approved dollar ceilings.
-Missing/zero pricing or ceilings disable paid work. Configure the equivalent `Ingestion` options on the
-bot for HTTP/CLI runs; all runs reserve against the same database UTC-day allowance. Reservations include
-`Voyage.MaxRetries + 1` attempts, use UTF-8 bytes plus framing (not characters/4), and are retained after
+The workflow fixes Voyage pricing at **$0.06/million tokens**, with **$0.10/run** and **$0.50/day**
+ceilings; these are not repository variables. Missing/zero pricing or ceilings disable paid work.
+Configure the equivalent `Ingestion` options on the bot for HTTP/CLI runs; all runs reserve against the
+same database UTC-day allowance. Reservations include `Voyage.IndexMaxRetries + 1` attempts (6),
+use UTF-8 bytes plus framing (not characters/4), and are retained after
 failure or unknown provider outcomes. They are upper bounds, not measured provider usage or invoices.
 
-The nightly Job passes `--scheduled`: at most one admitted scheduled run per UTC day, with a default
-retry-inclusive **1M tokens/run** ceiling. Plain manual runs remain incremental. Full runs have a default
+The daily Job passes `--scheduled`: at most one admitted scheduled run per UTC day, with a
+retry-inclusive **1M tokens/run** ceiling (about 167 KB of changed chunk text). Plain manual runs remain incremental. Full runs have a default
 **25M tokens/run** ceiling and require the workflow's `full` input plus literal confirmation **FULL REINDEX**
 and the existing `production` environment approval. The script equivalent uses `PROMPTER_INDEX_MODE=full`
 and `PROMPTER_INDEX_CONFIRMATION='FULL REINDEX'`. Never schedule full mode. Token ceilings are configurable
 with `Ingestion.MaxIncrementalTokens` and `Ingestion.MaxFullTokens`; raising them requires budget approval.
 No rebuild is implied by the initial observed corpus size.
+
+**Enable the daily schedule:** set the non-secret **repository** variable
+`PROMPTER_SCHEDULED_INDEXING_ENABLED=true` for the daily 03:52 UTC run. An environment-scoped variable
+is not visible to the job-level gate. Jobs enable indexing independently of the disabled bot pod.
+Set `PROMPTER_ALERT_WEBHOOK` to an HTTPS JSON receiver for failure notifications; without it only
+GitHub's failed-schedule notifications and freshness alerts remain. Documentation changes never
+redeploy or trigger reindexing. Unchanged chunks are never re-embedded.
+
+For the weekly metadata-only docs-gap digest, set the non-secret Pulumi key
+`prompter-deployment:maintainerChannelId` and deploy. The bot needs View Channel and Send Messages
+in that channel. No channel means no query or post. The default slot is Monday 08:00 UTC;
+day and hour are not plumbed through Pulumi. A restart computes the next future slot, so a restart
+across a slot may skip that week. Counts cover the preceding seven days (or less if retention is
+shorter); no question text is stored. Empty weeks still post a confirmation.
 
 The indexer preflights the entire crawl before any paid embedding, stages vectors in memory, then publishes
 all changed chunks and stale deletion in one transaction on the lease-owning session. Partial fetches,

@@ -67,15 +67,7 @@ public sealed class PrompterDeployment
             new() { Name = "DOTNET_ENVIRONMENT", Value = "Production" },
         };
 
-        if (!string.IsNullOrWhiteSpace(args.AskChannelId))
-        {
-            env.Add(new EnvVarArgs { Name = "Cratis__Prompter__Discord__AskChannelId", Value = args.AskChannelId });
-        }
-
-        if (!string.IsNullOrWhiteSpace(args.HelpForumChannelId))
-        {
-            env.Add(new EnvVarArgs { Name = "Cratis__Prompter__Discord__HelpForumChannelId", Value = args.HelpForumChannelId });
-        }
+        env.AddRange(DiscordChannels(args));
 
         if (!string.IsNullOrWhiteSpace(args.IssueNotifyChannelId))
         {
@@ -185,6 +177,24 @@ public sealed class PrompterDeployment
     /// Gets the in-cluster ClusterIP Service.
     /// </summary>
     public Service Service { get; }
+
+    static IEnumerable<EnvVarArgs> DiscordChannels(PrompterDeploymentArgs args)
+    {
+        if (!string.IsNullOrWhiteSpace(args.AskChannelId))
+        {
+            yield return new EnvVarArgs { Name = "Cratis__Prompter__Discord__AskChannelId", Value = args.AskChannelId };
+        }
+
+        if (!string.IsNullOrWhiteSpace(args.HelpForumChannelId))
+        {
+            yield return new EnvVarArgs { Name = "Cratis__Prompter__Discord__HelpForumChannelId", Value = args.HelpForumChannelId };
+        }
+
+        if (!string.IsNullOrWhiteSpace(args.MaintainerChannelId))
+        {
+            yield return new EnvVarArgs { Name = "Cratis__Prompter__Discord__MaintainerChannelId", Value = args.MaintainerChannelId };
+        }
+    }
 
     static List<EnvVarArgs> WithMetrics(List<EnvVarArgs> environment, PrompterDeploymentArgs args) =>
     [
