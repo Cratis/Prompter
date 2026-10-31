@@ -4,8 +4,12 @@
 namespace Cratis.Prompter.Ingestion;
 
 /// <summary>
-/// Represents a documentation page fetched from the published site.
+/// Represents one fetched documentation page.
 /// </summary>
-/// <param name="Url">The URL of the page.</param>
-/// <param name="Markdown">The markdown content of the page.</param>
-public record DocsPage(PageUrl Url, string Markdown);
+/// <param name="Url">The page URL.</param>
+/// <param name="Markdown">The raw markdown of the page.</param>
+public record DocsPage(PageUrl Url, string Markdown)
+{
+    /// <summary>Gets the page's explicit provenance, read from its own frontmatter and heading.</summary>
+    public DocumentationMetadata Metadata => DocumentationMetadata.From(Url, Markdown);
+}

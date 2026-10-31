@@ -33,7 +33,7 @@ public class and_publication_fails : given.a_database
             await setup.ExecuteNonQueryAsync();
         }
 
-        _error = await Catch.Exception(async () => await lease.CommitIndex([], new HashSet<ChunkId> { new("keep") }, CancellationToken.None));
+        _error = await Catch.Exception(async () => await lease.CommitIndex([], new HashSet<ChunkId> { new("keep") }, [], CancellationToken.None));
         await using var count = Database.CreateCommand("SELECT count(*) FROM chunks");
         _remaining = (long)(await count.ExecuteScalarAsync())!;
         await using var profile = Database.CreateCommand("SELECT profile FROM index_profile");

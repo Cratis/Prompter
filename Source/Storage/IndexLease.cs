@@ -81,7 +81,7 @@ public sealed class IndexLease(NpgsqlConnection connection) : IIndexLease
     }
 
     /// <inheritdoc/>
-    public async Task<int> CommitIndex(IReadOnlyCollection<EmbeddedChunk> changed, IReadOnlySet<ChunkId> existing, CancellationToken cancellationToken)
+    public async Task<int> CommitIndex(IReadOnlyCollection<EmbeddedChunk> changed, IReadOnlySet<ChunkId> existing, IReadOnlyCollection<DocumentationMetadata> pages, CancellationToken cancellationToken)
     {
         await using var transaction = await connection.BeginTransactionAsync(cancellationToken);
         foreach (var item in changed)
@@ -95,6 +95,7 @@ public sealed class IndexLease(NpgsqlConnection connection) : IIndexLease
         remove.CommandText = "DELETE FROM chunks WHERE NOT (id = ANY($1))";
         remove.Parameters.AddWithValue(existing.Select(id => id.Value).ToArray());
         var removed = await remove.ExecuteNonQueryAsync(cancellationToken);
+        await PublishPages(pages, cancellationToken);
         if (_profile is not null)
         {
             await using var profile = connection.CreateCommand();
@@ -124,5 +125,30 @@ public sealed class IndexLease(NpgsqlConnection connection) : IIndexLease
         {
             await connection.DisposeAsync();
         }
+    }
+
+    async Task PublishPages(IReadOnlyCollection<DocumentationMetadata> pages, CancellationToken cancellationToken)
+    {
+        // One statement per concern inside the caller's transaction: stamp indexed_at at publication, keep only the snapshot.
+        await using var upsert = connection.CreateCommand();
+        upsert.CommandText =
+            """
+            INSERT INTO documentation_pages (page_url, indexed_at, page_last_modified, product_version)
+            SELECT url, now(), modified, version FROM unnest($1::text[], $2::timestamptz[], $3::text[]) AS page(url, modified, version)
+            ON CONFLICT (page_url) DO UPDATE SET
+                indexed_at = EXCLUDED.indexed_at,
+                page_last_modified = EXCLUDED.page_last_modified,
+                product_version = EXCLUDED.product_version
+            """;
+        var ordered = pages.ToArray();
+        upsert.Parameters.AddWithValue(ordered.Select(page => page.Page.Value).ToArray());
+        upsert.Parameters.AddWithValue(ordered.Select(page => page.PageLastModified?.UtcDateTime).ToArray());
+        upsert.Parameters.AddWithValue(ordered.Select(page => page.ProductVersion).ToArray());
+        await upsert.ExecuteNonQueryAsync(cancellationToken);
+
+        await using var prune = connection.CreateCommand();
+        prune.CommandText = "DELETE FROM documentation_pages WHERE NOT (page_url = ANY($1))";
+        prune.Parameters.AddWithValue(ordered.Select(page => page.Page.Value).ToArray());
+        await prune.ExecuteNonQueryAsync(cancellationToken);
     }
 }

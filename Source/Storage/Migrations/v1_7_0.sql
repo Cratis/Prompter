@@ -15,3 +15,12 @@ BEGIN
     END IF;
 END
 $$;
+
+-- Per-page provenance, published in the index transaction. Unknown (no row) until a successful index run;
+-- no historical backfill timestamp is fabricated. Only explicit, bounded values are stored.
+CREATE TABLE IF NOT EXISTS documentation_pages (
+    page_url TEXT PRIMARY KEY,
+    indexed_at TIMESTAMPTZ NOT NULL,
+    page_last_modified TIMESTAMPTZ NULL,
+    product_version VARCHAR(64) NULL
+);

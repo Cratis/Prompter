@@ -14,5 +14,5 @@ public class and_the_budget_is_too_small : given.an_indexer
     [Fact] void should_fail_the_run() => Error.ShouldBeOfExactType<IndexBudgetExceeded>();
     [Fact] void should_not_dispatch_embeddings() => Embeddings.BatchSizes.Count.ShouldEqual(0);
     [Fact] async Task should_release_the_lease() => await Lease.Received(1).DisposeAsync();
-    [Fact] void should_not_change_the_corpus() => Lease.DidNotReceive().CommitIndex(Arg.Any<IReadOnlyCollection<EmbeddedChunk>>(), Arg.Any<IReadOnlySet<ChunkId>>(), Arg.Any<CancellationToken>());
+    [Fact] void should_not_change_the_corpus() => Lease.DidNotReceive().CommitIndex(Arg.Any<IReadOnlyCollection<EmbeddedChunk>>(), Arg.Any<IReadOnlySet<ChunkId>>(), Arg.Any<IReadOnlyCollection<DocumentationMetadata>>(), Arg.Any<CancellationToken>());
 }
