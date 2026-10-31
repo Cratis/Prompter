@@ -34,6 +34,18 @@ public sealed class WorkLease(
     /// <summary>Gets the shared deadline token.</summary>
     public CancellationToken Token => linked.Token;
 
+    /// <summary>Gets known spend plus reserved exposure for an unknown chat outcome.</summary>
+    public decimal Spent
+    {
+        get
+        {
+            lock (_lock)
+            {
+                return (_chatDispatched && !_chatKnown ? reserved.Anthropic : _chat) + _embedding;
+            }
+        }
+    }
+
     /// <summary>Gets the durable parent funding identifier.</summary>
     internal Guid Reservation => id;
 

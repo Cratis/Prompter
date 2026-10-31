@@ -39,6 +39,9 @@ public record Answer(
     /// <summary>Gets whether this request fell back to current-only conversation context.</summary>
     public bool ContextDegraded { get; init; }
 
+    /// <summary>Gets whether secret-shaped input was removed before answering.</summary>
+    public bool SecretsRedacted { get; init; }
+
     /// <summary>Gets the follow-up questions the same excerpts also answer, already filtered and bounded; empty when there are none.</summary>
     public IReadOnlyList<string> Suggestions { get; init; } = [];
 

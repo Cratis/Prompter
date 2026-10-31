@@ -4,9 +4,11 @@
 using Cratis.Prompter.Answering;
 using Cratis.Prompter.Cli;
 using Cratis.Prompter.Digest;
+using Cratis.Prompter.Evaluation;
 using Cratis.Prompter.Hosting;
 using Cratis.Prompter.Ingestion;
 using Cratis.Prompter.Operations;
+using Cratis.Prompter.Protection;
 using Cratis.Prompter.Storage;
 using Cratis.Prompter.Telemetry;
 using Microsoft.AspNetCore.Builder;
@@ -20,6 +22,41 @@ using NetCord.Hosting.Services.ApplicationCommands;
 using NetCord.Hosting.Services.ComponentInteractions;
 
 var mode = args.FirstOrDefault() ?? "bot";
+
+if (mode == "eval")
+{
+    var evaluation = EvalArguments.Parse(args.Skip(1));
+    var path = evaluation?.Set ?? EvalSet.DefaultPath(Directory.GetCurrentDirectory());
+    if (evaluation is not { Paid: true } || path is null || !File.Exists(path))
+    {
+        await Console.Error.WriteLineAsync(EvalArguments.Usage);
+        Environment.ExitCode = 2;
+        return;
+    }
+
+    EvalSet set;
+    try
+    {
+        set = EvalSet.Load(path);
+    }
+    catch (Exception error) when (error is IOException or YamlDotNet.Core.YamlException)
+    {
+        await Console.Error.WriteLineAsync(EvalArguments.Usage);
+        Environment.ExitCode = 2;
+        return;
+    }
+
+    var evalBuilder = Host.CreateApplicationBuilder([]);
+    evalBuilder.AddPrompter();
+    using var evalHost = evalBuilder.Build();
+    _ = evalHost.Services.GetRequiredService<MetricsExport>();
+    await evalHost.Services.GetRequiredService<IChunks>().EnsureSchema();
+    var command = new EvalCommand(evalHost.Services.GetRequiredService<PaidWork>(), evalHost.Services.GetRequiredService<IAnswers>());
+    var summary = await command.Run(set, evaluation);
+    foreach (var line in summary.Lines()) Console.WriteLine(line);
+    Environment.ExitCode = summary.ExitCode;
+    return;
+}
 
 if (mode == "index" || mode == "ask")
 {

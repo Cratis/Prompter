@@ -72,7 +72,8 @@ public partial class SampleFiles(HttpClient httpClient, IOptions<PrompterOptions
     /// <summary>Detects secret shapes without exposing any matched value.</summary>
     /// <param name="content">The fetched file.</param>
     /// <returns>Whether the file must be excluded.</returns>
-    internal static bool LooksSensitive(string content) => SensitiveContent.IsMatch(content);
+    internal static bool LooksSensitive(string content) =>
+        SensitiveContent.IsMatch(content) || Protection.SecretRedaction.ContainsSecret(content);
 
     async Task<SampleTree> ReadTree(SamplesOptions settings, CancellationToken cancellationToken)
     {
