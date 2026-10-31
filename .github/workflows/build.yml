@@ -124,5 +124,8 @@ jobs:
           context: .
           file: ./Docker/Dockerfile
           push: false
+          platforms: linux/amd64,linux/arm64
+          cache-from: type=gha,scope=prompter-image-ci
+          cache-to: type=gha,mode=max,scope=prompter-image-ci
           build-args: |
             VERSION=0.0.0-ci
