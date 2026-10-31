@@ -21,10 +21,21 @@ public class AnswerDelivery(RestClient rest, IOptions<PrompterOptions> options, 
     /// <param name="reply">The generated answer and advice.</param>
     /// <param name="cancellationToken">Cancels delivery.</param>
     /// <returns>The new thread identifier, or null for a normal reply.</returns>
-    public async Task<ulong?> Deliver(Message message, string question, ConversationReply reply, CancellationToken cancellationToken)
+    public Task<ulong?> Deliver(Message message, string question, ConversationReply reply, CancellationToken cancellationToken) =>
+        Deliver(message, message.GuildId, message.Channel is GuildThread, question, reply, cancellationToken);
+
+    /// <summary>Delivers an answer publicly to a selected message, opening a thread only where configured.</summary>
+    /// <param name="message">The selected message.</param>
+    /// <param name="guildId">The guild containing the selected message.</param>
+    /// <param name="inThread">Whether the message is already in a thread.</param>
+    /// <param name="question">The question, used transiently for a thread name.</param>
+    /// <param name="reply">The generated answer and advice.</param>
+    /// <param name="cancellationToken">Cancels delivery.</param>
+    /// <returns>The new thread identifier, or null for a normal reply.</returns>
+    public async Task<ulong?> Deliver(RestMessage message, ulong? guildId, bool inThread, string question, ConversationReply reply, CancellationToken cancellationToken)
     {
         var actions = AnswerActions.For(options.Value.Discord, new(message.ChannelId, message.Id), reply);
-        var thread = ShouldThread(message) ? await TryOpenThread(message, question, cancellationToken) : null;
+        var thread = ShouldThread(guildId, inThread, message.ChannelId) ? await TryOpenThread(message, question, cancellationToken) : null;
         var target = new Target(message, thread, actions);
         var chunks = DiscordAnswers.Split(reply.Answer);
         for (var index = 0; index < chunks.Count; index++)
@@ -39,10 +50,10 @@ public class AnswerDelivery(RestClient rest, IOptions<PrompterOptions> options, 
         return thread;
     }
 
-    bool ShouldThread(Message message) => message.GuildId is not null && message.Channel is not GuildThread &&
-        options.Value.Discord.AnswerInThreadChannelIds.Contains(message.ChannelId);
+    bool ShouldThread(ulong? guildId, bool inThread, ulong channelId) => guildId is not null && !inThread &&
+        options.Value.Discord.AnswerInThreadChannelIds.Contains(channelId);
 
-    async Task<ulong?> TryOpenThread(Message message, string question, CancellationToken cancellationToken)
+    async Task<ulong?> TryOpenThread(RestMessage message, string question, CancellationToken cancellationToken)
     {
         try
         {
@@ -79,7 +90,7 @@ public class AnswerDelivery(RestClient rest, IOptions<PrompterOptions> options, 
         await rest.SendMessageAsync(target.Thread ?? target.Message.ChannelId, followup, cancellationToken: cancellationToken);
     }
 
-    sealed record Target(Message Message, ulong? Thread, AnswerActions Actions);
+    sealed record Target(RestMessage Message, ulong? Thread, AnswerActions Actions);
 
     sealed record Chunk(string Content, bool First, long? Feedback);
 }
