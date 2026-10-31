@@ -49,7 +49,7 @@ test('authorized schedule has bounded configuration and restricted security', ()
         Protection__Voyage__MaxInputTokens: '32000', Voyage__Model: 'voyage-4', Voyage__Dimensions: '1024',
         Voyage__BatchSize: '128', Voyage__MaxRetries: '3', Voyage__IndexMaxRetries: '5',
         Voyage__RetryBaseDelayMilliseconds: '500', Voyage__TimeoutSeconds: '60', Voyage__IndexTimeoutSeconds: '120',
-        Ingestion__MaxIncrementalTokens: '200000', Ingestion__PricePerMillionTokens: '0.06',
+        Ingestion__MaxIncrementalTokens: '1000000', Ingestion__PricePerMillionTokens: '0.06',
         Ingestion__MaxRunDollars: '0.10', Ingestion__MaxDailyDollars: '0.50'
     };
     for (const [key, value] of Object.entries(expected)) assert.equal(values[`Cratis__Prompter__${key}`], value, key);
@@ -60,6 +60,11 @@ test('authorized schedule has bounded configuration and restricted security', ()
     for (const key of Object.keys(expected).filter(key => /^(Protection__Daily|Protection__Voyage|Voyage__(Model|Dimensions))/.test(key))) {
         assert.ok(deployment.includes(`["${key}"] = "${expected[key]}"`), key);
     }
+});
+test('a full confirmation cannot promote a scheduled run to full', () => {
+    const result = manifest({ PROMPTER_INDEX_MODE: 'scheduled', PROMPTER_SCHEDULED_INDEXING_ENABLED: 'true', PROMPTER_INDEX_CONFIRMATION: 'FULL REINDEX' });
+    assert.equal(result.status, 0, result.stderr);
+    assert.deepEqual(JSON.parse(result.stdout).spec.template.spec.containers[0].args, ['index', '--scheduled']);
 });
 for (const key of Object.keys(settings)) {
     for (const value of ['', 'NaN', 'Infinity', '-1', '9999999999999999999999999999999999999999', '0', '0,06']) {
@@ -88,7 +93,8 @@ test('workflow gates schedules but preserves explicit manual invocations', () =>
     assert.match(workflow, /if: github.ref == 'refs\/heads\/main' && \(github.event_name == 'workflow_dispatch' \|\| \(github.event_name == 'schedule' && vars.PROMPTER_SCHEDULED_INDEXING_ENABLED == 'true'\)\)/);
     assert.match(workflow, /PROMPTER_SCHEDULED_INDEXING_ENABLED: \$\{\{ vars.PROMPTER_SCHEDULED_INDEXING_ENABLED \}\}/);
     for (const text of ['environment: production', 'group: prompter-production-operations', 'persist-credentials: false', "github.event_name == 'schedule' && 'scheduled' || inputs.full && 'full' || 'incremental'"]) assert.ok(workflow.includes(text));
-    assert.doesNotMatch(workflow, /^\s+(pull_request|repository_dispatch):/m);
+    assert.deepEqual([...workflow.matchAll(/cron:\s*["']([^"']+)["']/g)].map(match => match[1]), ['52 3 * * *']);
+    assert.doesNotMatch(workflow, /^\s+(push|pull_request|pull_request_target|workflow_run|repository_dispatch):/m);
     assert.equal((workflow.match(/uses: [^\n]+@[a-f0-9]{40}\b/g) || []).length, 2);
     const build = readFileSync('.github/workflows/build.yml', 'utf8');
     for (const command of ['node --test Specs/ScheduledIndexing/*.test.mjs', 'bash Deployment/scripts/run-index-job.spec.sh', 'shellcheck Deployment/scripts/run-index-job.sh Deployment/scripts/run-index-job.spec.sh']) assert.ok(build.includes(command));

@@ -37,8 +37,9 @@ provisioning, failure-notification configuration, and operator runbooks. No aler
 
 ## Documentation changes never redeploy
 
-App deploys are for code changes only. When the documentation changes, nothing is redeployed - the
-**Reindex - Production** workflow picks up published changes nightly at 03:52 UTC, or a maintainer can run
+App deploys are for code changes only. Documentation changes never redeploy or trigger reindexing.
+The **Reindex - Production** workflow picks up published changes daily at 03:52 UTC when scheduled
+indexing is enabled (`PROMPTER_SCHEDULED_INDEXING_ENABLED=true`), or a maintainer can run
 it on demand on `main`. It creates a one-shot Kubernetes Job running the deployed image's `index` command,
 and fails if indexing fails or the crawl is empty. See
 [Configuration](../reference/configuration.md) for the endpoints and
