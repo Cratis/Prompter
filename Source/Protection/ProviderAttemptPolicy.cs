@@ -28,8 +28,8 @@ internal static class ProviderAttemptPolicy
         Require(config.Protection.IsValid);
         Require(config.Protection.DailyUsd is > 0 and <= 5);
         var chat = dispatch.Provider == "anthropic";
-        var budget = chat ? config.Protection.Anthropic : config.Protection.Voyage;
-        var model = chat ? config.Anthropic.Model : config.Voyage.Model;
+        var budget = chat ? ChatPricing.ForTask(config, dispatch.Task) : config.Protection.Voyage;
+        var model = chat ? ChatPricing.Model(config, dispatch.Task) : config.Voyage.Model;
         Require(budget.Covers(model, chat) && dispatch.Model == model);
         var inputCeiling = dispatch.Task == "index" && !chat
             ? Math.Min(EmbeddingInputLimits.MaximumRequestTokens, (long)EmbeddingInputLimits.PerInput(budget.MaxInputTokens) * count)
@@ -69,7 +69,7 @@ internal static class ProviderAttemptPolicy
         Require(dispatch.Account != "secondary" || policy.AllowSecondary);
         Require(_accounts.Contains(policy.PreferredAccount));
         Require(dispatch.MaxInputTokens <= policy.MaxPromptTokens);
-        Require(dispatch.MaxOutputTokens >= 1 && dispatch.MaxOutputTokens <= Math.Min(policy.MaxOutputTokens, config.Answering.MaxOutputTokens));
+        Require(dispatch.MaxOutputTokens >= 1 && dispatch.MaxOutputTokens <= Math.Min(policy.MaxOutputTokens, ChatPricing.OutputCeiling(config, dispatch.Task)));
         Require(dispatch.Effort == policy.Effort);
         Require(_efforts.Contains(dispatch.Effort));
     }

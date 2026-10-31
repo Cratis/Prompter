@@ -2,11 +2,11 @@
 // Licensed under the MIT license. See LICENSE file in the project root for full license information.
 
 using Cratis.Prompter.Answering;
+using Cratis.Prompter.Discord;
 using Cratis.Prompter.GitHub;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
 using NetCord.Gateway;
-using NetCord.Rest;
 
 namespace Cratis.Prompter.Operations;
 
@@ -92,7 +92,7 @@ public class GitHubWebhook(
         {
             await gateway.Rest.SendMessageAsync(
                 channelId,
-                new MessageProperties { Content = IssueNotification.For(issue, answered) },
+                SafeMessages.Message(IssueNotification.For(issue, answered)),
                 cancellationToken: cancellationToken);
         }
         catch (Exception exception)

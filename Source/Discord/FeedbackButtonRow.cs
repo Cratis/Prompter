@@ -30,9 +30,34 @@ public static class FeedbackButtonRow
     /// </summary>
     /// <param name="interactionId">The id of the interaction the answer was recorded as.</param>
     /// <returns>The action row to attach to the answer message's components.</returns>
-    public static ActionRowProperties For(long interactionId) => new(
-    [
-        new ButtonProperties(FeedbackButton.CustomId(FeedbackVerdict.Up, interactionId), HelpfulLabel, ButtonStyle.Success),
-        new ButtonProperties(FeedbackButton.CustomId(FeedbackVerdict.Down, interactionId), NotHelpfulLabel, ButtonStyle.Secondary)
-    ]);
+    public static ActionRowProperties For(long interactionId) => For(interactionId, AnswerActions.None);
+
+    /// <summary>Builds feedback and optional explicit answer actions.</summary>
+    /// <param name="interactionId">The recorded interaction.</param>
+    /// <param name="actions">The optional actions.</param>
+    /// <returns>The action row.</returns>
+    public static ActionRowProperties For(long interactionId, AnswerActions actions)
+    {
+        List<ButtonProperties> buttons =
+        [
+            new(FeedbackButton.CustomId(FeedbackVerdict.Up, interactionId), HelpfulLabel, ButtonStyle.Success),
+            new(FeedbackButton.CustomId(FeedbackVerdict.Down, interactionId), NotHelpfulLabel, ButtonStyle.Secondary)
+        ];
+        if (actions.Question is { } question)
+        {
+            if (actions.OfferHuman)
+            {
+                buttons.Add(new(AnswerActionButton.CustomId(AnswerActionButton.HumanPrefix, question), AnswerActionButton.HumanLabel, ButtonStyle.Primary));
+            }
+            if (actions.OfferDocumented)
+            {
+                buttons.Add(new(AnswerActionButton.CustomId(AnswerActionButton.DocumentedPrefix, question), AnswerActionButton.DocumentedLabel, ButtonStyle.Secondary));
+            }
+            if (actions.RequestProduct is { } product)
+            {
+                buttons.Add(new(AnswerActionButton.RequestCustomId(question, product), AnswerActionButton.RequestLabel, ButtonStyle.Secondary));
+            }
+        }
+        return new(buttons);
+    }
 }

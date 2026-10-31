@@ -19,5 +19,5 @@ public class and_a_full_rebuild_is_confirmed : given.an_indexer
     async Task Because() => _run = await Indexer.Run(new IndexRequest(true, "FULL REINDEX"));
 
     [Fact] void should_embed_unchanged_content_too() => _run.Embedded.ShouldEqual(2);
-    [Fact] void should_publish_once() => Lease.Received(1).CommitIndex(Arg.Is<IReadOnlyCollection<EmbeddedChunk>>(items => items.Count == 2), Arg.Any<IReadOnlySet<ChunkId>>(), Arg.Any<CancellationToken>());
+    [Fact] void should_publish_once() => Lease.Received(1).CommitIndex(Arg.Is<IReadOnlyCollection<EmbeddedChunk>>(items => items.Count == 2), Arg.Any<IReadOnlySet<ChunkId>>(), Arg.Any<IReadOnlyCollection<DocumentationMetadata>>(), Arg.Any<CancellationToken>());
 }

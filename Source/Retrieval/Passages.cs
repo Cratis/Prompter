@@ -45,10 +45,12 @@ public class Passages(
             SELECT c.page_url, c.title, c.heading_path, c.content,
                    COALESCE(1.0 / ({RrfConstant} + semantic.rank), 0) +
                    COALESCE(1.0 / ({RrfConstant} + lexical.rank), 0) AS score,
-                   1.0 - (c.embedding <=> $1) AS semantic_similarity
+                   1.0 - (c.embedding <=> $1) AS semantic_similarity,
+                   p.indexed_at, p.page_last_modified, p.product_version
             FROM chunks c
             LEFT JOIN semantic ON c.id = semantic.id
             LEFT JOIN lexical ON c.id = lexical.id
+            LEFT JOIN documentation_pages p ON p.page_url = c.page_url
             WHERE semantic.id IS NOT NULL OR lexical.id IS NOT NULL
             ORDER BY score DESC
             LIMIT $3
@@ -62,15 +64,35 @@ public class Passages(
         await using var reader = await command.ExecuteReaderAsync(cancellationToken);
         while (await reader.ReadAsync(cancellationToken))
         {
-            passages.Add(new(
-                new PageUrl(reader.GetString(0)),
-                reader.GetString(1),
-                reader.GetString(2),
-                reader.GetString(3),
-                reader.GetDouble(4),
-                reader.GetDouble(5)));
+            passages.Add(await ReadPassage(reader, cancellationToken));
         }
 
         return passages;
     }
+
+    static async Task<Passage> ReadPassage(NpgsqlDataReader reader, CancellationToken cancellationToken) => new(
+        new PageUrl(reader.GetString(0)),
+        reader.GetString(1),
+        reader.GetString(2),
+        reader.GetString(3),
+        reader.GetDouble(4),
+        reader.GetDouble(5))
+    {
+        IndexedAt = await NullableField<DateTimeOffset>(reader, 6, cancellationToken),
+        PageLastModifiedAt = await NullableField<DateTimeOffset>(reader, 7, cancellationToken),
+        ProductVersion = await reader.IsDBNullAsync(8, cancellationToken) ? null : reader.GetString(8)
+    };
+
+    /// <summary>
+    /// Reads a nullable value column. The page metadata comes from a LEFT JOIN, so it is SQL NULL for a page
+    /// without a row, and Npgsql throws when a NULL is read as a value type.
+    /// </summary>
+    /// <typeparam name="T">The value type.</typeparam>
+    /// <param name="reader">The reader positioned on a row.</param>
+    /// <param name="ordinal">The column ordinal.</param>
+    /// <param name="cancellationToken">Cancels the read.</param>
+    /// <returns>The value, or null for SQL NULL.</returns>
+    static async Task<T?> NullableField<T>(NpgsqlDataReader reader, int ordinal, CancellationToken cancellationToken)
+        where T : struct =>
+        await reader.IsDBNullAsync(ordinal, cancellationToken) ? null : await reader.GetFieldValueAsync<T>(ordinal, cancellationToken);
 }

@@ -110,6 +110,21 @@ public sealed class PrompterDeploymentArgs
     public string? HelpForumChannelId { get; init; }
 
     /// <summary>
+    /// Gets the optional operations channel for weekly aggregate gap digests.
+    /// </summary>
+    public string? MaintainerChannelId { get; init; }
+
+    /// <summary>
+    /// Gets the optional mentionable role pinged by the Ask a human button.
+    /// </summary>
+    public string? MaintainerRoleId { get; init; }
+
+    /// <summary>
+    /// Gets the optional comma-separated channel ids where answers are delivered in new threads.
+    /// </summary>
+    public string? AnswerInThreadChannelIds { get; init; }
+
+    /// <summary>
     /// Gets resources this deployment must be created after — the database it connects to.
     /// </summary>
     public InputList<Resource> DependsOn { get; init; } = [];

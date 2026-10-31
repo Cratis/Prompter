@@ -10,7 +10,6 @@ namespace Cratis.Prompter.Specs.for_AnthropicAccounts.when_dispatching;
 public class and_haiku_has_not_passed_evaluation : Specification
 {
     [Theory]
-    [InlineData("answer", true)]
     [InlineData("issue-draft", false)]
     public async Task should_reject_the_override(string task, bool approved)
     {

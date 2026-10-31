@@ -28,7 +28,7 @@ public class and_sessions_compete : given.a_database
         _reacquired = true;
         _secondSchedule = await Catch.Exception(async () => await next.Reserve(new(0, 0), 0.2m, true, CancellationToken.None));
         _dailyCap = await Catch.Exception(async () => await next.Reserve(new(100, 0.11m), 0.2m, false, CancellationToken.None));
-        _removed = await next.CommitIndex([], new HashSet<ChunkId> { new("keep") }, CancellationToken.None);
+        _removed = await next.CommitIndex([], new HashSet<ChunkId> { new("keep") }, [], CancellationToken.None);
     }
 
     [Fact] void should_reject_a_competing_session() => _contention.ShouldBeOfExactType<IndexAlreadyRunning>();

@@ -65,21 +65,19 @@ public class Ask(
 
             if (answer.InteractionId is { } interactionId)
             {
-                await Context.Interaction.SendFollowupMessageAsync(new()
-                {
-                    Content = content,
-                    Components = [FeedbackButtonRow.For(interactionId)]
-                });
+                var followup = SafeMessages.Followup(content);
+                followup.Components = [FeedbackButtonRow.For(interactionId, AnswerActions.For(options.Value.Discord, new(channel, 0), reply))];
+                await Context.Interaction.SendFollowupMessageAsync(followup);
             }
             else
             {
-                await Context.Interaction.SendFollowupMessageAsync(content);
+                await Context.Interaction.SendFollowupMessageAsync(SafeMessages.Followup(content));
             }
 
             var advice = DiscordAnswers.Advice(reply);
             if (advice.Length > 0)
             {
-                await Context.Interaction.SendFollowupMessageAsync(advice);
+                await Context.Interaction.SendFollowupMessageAsync(SafeMessages.Followup(advice));
             }
         }
         catch (WorkRefused)

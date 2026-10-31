@@ -17,5 +17,5 @@ public class the_database_fails : given.durable_accounting
         await Send(Dispatch(), new() { InputTokenCount = 1, OutputTokenCount = 1 });
     }
 
-    [Fact] void should_retain_parent_funding() => Ledger.Received(1).Reconcile(Arg.Any<Guid>(), new(Options.Protection.Anthropic.Cost(Options.Protection.Anthropic.MaxInputTokens, Options.Answering.MaxOutputTokens), 0), Arg.Any<CancellationToken>());
+    [Fact] void should_retain_parent_funding() => Ledger.Received(1).Reconcile(Arg.Any<Guid>(), new(Options.Protection.AnthropicAnswer.Cost(Options.Protection.AnthropicAnswer.MaxInputTokens, Options.Answering.MaxOutputTokens), 0), Arg.Any<CancellationToken>());
 }

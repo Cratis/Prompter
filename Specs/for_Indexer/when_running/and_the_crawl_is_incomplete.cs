@@ -14,7 +14,7 @@ public class and_the_crawl_is_incomplete : given.an_indexer
 
     [Fact] void should_fail_the_entire_pass() => Error.ShouldBeOfExactType<IncompleteCrawl>();
     [Fact] void should_not_dispatch_even_the_first_page() => Embeddings.BatchSizes.Count.ShouldEqual(0);
-    [Fact] void should_not_publish_or_delete() => Lease.DidNotReceive().CommitIndex(Arg.Any<IReadOnlyCollection<EmbeddedChunk>>(), Arg.Any<IReadOnlySet<ChunkId>>(), Arg.Any<CancellationToken>());
+    [Fact] void should_not_publish_or_delete() => Lease.DidNotReceive().CommitIndex(Arg.Any<IReadOnlyCollection<EmbeddedChunk>>(), Arg.Any<IReadOnlySet<ChunkId>>(), Arg.Any<IReadOnlyCollection<DocumentationMetadata>>(), Arg.Any<CancellationToken>());
 
     sealed class BrokenSite : IDocsSite
     {

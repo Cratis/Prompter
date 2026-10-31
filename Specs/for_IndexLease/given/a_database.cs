@@ -17,7 +17,9 @@ public class a_database : Specification
             """
             DROP TABLE IF EXISTS index_reservations;
             DROP TABLE IF EXISTS index_profile;
+            DROP TABLE IF EXISTS documentation_pages;
             DROP TABLE IF EXISTS chunks;
+            CREATE TABLE documentation_pages (page_url TEXT PRIMARY KEY, indexed_at TIMESTAMPTZ NOT NULL, page_last_modified TIMESTAMPTZ NULL, product_version VARCHAR(64) NULL);
             CREATE TABLE chunks (id TEXT PRIMARY KEY);
             INSERT INTO chunks VALUES ('keep'), ('stale');
             """);

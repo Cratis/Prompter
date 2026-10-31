@@ -16,13 +16,15 @@ namespace Cratis.Prompter.Answering;
 /// <param name="secondary">The optional secondary client, with SDK retries disabled.</param>
 /// <param name="configuration">Task and account configuration.</param>
 /// <param name="accounting">Shared durable reservation/accounting integration.</param>
-/// <param name="prices">Verified prices for optional usage estimates.</param>
+/// <param name="prices">Verified prices for optional usage estimates (issue drafting, and answers when no answer prices are given).</param>
+/// <param name="answerPrices">Verified prices for answer-task usage estimates.</param>
 public sealed class AnthropicAccounts(
     IChatClient primary,
     IChatClient? secondary,
     AnthropicOptions configuration,
     IProviderAccounting? accounting = null,
-    ProviderBudget? prices = null) : DelegatingChatClient(primary)
+    ProviderBudget? prices = null,
+    ProviderBudget? answerPrices = null) : DelegatingChatClient(primary)
 {
     /// <summary>
     /// The AdditionalProperties key selecting the fixed issue-draft task; absent means answer.
@@ -156,7 +158,7 @@ public sealed class AnthropicAccounts(
         }
         finally
         {
-            ProviderMetrics.Complete(dispatch, new(response?.Usage, outcome, Stopwatch.GetElapsedTime(start)), prices ?? new());
+            ProviderMetrics.Complete(dispatch, new(response?.Usage, outcome, Stopwatch.GetElapsedTime(start)), (dispatch.Task == "answer" ? answerPrices ?? prices : prices) ?? new());
             if (accounting is not null)
             {
                 await accounting.Complete(dispatch, response?.Usage, Finish(response));

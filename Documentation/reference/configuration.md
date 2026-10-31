@@ -16,6 +16,8 @@ Configuration binds to the `Cratis:Prompter` section. Environment variables use 
 | Discord bot token | `Cratis__Prompter__Discord__Token` | - |
 | Ask channel | `Cratis__Prompter__Discord__AskChannelId` | - |
 | Help forum channel (auto-reply) | `Cratis__Prompter__Discord__HelpForumChannelId` | - |
+| Answer-in-thread channels (off when empty) | `Cratis__Prompter__Discord__AnswerInThreadChannelIds__0`, `__1`, … | - |
+| Maintainer role for Ask a human (off when unset) | `Cratis__Prompter__Discord__MaintainerRoleId` | - |
 | Anthropic API key | `Cratis__Prompter__Anthropic__ApiKey` (or `ANTHROPIC_API_KEY`) | - |
 | Answer model | `Cratis__Prompter__Anthropic__Model` | `claude-sonnet-5` |
 | Voyage API key | `Cratis__Prompter__Voyage__ApiKey` | - |
@@ -24,7 +26,10 @@ Configuration binds to the `Cratis:Prompter` section. Environment variables use 
 | Embedding dimensions | `Cratis__Prompter__Voyage__Dimensions` | `1024` (must match the database schema) |
 | Max passages per answer | `Cratis__Prompter__Answering__MaxPassages` | `8` |
 | Refusal threshold | `Cratis__Prompter__Answering__MinScore` | `0.02` |
-| Max answer tokens | `Cratis__Prompter__Answering__MaxOutputTokens` | `1024` |
+| Max answer tokens | `Cratis__Prompter__Answering__MaxOutputTokens` | `768` |
+| Maintainer channel (weekly metadata-only gap digest) | `Cratis__Prompter__Discord__MaintainerChannelId` | - (digest off) |
+| Weekly digest UTC day | `Cratis__Prompter__Discord__MaintainerDigestDay` | `Monday` |
+| Weekly digest UTC hour (clamped to 0–23) | `Cratis__Prompter__Discord__MaintainerDigestHourUtc` | `8` |
 
 API keys are never committed - use environment variables or a git-ignored
 `Source/appsettings.Development.json`.

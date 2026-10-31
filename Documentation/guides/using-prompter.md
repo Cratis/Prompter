@@ -26,6 +26,16 @@ fits the moment:
 To continue a conversation, reply to any Prompter message - no mention needed. In a help-forum post, the post's
 author can keep asking in the thread until someone else joins in. After that, mention Prompter or reply to it.
 
+In channels where the operator enabled it, Prompter answers a mention in a new thread, and you can keep asking in
+that thread without mentioning it. When the operator configured a maintainer role, an answer also carries an
+**Ask a human** button. Only the person who asked can press it; it pings that role once, in the same channel, with
+a short excerpt of your question and a link to it.
+
+When the operator configured a maintainer channel, a refusal or documentation gap carries a
+**This should be documented** button, and an answer that suggests the capability does not exist yet carries
+**Request this**. Only the person who asked can press either. Pressing it sends the text of your question,
+with a link to it, to the maintainers; it is labeled as a documentation gap or a feature request.
+
 ## Ask a question it can answer
 
 Prompter looks your answer up in the documentation, so a specific question retrieves better than a vague one:

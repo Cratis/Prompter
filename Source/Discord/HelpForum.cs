@@ -1,7 +1,6 @@
 // Copyright (c) Cratis. All rights reserved.
 // Licensed under the MIT license. See LICENSE file in the project root for full license information.
 
-using Cratis.Prompter.Answering;
 using Cratis.Prompter.Protection;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
@@ -159,29 +158,28 @@ public class HelpForum(
         logger.AnsweringForumThread(thread.Id);
         var request = await context.For(question, new(thread.GuildId, thread.Id, starter.Id, starter.CreatedAt), cancellationToken);
         var reply = await assistance.For(request, "discord-forum", cancellationToken);
-        await SendAnswer(thread.Id, reply.Answer);
+        await SendAnswer(thread.Id, reply, new(thread.Id, starter.Id));
         var advice = DiscordAnswers.Advice(reply);
         if (advice.Length > 0)
         {
-            await rest.SendMessageAsync(thread.Id, new MessageProperties { Content = advice });
+            await rest.SendMessageAsync(thread.Id, SafeMessages.Message(advice));
         }
         return true;
     }
 
-    async Task SendAnswer(ulong thread, Answer answer)
+    async Task SendAnswer(ulong thread, ConversationReply reply, QuestionLink link)
     {
+        var answer = reply.Answer;
         var content = DiscordAnswers.Format(answer);
         if (answer.InteractionId is { } interactionId)
         {
-            await rest.SendMessageAsync(thread, new MessageProperties
-            {
-                Content = content,
-                Components = [FeedbackButtonRow.For(interactionId)]
-            });
+            var message = SafeMessages.Message(content);
+            message.Components = [FeedbackButtonRow.For(interactionId, AnswerActions.For(options.Value.Discord, link, reply))];
+            await rest.SendMessageAsync(thread, message);
         }
         else
         {
-            await rest.SendMessageAsync(thread, content);
+            await rest.SendMessageAsync(thread, SafeMessages.Message(content));
         }
     }
 

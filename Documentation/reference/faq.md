@@ -18,7 +18,9 @@ is wrong, that's a valuable bug report.
 
 ## How up to date is it?
 
-The knowledge base re-indexes nightly at 03:52 UTC through **Reindex - Production**. A maintainer can also
+The knowledge base re-indexes daily at 03:52 UTC when scheduled indexing is enabled through the
+repository variable `PROMPTER_SCHEDULED_INDEXING_ENABLED=true`. Documentation changes never redeploy
+or trigger reindexing. A maintainer can also
 run that workflow on `main` to pick up published changes sooner. It only knows published documentation:
 undocumented features are invisible to it.
 

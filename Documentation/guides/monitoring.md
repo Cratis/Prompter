@@ -89,7 +89,9 @@ snapshots; Grafana datasource execution failures alert rather than silently reso
 
 The **Reindex - Production** workflow waits for the one-shot indexing Job's actual completion and fails
 on Job failure. A failure/cancellation step optionally sends a generic JSON notification to the GitHub
-repository secret `PROMPTER_ALERT_WEBHOOK`. An unset secret prints a disabled notice and succeeds.
+repository secret `PROMPTER_ALERT_WEBHOOK`, which must be set for failure alerts. An unset secret
+prints a disabled notice and succeeds; only GitHub's failed-scheduled-run notification and freshness
+alerts remain.
 This is a dedicated HTTPS JSON receiver, **not a Discord webhook**. It receives only `service`, `event`,
 `run_url` (the Actions run), and `status`; never Job logs or application errors. Destination and response
 are never printed. Delivery is bounded, retries twice, and fails the notification step if unsuccessful.

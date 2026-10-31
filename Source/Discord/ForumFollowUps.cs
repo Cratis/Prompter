@@ -7,7 +7,7 @@ namespace Cratis.Prompter.Discord;
 
 /// <summary>
 /// An in-memory, bounded, expiring record of the help-forum threads Prompter answered and whether a human helper
-/// has since joined. Only thread identifiers are kept; no user identifiers or content.
+/// has since joined. Answer threads also retain their asker's identifier in memory; no content is kept.
 /// </summary>
 /// <param name="options">The Prompter options carrying the local capacity bound.</param>
 /// <param name="clock">The clock measuring expiry.</param>
@@ -21,29 +21,21 @@ public sealed class ForumFollowUps(IOptions<PrompterOptions> options, TimeProvid
 
     /// <summary>Records that Prompter answered in a thread, refreshing its expiry and keeping any hand-off.</summary>
     /// <param name="threadId">The thread identifier.</param>
-    public void Answered(ulong threadId)
+    public void Answered(ulong threadId) => Track(threadId, null);
+
+    /// <summary>Tracks a newly opened answer thread and its asker.</summary>
+    /// <param name="threadId">The thread identifier.</param>
+    /// <param name="askerId">The asker identifier.</param>
+    public void Opened(ulong threadId, ulong askerId) => Track(threadId, askerId);
+
+    /// <summary>Finds the asker of an unexpired answer thread, even after hand-off.</summary>
+    /// <param name="threadId">The thread identifier.</param>
+    /// <returns>The asker, or null for untracked or forum threads.</returns>
+    public ulong? AskerOf(ulong threadId)
     {
         lock (_lock)
         {
-            var now = clock.GetUtcNow();
-            var expires = now.Add(Lifetime);
-            if (_threads.TryGetValue(threadId, out var existing))
-            {
-                _threads[threadId] = existing with { Expires = expires };
-                return;
-            }
-
-            foreach (var stale in _threads.Where(pair => pair.Value.Expires <= now).Select(pair => pair.Key).ToList())
-            {
-                _threads.Remove(stale);
-            }
-
-            if (_threads.Count >= options.Value.Protection.LocalCapacity)
-            {
-                _threads.Remove(_threads.MinBy(pair => pair.Value.Expires).Key);
-            }
-
-            _threads[threadId] = new(false, expires);
+            return _threads.TryGetValue(threadId, out var entry) && entry.Expires > clock.GetUtcNow() ? entry.Asker : null;
         }
     }
 
@@ -71,5 +63,31 @@ public sealed class ForumFollowUps(IOptions<PrompterOptions> options, TimeProvid
         }
     }
 
-    sealed record Entry(bool HandedOff, DateTimeOffset Expires);
+    void Track(ulong threadId, ulong? asker)
+    {
+        lock (_lock)
+        {
+            var now = clock.GetUtcNow();
+            var expires = now.Add(Lifetime);
+            if (_threads.TryGetValue(threadId, out var existing))
+            {
+                _threads[threadId] = existing with { Expires = expires, Asker = asker ?? existing.Asker };
+                return;
+            }
+
+            foreach (var stale in _threads.Where(pair => pair.Value.Expires <= now).Select(pair => pair.Key).ToList())
+            {
+                _threads.Remove(stale);
+            }
+
+            if (_threads.Count >= options.Value.Protection.LocalCapacity)
+            {
+                _threads.Remove(_threads.MinBy(pair => pair.Value.Expires).Key);
+            }
+
+            _threads[threadId] = new(false, expires, asker);
+        }
+    }
+
+    sealed record Entry(bool HandedOff, DateTimeOffset Expires, ulong? Asker);
 }

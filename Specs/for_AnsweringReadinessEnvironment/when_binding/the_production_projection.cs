@@ -4,6 +4,7 @@
 using System.Globalization;
 using Cratis.Prompter.Answering;
 using Cratis.Prompter.Deployment.Services;
+using Cratis.Prompter.Protection;
 using Microsoft.Extensions.Configuration;
 
 namespace Cratis.Prompter.Specs.for_AnsweringReadinessEnvironment.when_binding;
@@ -41,6 +42,11 @@ public class the_production_projection : Specification
     [Fact] void should_price_the_verified_chat_model() => _defaults.Protection.Anthropic.Covers(_defaults.Anthropic.Model, true).ShouldBeTrue();
     [Fact] void should_reserve_the_worst_cache_write_rate() => _defaults.Protection.Anthropic.InputUsdPerMillion.ShouldEqual(4m);
     [Fact] void should_cover_hidden_thinking_in_the_output_bound() => _defaults.Protection.Anthropic.OutputUsdPerMillion.ShouldEqual(10m);
+    [Fact] void should_price_the_default_answer_model_in_the_deployment() => _defaults.Protection.AnthropicAnswer.Covers(_defaults.Anthropic.Answer.Model!, true).ShouldBeTrue();
+    [Fact] void should_cover_every_chat_task_in_the_deployment() => ChatPricing.Covered(_defaults).ShouldBeTrue();
+    [Fact] void should_reserve_the_worst_haiku_cache_write_rate() => _defaults.Protection.AnthropicAnswer.InputUsdPerMillion.ShouldEqual(0.2m);
+    [Fact] void should_price_the_answer_model_without_any_deployment_settings() => new PrompterOptions().Protection.AnthropicAnswer.Covers(new PrompterOptions().Anthropic.Answer.Model!, true).ShouldBeTrue();
+    [Fact] void should_bind_the_short_answer_output_cap() => _defaults.Anthropic.Answer.MaxOutputTokens.ShouldEqual(768);
     [Fact] void should_price_the_verified_embedding_model() => _defaults.Protection.Voyage.Covers(_defaults.Voyage.Model, false).ShouldBeTrue();
     [Fact] void should_bound_the_global_ceiling_at_five_dollars() => _defaults.Protection.DailyUsd.ShouldEqual(5m);
     [Fact] void should_enforce_a_local_input_ceiling_below_both_vendor_limits() => _defaults.Protection.Anthropic.MaxInputTokens.ShouldEqual(32000);

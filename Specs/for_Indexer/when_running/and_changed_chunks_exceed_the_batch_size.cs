@@ -46,5 +46,5 @@ public class and_changed_chunks_exceed_the_batch_size : Specification
 
     [Fact]
     void should_upsert_every_chunk() =>
-        _lease.Received(1).CommitIndex(Arg.Is<IReadOnlyCollection<EmbeddedChunk>>(items => items.Count == 5), Arg.Any<IReadOnlySet<ChunkId>>(), Arg.Any<CancellationToken>());
+        _lease.Received(1).CommitIndex(Arg.Is<IReadOnlyCollection<EmbeddedChunk>>(items => items.Count == 5), Arg.Any<IReadOnlySet<ChunkId>>(), Arg.Any<IReadOnlyCollection<DocumentationMetadata>>(), Arg.Any<CancellationToken>());
 }

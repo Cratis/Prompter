@@ -13,7 +13,8 @@ namespace Cratis.Prompter.Discord;
 /// <param name="answers">The unchanged protected documentation pipeline.</param>
 /// <param name="related">GET-only hints, with no write collaborator.</param>
 /// <param name="options">The filing kill switch and configured routing.</param>
-public sealed class ConversationAssistance(IRequestClassifier classifier, IAnswers answers, IRelatedIssues related, IOptions<PrompterOptions> options)
+/// <param name="publicRelated">Optional anonymous public hints, used only when no authenticated hints are available.</param>
+public sealed class ConversationAssistance(IRequestClassifier classifier, IAnswers answers, IRelatedIssues related, IOptions<PrompterOptions> options, IPublicRelatedIssues? publicRelated = null)
 {
     /// <summary>Answers first-class documentation questions without treating model data as authority.</summary>
     /// <param name="question">The request with existing sanitized, scope-bounded context.</param>
@@ -31,8 +32,25 @@ public sealed class ConversationAssistance(IRequestClassifier classifier, IAnswe
         {
             return new(answer, [], string.Empty);
         }
-        var hints = await Hints(classification.Product.Value, ConversationText.Sanitize(question.Value), cancellationToken);
+        var hints = await Safely(() => related.FindRelated(classification.Product.Value, ConversationText.Sanitize(question.Value), cancellationToken), cancellationToken);
+        if (hints.Count == 0 && publicRelated is not null)
+        {
+            hints = await Safely(() => publicRelated.Find(ConversationText.Sanitize(question.Value), cancellationToken), cancellationToken);
+        }
+
         return new(answer, hints, Offer(classification));
+    }
+
+    static async Task<IReadOnlyList<RelatedIssue>> Safely(Func<Task<IReadOnlyList<RelatedIssue>>> lookup, CancellationToken cancellationToken)
+    {
+        try
+        {
+            return await lookup();
+        }
+        catch (Exception) when (!cancellationToken.IsCancellationRequested)
+        {
+            return [];
+        }
     }
 
     static bool SupportsOffer(Classification classification) => classification.Action == ClassificationAction.OfferIssue &&
@@ -49,18 +67,6 @@ public sealed class ConversationAssistance(IRequestClassifier classifier, IAnswe
         catch (Exception) when (!cancellationToken.IsCancellationRequested)
         {
             return null;
-        }
-    }
-
-    async Task<IReadOnlyList<RelatedIssue>> Hints(string product, string current, CancellationToken cancellationToken)
-    {
-        try
-        {
-            return await related.FindRelated(product, current, cancellationToken);
-        }
-        catch (Exception) when (!cancellationToken.IsCancellationRequested)
-        {
-            return [];
         }
     }
 

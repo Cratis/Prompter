@@ -59,15 +59,18 @@ public class Answers(
                     systemMessage,
                     new(ChatRole.User, ComposeUserMessage(question, qualified))
                 ],
-                new() { MaxOutputTokens = answering.MaxOutputTokens },
+                new() { MaxOutputTokens = answering.MaxOutputTokens, ResponseFormat = AnswerGeneration.Format },
                 cancellationToken);
 
             var citations = qualified.Select(passage => passage.Page).Distinct().Take(4).ToArray();
-            answer = new(response.Text, citations, confidence, IsRefusal: false, qualified);
+            var generated = AnswerGeneration.Parse(response.Text);
+            answer = generated is null
+                ? Answer.Refusal(confidence, found)
+                : new(generated.Text, citations, confidence, IsRefusal: false, qualified) { Category = generated.Category, Product = generated.Product, CitationProvenance = Provenance(citations, qualified) };
         }
 
         var interactionId = await interactionLog.Record(
-            new(source, answer.Citations, answer.Confidence, answer.IsRefusal),
+            new(source, answer.Citations, answer.Confidence, answer.IsRefusal) { Category = answer.Category, Product = answer.Product },
             cancellationToken);
 
         return answer with { InteractionId = interactionId, ContextDegraded = question.Conversation.IsDegraded };
@@ -99,4 +102,21 @@ public class Answers(
 
         return message.ToString();
     }
+
+    static CitationProvenance[] Provenance(IEnumerable<PageUrl> citations, IEnumerable<Passage> passages) =>
+        [.. citations.Select(page => Consistent(page, passages.Where(passage => passage.Page == page).ToArray()))];
+
+    static CitationProvenance Consistent(PageUrl page, Passage[] passages) => new(
+        page,
+        Agreed(passages, passage => passage.IndexedAt),
+        Agreed(passages, passage => passage.PageLastModifiedAt),
+        Agreed(passages, passage => passage.ProductVersion));
+
+    /// <summary>Takes a value only when every passage of the page agrees; disputed metadata is omitted rather than guessed.</summary>
+    /// <typeparam name="T">The metadata value type.</typeparam>
+    /// <param name="passages">The passages of one page.</param>
+    /// <param name="select">Selects the metadata value.</param>
+    /// <returns>The agreed value, or the default when absent or disputed.</returns>
+    static T? Agreed<T>(Passage[] passages, Func<Passage, T?> select) =>
+        passages.Select(select).Distinct().ToArray() is [var only] ? only : default;
 }

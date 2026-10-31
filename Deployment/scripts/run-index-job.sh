@@ -119,7 +119,7 @@ if [[ "${1:-}" == '--print-manifest' && $# -eq 3 ]]; then
                             {name: "Cratis__Prompter__Voyage__RetryBaseDelayMilliseconds", value: "500"},
                             {name: "Cratis__Prompter__Voyage__TimeoutSeconds", value: "60"},
                             {name: "Cratis__Prompter__Voyage__IndexTimeoutSeconds", value: "120"},
-                            {name: "Cratis__Prompter__Ingestion__MaxIncrementalTokens", value: "200000"},
+                            {name: "Cratis__Prompter__Ingestion__MaxIncrementalTokens", value: "1000000"},
                             {name: "Cratis__Prompter__Ingestion__PricePerMillionTokens", value: $price},
                             {name: "Cratis__Prompter__Ingestion__MaxRunDollars", value: $run_dollars},
                             {name: "Cratis__Prompter__Ingestion__MaxDailyDollars", value: $daily_dollars},

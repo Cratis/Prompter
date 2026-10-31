@@ -3,6 +3,7 @@
 
 using Cratis.Prompter.Answering;
 using Cratis.Prompter.Cli;
+using Cratis.Prompter.Digest;
 using Cratis.Prompter.Hosting;
 using Cratis.Prompter.Ingestion;
 using Cratis.Prompter.Operations;
@@ -72,6 +73,9 @@ webBuilder.Services
 webBuilder.Services.AddSingleton<ReindexGate>();
 webBuilder.Services.AddSingleton<GitHubWebhook>();
 webBuilder.Services.AddHostedService<RetentionPurge>();
+webBuilder.Services.AddSingleton<IDocsGapInteractions, DocsGapInteractions>();
+webBuilder.Services.AddSingleton<IMaintainerChannel, DiscordMaintainerChannel>();
+webBuilder.Services.AddHostedService<DocsGapDigest>();
 webBuilder.Services
     .AddDiscordGateway(options =>
     {

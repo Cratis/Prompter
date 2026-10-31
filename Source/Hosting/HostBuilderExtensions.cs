@@ -113,6 +113,14 @@ public static class HostBuilderExtensions
         builder.Services.AddSingleton<Discord.IConversationHistory, Discord.DiscordConversationHistory>();
         builder.Services.AddSingleton<Discord.ConversationContextReader>();
         builder.Services.AddSingleton<Discord.ForumFollowUps>();
+        AddAnswerActions(builder);
+    }
+
+    static void AddAnswerActions(IHostApplicationBuilder builder)
+    {
+        builder.Services.AddSingleton<Discord.AnswerDelivery>();
+        builder.Services.AddSingleton<Discord.HumanHandOffs>();
+        builder.Services.AddSingleton<Discord.MaintainerForwards>();
     }
 
     static void AddPrivateMetrics(IHostApplicationBuilder builder)
@@ -164,7 +172,7 @@ public static class HostBuilderExtensions
             var secondary = string.IsNullOrWhiteSpace(options.Anthropic.SecondaryApiKey)
                 ? null : new BudgetedChat(new AnthropicConnection(options.Anthropic.SecondaryApiKey), configuration);
 
-            return new AnthropicAccounts(primary, secondary, options.Anthropic, sp.GetRequiredService<IProviderAccounting>(), options.Protection.Anthropic);
+            return new AnthropicAccounts(primary, secondary, options.Anthropic, sp.GetRequiredService<IProviderAccounting>(), options.Protection.Anthropic, options.Protection.AnthropicAnswer);
         });
     }
 }
