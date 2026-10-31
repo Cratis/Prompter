@@ -1,5 +1,6 @@
 config:
   prompter-deployment:answeringEnabled: true
+  prompter-deployment:minSemanticSimilarity: 0.4
   prompter-deployment:answerPreferredAccount: secondary
   prompter-deployment:answerAllowSecondary: true
   prompter-deployment:indexingEnabled: false

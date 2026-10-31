@@ -16,6 +16,7 @@ public static class AnsweringReadinessValidation
     /// <exception cref="InvalidAnsweringReadiness">An account or guild setting is not authorized.</exception>
     public static void Validate(AnsweringReadinessArgs args)
     {
+        Require(double.IsFinite(args.MinSemanticSimilarity) && args.MinSemanticSimilarity is > 0 and <= 1, "Minimum semantic similarity must be finite and in (0, 1].");
         Require(_accounts.Contains(args.AnswerAccount), "Answer account must be primary or secondary.");
         Require(_accounts.Contains(args.IssueDraftAccount), "Issue-draft account must be primary or secondary.");
         Require(args.AllowedGuilds.All(guild => guild == ApprovedGuild), "Only the approved production guild may be configured.");
