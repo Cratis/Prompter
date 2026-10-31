@@ -17,7 +17,7 @@ public class and_the_answer_is_grounded : Specification
         [new PageUrl("https://cratis.io/chronicle/events.md")],
         0.83,
         IsRefusal: false,
-        [new Passage("https://cratis.io/chronicle/events.md", "Events", "Appending events", "content", 0.83)]);
+        [new Passage("https://cratis.io/chronicle/events.md", "Events", "Appending events", "content", 1.0 / 61, 0.83)]);
 
     void Because() => _lines = AskOutput.Lines(_answer, verbose: false);
 

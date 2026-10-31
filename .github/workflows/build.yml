@@ -61,7 +61,7 @@ jobs:
     timeout-minutes: 30
     services:
       ledger:
-        image: postgres:17
+        image: pgvector/pgvector:0.8.7-pg17@sha256:ac08538c6f8b9904c33c8224c5e5706dbe760aca29db1d096972b4052c22a75d
         env:
           POSTGRES_HOST_AUTH_METHOD: trust
         ports:
@@ -86,6 +86,7 @@ jobs:
       - name: Run specifications
         env:
           PROMPTER_LEDGER_TEST_PORT: "5432"
+          PROMPTER_RETRIEVAL_TEST_PORT: "5432"
         run: ./Specs/bin/Release/net10.0/Prompter.Specs
 
       - name: Check Postgres backup scripts offline

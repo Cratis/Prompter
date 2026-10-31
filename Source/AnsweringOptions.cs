@@ -14,9 +14,20 @@ public class AnsweringOptions
     public int MaxPassages { get; set; } = 8;
 
     /// <summary>
-    /// Gets or sets the minimum top-passage score below which Prompter refuses instead of answering.
+    /// Gets or sets the legacy RRF threshold. Ignored; migrate overrides to <see cref="MinSemanticSimilarity"/>.
     /// </summary>
     public double MinScore { get; set; } = 0.02;
+
+    /// <summary>
+    /// Gets or sets the minimum cosine similarity for every passage admitted to answer context.
+    /// The default is an uncalibrated initial policy, not a correctness probability or recall guarantee.
+    /// </summary>
+    public double MinSemanticSimilarity { get; set; } = 0.5;
+
+    /// <summary>
+    /// Gets whether the semantic cutoff is finite and in (0, 1].
+    /// </summary>
+    public bool SimilarityIsValid => double.IsFinite(MinSemanticSimilarity) && MinSemanticSimilarity is > 0 and <= 1;
 
     /// <summary>
     /// Gets or sets the maximum number of output tokens for a generated answer.

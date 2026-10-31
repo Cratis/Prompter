@@ -97,9 +97,10 @@ flowchart LR
 - **Ingest** — walk cratis.io's sitemap, fetch each page's markdown mirror, strip the MDX noise, and split
   into heading-aware chunks. Only changed chunks are re-embedded, so re-indexing is cheap.
 - **Retrieve** — one SQL query fuses lexical (BM25 via `tsvector`) and semantic (cosine over pgvector) hits
-  with Reciprocal Rank Fusion.
-- **Answer** — Claude gets the top passages and a system prompt that demands grounding and citations, and
-  refuses when the score says the docs don't have it.
+  with Reciprocal Rank Fusion (RRF), used only for ordering.
+- **Answer** — only passages meeting an independent cosine-similarity cutoff reach Claude and citation
+  selection. With no qualifying passage, Prompter refuses without calling Claude. The system prompt
+  still treats excerpts as untrusted data and demands grounding and citations; relevance is not trust.
 
 Built with **C# / .NET 10**, [NetCord](https://netcord.dev),
 [Microsoft.Extensions.AI](https://learn.microsoft.com/en-us/dotnet/ai/), **Claude** (Anthropic), **Voyage AI**
@@ -199,7 +200,7 @@ Configuration binds to the `Cratis:Prompter` section (environment variables use 
 | Haiku issue-draft evaluation approval | `Cratis__Prompter__Anthropic__HaikuIssueDraftApproved` | `false` |
 | Voyage retries / indexing retries (max 3 / 5) | `Cratis__Prompter__Voyage__MaxRetries` / `Cratis__Prompter__Voyage__IndexMaxRetries` | `3` / `5` |
 | Voyage deadline / indexing deadline (seconds, max 60 / 120) | `Cratis__Prompter__Voyage__TimeoutSeconds` / `Cratis__Prompter__Voyage__IndexTimeoutSeconds` | `60` / `120` |
-| Refusal threshold (min top-passage score) | `Cratis__Prompter__Answering__MinScore` | `0.02` |
+| Minimum cosine similarity for every grounding passage | `Cratis__Prompter__Answering__MinSemanticSimilarity` | `0.5` (uncalibrated initial policy; finite cutoff in `(0, 1]`) |
 | Voyage API key | `Cratis__Prompter__Voyage__ApiKey` | — |
 | Interaction retention (days) | `Cratis__Prompter__RetentionDays` | `90` |
 | Re-index webhook secret | `Cratis__Prompter__ReindexSecret` | — |
@@ -211,6 +212,30 @@ Configuration binds to the `Cratis:Prompter` section (environment variables use 
 | Label that opts an issue out of answers | `Cratis__Prompter__GitHub__OptOutLabel` | `no-prompter` |
 
 API keys are never committed — use environment variables or a git-ignored `Source/appsettings.Development.json`.
+
+### Retrieval policy and migration
+
+**Operator migration:** `Cratis__Prompter__Answering__MinScore` is retired and ignored, including
+existing overrides. Configure `Cratis__Prompter__Answering__MinSemanticSimilarity` explicitly instead;
+**do not reuse or numerically translate the old `0.02` RRF threshold**. The deployment projection
+explicitly sets the new cutoff to `0.5`; normal CLI options binding also defaults to `0.5`. This
+changes observable answer/refusal behavior, not just the option name.
+
+RRF retains hybrid ordering. Every admitted passage must have finite cosine similarity in `[-1, 1]`
+meeting the new cutoff; weak, invalid and lexical-only low-similarity candidates cannot enter answer
+context or citations. All-empty or all-rejected retrieval refuses without a chat call. Verbose CLI
+output labels `rrf` and `semantic similarity` separately. Successful `Answer.Confidence` and new
+interaction confidence values mean the RRF-first admitted passage's cosine similarity; on refusal,
+the value is the highest valid candidate similarity, or zero for no valid candidates. Existing stored
+interaction values retain their historical RRF meaning and must not be compared as one distribution.
+None of these numbers is an answer-correctness probability or a trust boundary.
+
+The initial **0.5 is uncalibrated policy**, not a measured Voyage quality/recall guarantee. Synthetic
+positive, orthogonal, weak-similarity and lexical-only fixtures verify the implementation, not
+production answerability. Production acceptance remains unverified until separately authorized,
+bounded live positive and negative acceptance evidence exists. A failed positive acceptance is a
+stop, not permission to lower the cutoff or repeat paid calls. Filtering remains after the existing
+top-eight retrieval limit; this change does not widen recall or alter lexical query parsing.
 
 ### Admission and spend protection
 

@@ -27,12 +27,12 @@ public static class AskOutput
         {
             var passages = answer.Passages;
             lines.Add(passages.Count > 0
-                ? $"Retrieved {passages.Count} passage{(passages.Count == 1 ? string.Empty : "s")}, top score {Score(passages[0].Score)}:"
+                ? $"Retrieved {passages.Count} passage{(passages.Count == 1 ? string.Empty : "s")}, leading semantic similarity {Score(answer.Confidence)}:"
                 : "Retrieved 0 passages.");
             lines.Add(string.Empty);
 
             lines.AddRange(passages.Select((passage, index) =>
-                $"  [{index + 1}] {Score(passage.Score)}  {passage.Page.Value}{Heading(passage)}"));
+                $"  [{index + 1}] rrf {passage.Score.ToString("F5", CultureInfo.InvariantCulture)}, semantic similarity {Score(passage.SemanticSimilarity)}  {passage.Page.Value}{Heading(passage)}"));
 
             if (passages.Count > 0)
             {

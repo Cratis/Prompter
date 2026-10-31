@@ -23,7 +23,7 @@ public class and_history_contains_instructions : Specification
     {
         _passages = Substitute.For<IPassages>();
         _passages.Search(Arg.Any<Question>(), Arg.Any<int>(), Arg.Any<CancellationToken>()).Returns(Task.FromResult<IEnumerable<Passage>>(
-            [new(new("https://example.test/docs"), "Docs", "API", "Use the documented API.", 0.9)]));
+            [new(new("https://example.test/docs"), "Docs", "API", "Use the documented API.", 1.0 / 61, 0.8)]));
         _chat = Substitute.For<IChatClient>();
         _chat.GetResponseAsync(Arg.Any<IEnumerable<ChatMessage>>(), Arg.Any<ChatOptions>(), Arg.Any<CancellationToken>()).Returns(call =>
         {

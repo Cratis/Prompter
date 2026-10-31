@@ -10,9 +10,9 @@ namespace Cratis.Prompter.Answering;
 /// </summary>
 /// <param name="Text">The answer text.</param>
 /// <param name="Citations">The documentation pages the answer is grounded in.</param>
-/// <param name="Confidence">The top passage score backing the answer.</param>
+/// <param name="Confidence">The RRF-first admitted passage's cosine similarity, or highest valid candidate similarity on refusal; not a correctness probability.</param>
 /// <param name="IsRefusal">Whether Prompter declined to answer for lack of grounding.</param>
-/// <param name="Passages">The passages retrieved for the question, best first - what the answer was grounded in.</param>
+/// <param name="Passages">The admitted passages in RRF order, or all retrieved candidates on refusal.</param>
 public record Answer(
     string Text,
     IEnumerable<PageUrl> Citations,
@@ -33,7 +33,7 @@ public record Answer(
     /// <summary>
     /// Creates a refusal answer for when the documentation does not cover the question well enough.
     /// </summary>
-    /// <param name="confidence">The top passage score that fell below the refusal threshold.</param>
+    /// <param name="confidence">The highest valid retrieved cosine similarity (zero if there are no valid candidates).</param>
     /// <param name="passages">The retrieved passages that were not confident enough to answer from.</param>
     /// <returns>The refusal <see cref="Answer"/>.</returns>
     public static Answer Refusal(double confidence, IReadOnlyList<Passage> passages) => new(

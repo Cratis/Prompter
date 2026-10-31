@@ -14,7 +14,7 @@ public class and_the_answer_is_a_refusal : Specification
 
     void Establish() => _answer = Answer.Refusal(
         0.21,
-        [new Passage("https://cratis.io/some/page.md", "Some", "Heading", "content", 0.21)]);
+        [new Passage("https://cratis.io/some/page.md", "Some", "Heading", "content", 2.0 / 61, 0.21)]);
 
     void Because() => _lines = AskOutput.Lines(_answer, verbose: false);
 

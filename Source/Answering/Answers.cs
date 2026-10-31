@@ -32,10 +32,14 @@ public class Answers(
     {
         var answering = options.Value.Answering;
         var found = (await passages.Search(new(question.Value), answering.MaxPassages, cancellationToken)).ToArray();
-        var confidence = found.Length == 0 ? 0 : found[0].Score;
+        var qualified = found.Where(passage => double.IsFinite(passage.SemanticSimilarity) &&
+            passage.SemanticSimilarity is >= -1 and <= 1 && passage.SemanticSimilarity >= answering.MinSemanticSimilarity).ToArray();
+        var confidence = qualified.Length > 0 ? qualified[0].SemanticSimilarity : found
+            .Where(passage => double.IsFinite(passage.SemanticSimilarity) && passage.SemanticSimilarity is >= -1 and <= 1)
+            .Select(passage => passage.SemanticSimilarity).DefaultIfEmpty(0).Max();
 
         Answer answer;
-        if (confidence < answering.MinScore)
+        if (qualified.Length == 0)
         {
             logger.RefusingToAnswer(confidence);
             answer = Answer.Refusal(confidence, found);
@@ -53,13 +57,13 @@ public class Answers(
             var response = await chatClient.GetResponseAsync(
                 [
                     systemMessage,
-                    new(ChatRole.User, ComposeUserMessage(question, found))
+                    new(ChatRole.User, ComposeUserMessage(question, qualified))
                 ],
                 new() { MaxOutputTokens = answering.MaxOutputTokens },
                 cancellationToken);
 
-            var citations = found.Select(passage => passage.Page).Distinct().Take(4).ToArray();
-            answer = new(response.Text, citations, confidence, IsRefusal: false, found);
+            var citations = qualified.Select(passage => passage.Page).Distinct().Take(4).ToArray();
+            answer = new(response.Text, citations, confidence, IsRefusal: false, qualified);
         }
 
         var interactionId = await interactionLog.Record(
