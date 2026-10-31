@@ -43,5 +43,5 @@ public class and_only_some_chunks_changed : given.an_indexer
     [Fact] void should_embed_only_the_changed_input() =>
         _generator.Received(1).GenerateAsync(Arg.Is<IEnumerable<string>>(inputs => inputs.SequenceEqual(new[] { _changed.EmbeddingInput })), Arg.Any<EmbeddingGenerationOptions>(), Arg.Any<CancellationToken>());
     [Fact] void should_commit_only_the_changed_chunk() =>
-        Lease.Received(1).CommitIndex(Arg.Is<IReadOnlyCollection<EmbeddedChunk>>(chunks => chunks.Count == 1 && chunks.Single().Chunk == _changed), Arg.Any<IReadOnlySet<ChunkId>>(), Arg.Any<CancellationToken>());
+        Lease.Received(1).CommitIndex(Arg.Is<IReadOnlyCollection<EmbeddedChunk>>(chunks => chunks.Count == 1 && chunks.Single().Chunk == _changed), Arg.Any<IReadOnlySet<ChunkId>>(), Arg.Any<IReadOnlyCollection<DocumentationMetadata>>(), Arg.Any<CancellationToken>());
 }
