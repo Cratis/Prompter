@@ -1,8 +1,11 @@
 // Copyright (c) Cratis. All rights reserved.
 // Licensed under the MIT license. See LICENSE file in the project root for full license information.
 
+using Cratis.Prompter.Embeddings;
 using Cratis.Prompter.Protection;
+using Cratis.Prompter.Specs.Fakes;
 using Cratis.Prompter.Telemetry;
+using Microsoft.Extensions.AI;
 using Microsoft.Extensions.Options;
 using Npgsql;
 
@@ -22,6 +25,7 @@ public class and_a_disposable_database_is_available : Specification
     bool _embeddingEnvelope;
     bool _priorDay;
     bool _restart;
+    bool _indexBatch;
     int _concurrent;
 
     /// <summary>Gets whether CI or an explicitly supplied isolated database is available.</summary>
@@ -86,6 +90,7 @@ public class and_a_disposable_database_is_available : Specification
         await _ledger.Reconcile(parent!.Value, new(0.1m, 0.1m));
         await CheckPriorDay();
         await CheckRestart(first);
+        await CheckIndexBatch();
         var races = await Task.WhenAll(Enumerable.Range(0, 20).Select(_ => Reserve(Dispatch(), null, 0.1m)));
         _concurrent = races.Count(accepted => accepted);
     }
@@ -97,6 +102,7 @@ public class and_a_disposable_database_is_available : Specification
     [Fact, Trait("Category", "Integration")] void should_bound_embedding_claims_by_the_parent_envelope() => Check(_embeddingEnvelope);
     [Fact, Trait("Category", "Integration")] void should_settle_the_original_utc_day_only() => Check(_priorDay);
     [Fact, Trait("Category", "Integration")] void should_retain_unknown_usage_across_connection_pools() => Check(_restart);
+    [Fact, Trait("Category", "Integration")] void should_fund_a_multi_input_index_batch_once_and_settle_once() => Check(_indexBatch);
     [Fact, Trait("Category", "Integration")] void should_atomically_admit_only_funded_concurrent_attempts() => Check(_concurrent == 6);
 
     async Task CheckPriorDay()
@@ -119,6 +125,26 @@ public class and_a_disposable_database_is_available : Specification
         _restart &= await store.Reserve(unknown, null, 0.1m, CancellationToken.None);
         _restart &= await store.Complete(unknown, null, CancellationToken.None);
         _restart &= !await store.Complete(unknown, 0, CancellationToken.None) && await Today() == 0.4m;
+    }
+
+    async Task CheckIndexBatch()
+    {
+        var budget = _options.Value.Protection.Voyage;
+        budget.Model = _options.Value.Voyage.Model;
+        budget.InputUsdPerMillion = 1;
+        budget.MaxInputTokens = 32_000;
+        var accounting = new ProviderAccounting(_store, _options);
+        var dispatch = Dispatch() with { Provider = "voyage", Task = "index", Model = budget.Model, MaxInputTokens = 40_128, MaxOutputTokens = 0 };
+        using var scope = ProviderAttemptScope.Enter(dispatch, 2);
+        var before = await Today();
+        _indexBatch = await accounting.Reserve(dispatch, CancellationToken.None) && await Today() == before + 0.064m;
+        using var transport = new RecordingEmbeddingGenerator();
+        using var embeddings = new BudgetedEmbeddings(transport, _ledger, _options);
+        var request = new EmbeddingGenerationOptions { AdditionalProperties = new() { [EmbeddingRetry.TaskKey] = "index" } };
+        var result = await embeddings.GenerateAsync([new string('x', 20_000), new string('x', 20_000)], request);
+        _indexBatch &= result.Count == 2 && transport.BatchSizes.Count == 1 && await Today() == before + 0.064m;
+        await accounting.Complete(dispatch, new UsageDetails { InputTokenCount = 0 }, "success");
+        _indexBatch &= !await _store.Complete(dispatch, 0, CancellationToken.None) && await Today() == before;
     }
 
     Task<bool> Reserve(ProviderDispatch dispatch, Guid? parent, decimal upper) => _store.Reserve(dispatch, parent, upper, CancellationToken.None);

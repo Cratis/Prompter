@@ -1,6 +1,7 @@
 // Copyright (c) Cratis. All rights reserved.
 // Licensed under the MIT license. See LICENSE file in the project root for full license information.
 
+using Cratis.Prompter.Embeddings;
 using Cratis.Prompter.Telemetry;
 
 namespace Cratis.Prompter.Protection;
@@ -23,14 +24,17 @@ internal static class ProviderAttemptPolicy
     {
         Require(dispatch.OperationId != Guid.Empty);
         Require(_providers.Contains(dispatch.Provider));
-        Require(count is >= 1 and <= 1000);
+        Require(count is >= 1 and <= EmbeddingInputLimits.MaximumItems);
         Require(config.Protection.IsValid);
         Require(config.Protection.DailyUsd is > 0 and <= 5);
         var chat = dispatch.Provider == "anthropic";
         var budget = chat ? config.Protection.Anthropic : config.Protection.Voyage;
         var model = chat ? config.Anthropic.Model : config.Voyage.Model;
         Require(budget.Covers(model, chat) && dispatch.Model == model);
-        Require(dispatch.MaxInputTokens >= 1 && dispatch.MaxInputTokens <= budget.MaxInputTokens);
+        var inputCeiling = dispatch.Task == "index" && !chat
+            ? Math.Min(EmbeddingInputLimits.MaximumRequestTokens, (long)EmbeddingInputLimits.PerInput(budget.MaxInputTokens) * count)
+            : budget.MaxInputTokens;
+        Require(dispatch.MaxInputTokens >= 1 && dispatch.MaxInputTokens <= inputCeiling);
         Require(budget.DailyUsd <= config.Protection.DailyUsd);
         if (chat)
         {
@@ -78,7 +82,6 @@ internal static class ProviderAttemptPolicy
         var indexing = dispatch.Task == "index";
         Require(!indexing || WorkLease.Current is null);
         Require(indexing ? config.Protection.IndexingEnabled : config.Protection.AnsweringEnabled);
-        var maximum = indexing ? Math.Clamp(config.Voyage.IndexMaxRetries, 0, 5) : Math.Clamp(config.Voyage.MaxRetries, 0, 3);
-        Require(dispatch.Attempt >= 1 && dispatch.Attempt <= maximum + 1);
+        Require(dispatch.Attempt >= 1 && dispatch.Attempt <= EmbeddingRetryPolicy.Attempts(config.Voyage, indexing));
     }
 }

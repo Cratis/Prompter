@@ -1,7 +1,7 @@
 // Copyright (c) Cratis. All rights reserved.
 // Licensed under the MIT license. See LICENSE file in the project root for full license information.
 
-using System.Text;
+using Cratis.Prompter.Embeddings;
 
 namespace Cratis.Prompter.Ingestion;
 
@@ -15,7 +15,7 @@ public static class IndexBudget
     /// </summary>
     /// <param name="input">The exact embedding input.</param>
     /// <returns>The conservative input token bound.</returns>
-    public static long TokensFor(string input) => Encoding.UTF8.GetByteCount(input) + 64L;
+    public static long TokensFor(string input) => EmbeddingInputLimits.TokensFor(input);
 
     /// <summary>
     /// Rejects unpriced or over-budget work before any embedding request.
@@ -28,8 +28,8 @@ public static class IndexBudget
     public static IndexExposure Preflight(IEnumerable<string> inputs, PrompterOptions options, IndexRequest request)
     {
         var bounds = inputs.Select(TokensFor).ToArray();
-        if (bounds.Any(tokens => tokens > 300_000)) throw new IndexBudgetExceeded();
-        var tokens = checked(bounds.Sum() * (Math.Max(0L, options.Voyage.MaxRetries) + 1));
+        if (bounds.Any(tokens => tokens > EmbeddingInputLimits.PerInput(options.Protection.Voyage.MaxInputTokens))) throw new IndexBudgetExceeded();
+        var tokens = checked(bounds.Sum() * EmbeddingRetryPolicy.Attempts(options.Voyage, indexing: true));
         var limits = options.Ingestion;
         var cap = request.Full ? limits.MaxFullTokens : limits.MaxIncrementalTokens;
         var dollars = tokens * limits.PricePerMillionTokens / 1_000_000m;

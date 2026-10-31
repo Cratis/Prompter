@@ -25,8 +25,6 @@ public class Indexer(
     IOptions<PrompterOptions> options,
     ILogger<Indexer> logger) : IIndexer
 {
-    const long MaxBatchTokens = 300_000;
-
     /// <inheritdoc/>
     public Task<IndexRun> Run(CancellationToken cancellationToken = default) => Run(new IndexRequest(), cancellationToken);
 
@@ -94,8 +92,8 @@ public class Indexer(
         foreach (var chunk in changed)
         {
             var tokens = IndexBudget.TokensFor(chunk.EmbeddingInput);
-            var tooManyInputs = batch.Count >= Math.Clamp(options.Value.Voyage.BatchSize, 1, 1000);
-            var tooManyTokens = batchTokens + tokens > MaxBatchTokens;
+            var tooManyInputs = batch.Count >= Math.Clamp(options.Value.Voyage.BatchSize, 1, EmbeddingInputLimits.MaximumItems);
+            var tooManyTokens = batchTokens + tokens > EmbeddingInputLimits.MaximumRequestTokens;
             var needsFlush = tooManyInputs || tooManyTokens;
             if (batch.Count > 0 && needsFlush)
             {

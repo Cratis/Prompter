@@ -2,6 +2,7 @@
 // Licensed under the MIT license. See LICENSE file in the project root for full license information.
 
 using System.Text;
+using Cratis.Prompter.Embeddings;
 using Microsoft.Extensions.AI;
 using Microsoft.Extensions.Options;
 using Npgsql;
@@ -26,9 +27,8 @@ public sealed class BudgetedEmbeddings(
         var config = configuration.Value;
         var budget = config.Protection.Voyage;
         var input = values.ToArray();
-        var bytes = input.Sum(value => (long)Encoding.UTF8.GetByteCount(value));
         var lease = WorkLease.Current;
-        CheckDispatch(bytes, options, lease is not null);
+        CheckDispatch(input, options, lease is not null);
 
         // Reserve the verified hard per-input model ceiling, including tokenizer/framing overhead.
         var cost = budget.Cost((long)budget.MaxInputTokens * input.Length);
@@ -53,6 +53,16 @@ public sealed class BudgetedEmbeddings(
         return await base.GenerateAsync(input, options, cancellationToken);
     }
 
+    static void CheckInputs(string[] input, int configuredCeiling, bool indexing)
+    {
+        if (input.Length is < 1 or > EmbeddingInputLimits.MaximumItems) throw new WorkRefused();
+        var bounds = input.Select(value => indexing ? EmbeddingInputLimits.TokensFor(value) : Encoding.UTF8.GetByteCount(value)).ToArray();
+        var ceiling = indexing ? EmbeddingInputLimits.PerInput(configuredCeiling) : configuredCeiling;
+        var requestCeiling = indexing ? EmbeddingInputLimits.MaximumRequestTokens : configuredCeiling;
+        if (bounds.Any(tokens => tokens <= 0 || tokens > ceiling)) throw new WorkRefused();
+        if (bounds.Sum() > requestCeiling) throw new WorkRefused();
+    }
+
     async Task Reserve(decimal cost, CancellationToken cancellationToken)
     {
         try
@@ -65,7 +75,7 @@ public sealed class BudgetedEmbeddings(
         }
     }
 
-    void CheckDispatch(long bytes, EmbeddingGenerationOptions? request, bool interactive)
+    void CheckDispatch(string[] input, EmbeddingGenerationOptions? request, bool interactive)
     {
         var config = configuration.Value;
         var budget = config.Protection.Voyage;
@@ -74,10 +84,8 @@ public sealed class BudgetedEmbeddings(
             throw new WorkRefused();
         }
 
-        if (bytes <= 0 || bytes > budget.MaxInputTokens)
-        {
-            throw new WorkRefused();
-        }
+        var indexing = EmbeddingRetryPolicy.For(config.Voyage, request).Task == "index";
+        CheckInputs(input, budget.MaxInputTokens, indexing);
 
         var enabled = interactive ? config.Protection.AnsweringEnabled : config.Protection.IndexingEnabled;
         if (!enabled || !string.Equals(request?.ModelId ?? config.Voyage.Model, budget.Model, StringComparison.Ordinal))

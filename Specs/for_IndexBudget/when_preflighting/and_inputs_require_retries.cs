@@ -12,7 +12,7 @@ public class and_inputs_require_retries : Specification
     {
         var options = new PrompterOptions
         {
-            Voyage = { MaxRetries = 2 },
+            Voyage = { MaxRetries = 0, IndexMaxRetries = 2 },
             Ingestion = { PricePerMillionTokens = 1, MaxRunDollars = 1, MaxDailyDollars = 1 }
         };
         _budget = IndexBudget.Preflight(["é"], options, new IndexRequest());

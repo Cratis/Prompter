@@ -39,7 +39,7 @@ public sealed record EmbeddingRetryPolicy
     public static EmbeddingRetryPolicy For(VoyageOptions configuration, EmbeddingGenerationOptions? request)
     {
         var indexing = request?.AdditionalProperties?.TryGetValue(EmbeddingRetry.TaskKey, out var task) == true && string.Equals(task as string, "index", StringComparison.Ordinal);
-        var retries = indexing ? Math.Clamp(configuration.IndexMaxRetries, 0, 5) : Math.Clamp(configuration.MaxRetries, 0, 3);
+        var retries = Attempts(configuration, indexing) - 1;
         var seconds = indexing ? Math.Clamp(configuration.IndexTimeoutSeconds, 1, 120) : Math.Clamp(configuration.TimeoutSeconds, 1, 60);
         return new()
         {
@@ -49,6 +49,15 @@ public sealed record EmbeddingRetryPolicy
             BaseDelay = TimeSpan.FromMilliseconds(Math.Clamp(configuration.RetryBaseDelayMilliseconds, 0, 30_000))
         };
     }
+
+    /// <summary>
+    /// Gets the effective attempt ceiling, including the first dispatch.
+    /// </summary>
+    /// <param name="configuration">Provider settings, including their defaults.</param>
+    /// <param name="indexing">Whether this is an indexing call.</param>
+    /// <returns>The clamped total number of attempts.</returns>
+    public static int Attempts(VoyageOptions configuration, bool indexing) =>
+        (indexing ? Math.Clamp(configuration.IndexMaxRetries, 0, 5) : Math.Clamp(configuration.MaxRetries, 0, 3)) + 1;
 
     /// <summary>
     /// Honors a provider minimum delay or applies full jitter to exponential fallback backoff.

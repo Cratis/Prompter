@@ -40,7 +40,8 @@ public sealed class ResilientEmbeddingGenerator(
         using var timeout = CancellationTokenSource.CreateLinkedTokenSource(cancellationToken);
         timeout.CancelAfter(policy.Budget);
         var operation = Guid.NewGuid();
-        var inputBound = inputs.Sum(Encoding.UTF8.GetByteCount);
+        var inputBound = checked((int)inputs.Sum(input => policy.Task == "index"
+            ? EmbeddingInputLimits.TokensFor(input) : Encoding.UTF8.GetByteCount(input)));
         for (var attempt = 0; ; attempt++)
         {
             timeout.Token.ThrowIfCancellationRequested();
