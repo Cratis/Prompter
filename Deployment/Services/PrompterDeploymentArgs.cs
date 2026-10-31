@@ -125,6 +125,11 @@ public sealed class PrompterDeploymentArgs
     public string? AnswerInThreadChannelIds { get; init; }
 
     /// <summary>
+    /// Gets the optional comma-separated forum channels (each id or id:minutes, 1 to 1440) whose unanswered posts are answered after a delay. Unset means off.
+    /// </summary>
+    public string? DelayedForumAnswers { get; init; }
+
+    /// <summary>
     /// Gets resources this deployment must be created after — the database it connects to.
     /// </summary>
     public InputList<Resource> DependsOn { get; init; } = [];
