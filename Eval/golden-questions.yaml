@@ -60,8 +60,8 @@
 # citations — a good answer may additionally cite closely-related pages.
 #
 # -----------------------------------------------------------------------------
-# Coverage: 57 in-scope questions across all five products + cross-cutting, and
-# 12 out-of-scope refusals. Breadth over cleverness — real questions the docs
+# Coverage: 59 in-scope questions across all five products + cross-cutting, and
+# 13 out-of-scope refusals. Breadth over cleverness — real questions the docs
 # genuinely answer, spanning definition / how-to / configuration / troubleshooting
 # / concept / comparison / getting-started. Every page below was checked against
 # the live site (sitemap-0.xml + per-page .md mirrors) on 2026-07-15.
@@ -738,6 +738,31 @@ questions:
     tags: [releases, changelog]
     rationale: "FAQ 'Where do I see what changed?' points at the What's New section."
 
+  - id: gen-005
+    must_mention: [Chronicle, Arc, Components]
+    product: cross-cutting
+    type: concept
+    question: "What are all cratis products and what do they do?"
+    expected: answer
+    expected_pages:
+      - https://cratis.io/cratis-stack/
+      - https://cratis.io/
+    tags: [overview, product-list]
+    rationale: "Issue #85 phrasing; the cratis-stack Capability map lists every product and its description says so."
+
+  - id: gen-006
+    must_mention: [event sourcing]
+    product: cross-cutting
+    type: definition
+    question: "what is Cratis, in a nutshell?"
+    expected: answer
+    expected_pages:
+      - https://cratis.io/
+      - https://cratis.io/why-cratis/
+      - https://cratis.io/cratis-stack/
+    tags: [overview]
+    rationale: "The landing description defines Cratis."
+
   # ===========================================================================
   # Out of scope — the bot MUST refuse honestly. No expected_pages. These
   # calibrate the refusal threshold (P-07) and guard the over-answer failure mode.
@@ -827,3 +852,10 @@ questions:
     question: "what year was C# first released and who designed it?"
     expected: refuse
     rationale: "General programming history trivia. Near-miss on 'C#', which is heavily present in the corpus, but the answer is not in the Cratis docs."
+
+  - id: oos-013
+    product: out-of-scope
+    type: refusal
+    question: "what are all the Microsoft Office products and what do they do?"
+    expected: refuse
+    rationale: "Near-miss twin of gen-005's phrasing. Guards against summary chunks and pool gating answering generic list-the-products questions."
