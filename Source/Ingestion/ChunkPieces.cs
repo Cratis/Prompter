@@ -27,17 +27,18 @@ internal static partial class ChunkPieces
     /// <returns>The pieces in document order; the part itself when nothing needs splitting.</returns>
     public static IEnumerable<string> Split(string part, int maxChunkLength, int maxTableLength, FenceState fence)
     {
-        var tableLimit = Math.Min(maxTableLength, maxChunkLength);
+        var tableLimit = new PieceLength(Math.Min(maxTableLength, maxChunkLength));
+        var chunkLimit = new PieceLength(maxChunkLength);
         var segments = Scan(part.Split('\n'), tableLimit, fence);
         if (part.Length <= maxChunkLength && segments.TrueForAll(segment => !segment.IsTable))
         {
             return [part];
         }
 
-        return segments.SelectMany(segment => segment.IsTable ? RowGroups(segment.Lines, tableLimit, maxChunkLength) : Lines(segment.Lines, maxChunkLength));
+        return segments.SelectMany(segment => segment.IsTable ? RowGroups(segment.Lines, tableLimit, chunkLimit) : Lines(segment.Lines, chunkLimit));
     }
 
-    static List<Segment> Scan(string[] lines, int tableLimit, FenceState fence)
+    static List<Segment> Scan(string[] lines, PieceLength tableLimit, FenceState fence)
     {
         var segments = new List<Segment>();
         var text = new List<string>();
@@ -46,8 +47,8 @@ internal static partial class ChunkPieces
         while (index < lines.Length)
         {
             fence.Observe(lines[index]);
-            var run = fence.Open ? 0 : TableRunLength(lines, index);
-            if (run > 0 && LengthOf(lines, index, run) > tableLimit)
+            var run = fence.Open ? 0 : TableRunLength(lines.AsSpan(index));
+            if (run > 0 && LengthOf(lines.AsSpan(index, run)) > tableLimit.Value)
             {
                 if (text.Count > 0)
                 {
@@ -73,55 +74,55 @@ internal static partial class ChunkPieces
         return segments;
     }
 
-    static int TableRunLength(string[] lines, int start)
+    static int TableRunLength(ReadOnlySpan<string> lines)
     {
-        if (!HasTableHeader(lines, start))
+        if (!HasTableHeader(lines))
         {
             return 0;
         }
 
-        var end = start + 2;
-        while (end < lines.Length && IsRow(lines[end]))
+        var end = 2;
+        while (end < lines.Length && IsRow(new(lines[end])))
         {
             end++;
         }
 
-        return end - start;
+        return end;
     }
 
-    static bool HasTableHeader(string[] lines, int start) =>
-        start + 1 < lines.Length && IsRow(lines[start]) && TableSeparator.IsMatch(lines[start + 1]);
+    static bool HasTableHeader(ReadOnlySpan<string> lines) =>
+        lines.Length > 1 && IsRow(new(lines[0])) && TableSeparator.IsMatch(lines[1]);
 
-    static bool IsRow(string line) => line.TrimStart().StartsWith('|');
+    static bool IsRow(MarkdownLine line) => line.Text.TrimStart().StartsWith('|');
 
-    static int LengthOf(string[] lines, int start, int count)
+    static int LengthOf(ReadOnlySpan<string> lines)
     {
-        var length = count - 1;
-        for (var offset = 0; offset < count; offset++)
+        var length = lines.Length - 1;
+        foreach (var line in lines)
         {
-            length += lines[start + offset].Length;
+            length += line.Length;
         }
 
         return length;
     }
 
-    static IEnumerable<string> RowGroups(IReadOnlyList<string> table, int tableLimit, int maxChunkLength)
+    static IEnumerable<string> RowGroups(IReadOnlyList<string> table, PieceLength tableLimit, PieceLength maxChunkLength)
     {
         var header = $"{table[0]}\n{table[1]}";
-        if (header.Length > Math.Min(MaxRepeatedHeaderLength, maxChunkLength / 4))
+        if (header.Length > Math.Min(MaxRepeatedHeaderLength, maxChunkLength.Value / 4))
         {
             // An unbounded header repeated per group would amplify the output quadratically, so it is not repeated.
             return Lines(table, maxChunkLength);
         }
 
-        return Group(table, new RowGrouper(header, tableLimit, maxChunkLength, table.Sum(line => line.Length + 1)));
+        return Group(table, new RowGrouper(new(header), tableLimit, maxChunkLength, table.Sum(line => line.Length + 1)));
     }
 
     static IEnumerable<string> Group(IReadOnlyList<string> table, RowGrouper grouper)
     {
         for (var index = 2; index < table.Count; index++)
         {
-            foreach (var piece in grouper.Add(table[index]))
+            foreach (var piece in grouper.Add(new(table[index])))
             {
                 yield return piece;
             }
@@ -133,19 +134,19 @@ internal static partial class ChunkPieces
         }
     }
 
-    static IEnumerable<string> Lines(IReadOnlyList<string> lines, int maxChunkLength)
+    static IEnumerable<string> Lines(IReadOnlyList<string> lines, PieceLength maxChunkLength)
     {
         var current = new StringBuilder();
 
         foreach (var line in lines)
         {
-            if (current.Length > 0 && current.Length + 1 + line.Length > maxChunkLength)
+            if (current.Length > 0 && current.Length + 1 + line.Length > maxChunkLength.Value)
             {
                 yield return current.ToString();
                 current.Clear();
             }
 
-            foreach (var slice in AppendOrSlice(current, line, maxChunkLength))
+            foreach (var slice in AppendOrSlice(current, new(line), maxChunkLength))
             {
                 yield return slice;
             }
@@ -157,33 +158,37 @@ internal static partial class ChunkPieces
         }
     }
 
-    static IEnumerable<string> AppendOrSlice(StringBuilder current, string line, int maxChunkLength)
+    static IEnumerable<string> AppendOrSlice(StringBuilder current, MarkdownLine line, PieceLength maxChunkLength)
     {
-        if (line.Length > maxChunkLength)
+        if (line.Text.Length > maxChunkLength.Value)
         {
             return Slices(line, maxChunkLength);
         }
 
-        current.Append(current.Length > 0 ? "\n" : string.Empty).Append(line);
+        current.Append(current.Length > 0 ? "\n" : string.Empty).Append(line.Text);
         return [];
     }
 
-    static IEnumerable<string> Slices(string line, int maxChunkLength)
+    static IEnumerable<string> Slices(MarkdownLine line, PieceLength maxChunkLength)
     {
         var start = 0;
-        while (start < line.Length)
+        while (start < line.Text.Length)
         {
             var end = SliceEnd(line, start, maxChunkLength);
-            yield return line[start..end];
+            yield return line.Text[start..end];
             start = end;
         }
     }
 
-    static int SliceEnd(string line, int start, int room)
+    static int SliceEnd(MarkdownLine line, int start, PieceLength room)
     {
-        var end = Math.Min(start + room, line.Length);
-        return end < line.Length && end - start > 1 && char.IsHighSurrogate(line[end - 1]) ? end - 1 : end;
+        var end = Math.Min(start + room.Value, line.Text.Length);
+        return end < line.Text.Length && end - start > 1 && char.IsHighSurrogate(line.Text[end - 1]) ? end - 1 : end;
     }
+
+    readonly record struct MarkdownLine(string Text);
+
+    readonly record struct PieceLength(int Value);
 
     /// <summary>
     /// Packs table rows into groups that repeat the header, spending a repeat budget so the total output stays
@@ -193,17 +198,17 @@ internal static partial class ChunkPieces
     /// <param name="tableLimit">The preferred row group size.</param>
     /// <param name="maxChunkLength">The maximum fragment size, including its header.</param>
     /// <param name="repeatBudget">The table's input length, which bounds the extra repeated bytes.</param>
-    sealed class RowGrouper(string header, int tableLimit, int maxChunkLength, int repeatBudget)
+    sealed class RowGrouper(MarkdownLine header, PieceLength tableLimit, PieceLength maxChunkLength, int repeatBudget)
     {
         readonly StringBuilder _group = new();
         int _repeatBytes = repeatBudget;
-        int _repeatChunks = (repeatBudget / Math.Max(1, tableLimit)) + 1;
+        int _repeatChunks = (repeatBudget / Math.Max(1, tableLimit.Value)) + 1;
         bool _started;
         int _rows;
 
-        public IEnumerable<string> Add(string row)
+        public IEnumerable<string> Add(MarkdownLine row)
         {
-            if (_rows > 0 && _group.Length + 1 + row.Length > tableLimit)
+            if (_rows > 0 && _group.Length + 1 + row.Text.Length > tableLimit.Value)
             {
                 yield return Flush();
             }
@@ -223,14 +228,14 @@ internal static partial class ChunkPieces
                 yield break;
             }
 
-            _group.Append(_group.Length > 0 ? "\n" : string.Empty).Append(row);
+            _group.Append(_group.Length > 0 ? "\n" : string.Empty).Append(row.Text);
             _rows++;
         }
 
         public string? Finish() => _rows > 0 ? Flush() : null;
 
-        bool NeedsFragments(string row) =>
-            _rows == 0 && _group.Length + (_group.Length > 0 ? 1 : 0) + row.Length > maxChunkLength;
+        bool NeedsFragments(MarkdownLine row) =>
+            _rows == 0 && _group.Length + (_group.Length > 0 ? 1 : 0) + row.Text.Length > maxChunkLength.Value;
 
         string Flush()
         {
@@ -249,33 +254,33 @@ internal static partial class ChunkPieces
             }
 
             _started = true;
-            _group.Append(header);
+            _group.Append(header.Text);
         }
 
         string NextPrefix()
         {
             // Bound both repeated bytes and repeated chunks while enumerating. Once either allowance is spent,
             // later fragments contain only original row text; no input is dropped.
-            if (_repeatBytes < header.Length + 1 || _repeatChunks == 0)
+            if (_repeatBytes < header.Text.Length + 1 || _repeatChunks == 0)
             {
                 return string.Empty;
             }
 
-            _repeatBytes -= header.Length + 1;
+            _repeatBytes -= header.Text.Length + 1;
             _repeatChunks--;
-            return header;
+            return header.Text;
         }
 
-        IEnumerable<string> Fragments(string row)
+        IEnumerable<string> Fragments(MarkdownLine row)
         {
             var prefix = _group.ToString();
             _group.Clear();
             var start = 0;
-            while (start < row.Length)
+            while (start < row.Text.Length)
             {
                 var joiner = prefix.Length > 0 ? 1 : 0;
-                var end = SliceEnd(row, start, maxChunkLength - prefix.Length - joiner);
-                yield return joiner == 1 ? $"{prefix}\n{row[start..end]}" : row[start..end];
+                var end = SliceEnd(row, start, new(maxChunkLength.Value - prefix.Length - joiner));
+                yield return joiner == 1 ? $"{prefix}\n{row.Text[start..end]}" : row.Text[start..end];
                 start = end;
                 prefix = NextPrefix();
             }
