@@ -87,6 +87,9 @@ public class and_all_button_factories_are_used : Specification
         ModuleContext(module) == typeof(ButtonInteractionContext) &&
         _provider.GetRequiredService<IOptions<ComponentInteractionServiceOptions<ButtonInteraction, ButtonInteractionContext>>>().Value.PreExecutionHandler is ButtonAdmission);
 
+    [Fact] void should_use_friendly_button_results() =>
+        (_provider.GetRequiredService<IOptions<ComponentInteractionServiceOptions<ButtonInteraction, ButtonInteractionContext>>>().Value.ResultHandler is ButtonResults).ShouldBeTrue();
+
     [Fact] void should_cover_every_attributed_method_with_the_gated_dispatcher()
     {
         var methods = typeof(Feedback).Assembly.GetTypes().SelectMany(type => type.GetMethods())

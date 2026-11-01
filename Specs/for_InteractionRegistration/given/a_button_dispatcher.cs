@@ -8,12 +8,16 @@ using Cratis.Prompter.Routing;
 using Cratis.Prompter.Storage;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.Logging;
 using NetCord;
+using NetCord.Gateway;
 using NetCord.Hosting.Gateway;
 using NetCord.Hosting.Services.ComponentInteractions;
 using NetCord.JsonModels;
+using NetCord.Services;
 using NetCord.Services.ComponentInteractions;
 using NSubstitute;
+using NSubstitute.Extensions;
 
 namespace Cratis.Prompter.Specs.for_InteractionRegistration.given;
 
@@ -31,18 +35,23 @@ public class a_button_dispatcher : for_ActionButtons.given.an_action_interaction
     {
         foreach (var id in new[] { SuggestionButton.CustomId(0), ClarificationButton.CustomId(InteractionProduct.Chronicle), FeedbackButton.CustomId(FeedbackVerdict.Up, 42) })
         {
-            CreateContext(parent, id);
-            var json = ((IJsonModel<JsonInteraction>)ButtonContext.Interaction).JsonModel;
-            json.GuildId = guild;
-            if (guild is null)
-            {
-                json.Channel!.Type = ChannelType.DMChannel;
-            }
-
-            var interaction = new ButtonInteraction(json, guild is null ? null : ButtonContext.Guild, Response, Client.Rest);
-            await _handler.HandleAsync(interaction);
-            Dispatches++;
+            await DispatchClick(id, guild, parent);
         }
+    }
+
+    protected async Task DispatchClick(string customId, ulong? guild = 1, ulong? parent = 7)
+    {
+        CreateContext(parent, customId);
+        var json = ((IJsonModel<JsonInteraction>)ButtonContext.Interaction).JsonModel;
+        json.GuildId = guild;
+        if (guild is null)
+        {
+            json.Channel!.Type = ChannelType.DMChannel;
+        }
+
+        var interaction = new ButtonInteraction(json, guild is null ? null : ButtonContext.Guild, Response, Client.Rest);
+        await _handler.HandleAsync(interaction);
+        Dispatches++;
     }
 
     void Establish()
@@ -69,7 +78,12 @@ public class a_button_dispatcher : for_ActionButtons.given.an_action_interaction
             return Interactions;
         });
         services.AddPrompterInteractions();
-        services.ConfigureComponentInteractions<ButtonInteraction, ButtonInteractionContext>(options => options.ResultHandler = Results);
+        services.ConfigureComponentInteractions<ButtonInteraction, ButtonInteractionContext>(options =>
+        {
+            var registered = options.ResultHandler!;
+            Results.ReturnsForAll<ValueTask>(call => registered.HandleResultAsync(call.Arg<IExecutionResult>(), call.Arg<ButtonInteractionContext>(), call.Arg<GatewayClient?>(), call.Arg<ILogger>(), call.Arg<IServiceProvider>()));
+            options.ResultHandler = Results;
+        });
         _provider = services.BuildServiceProvider();
         _provider.GetRequiredService<ComponentInteractionService<ButtonInteractionContext>>().AddModules(typeof(Feedback).Assembly);
         var handlerType = services.Select(descriptor => descriptor.ServiceType).Single(type =>

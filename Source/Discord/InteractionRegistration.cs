@@ -17,5 +17,8 @@ public static class InteractionRegistration
     /// <returns>The services for further registration.</returns>
     public static IServiceCollection AddPrompterInteractions(this IServiceCollection services) =>
         services.AddApplicationCommands().AddComponentInteractions<ButtonInteraction, ButtonInteractionContext>(options =>
-            options.PreExecutionHandler = new ButtonAdmission());
+        {
+            options.PreExecutionHandler = new ButtonAdmission();
+            options.ResultHandler = new ButtonResults();
+        });
 }
