@@ -11,7 +11,7 @@ const root = new URL('../', import.meta.url);
 const rules = JSON.parse(readFileSync(new URL('rules.json', root))).groups.flatMap(group => group.rules);
 
 test('alerts cover missing telemetry, true pipeline failure, freshness, spend and provider protection', () => {
-    for (const name of ['PrompterTelemetryMissing', 'PrompterIndexFailed', 'PrompterIndexStale', 'PrompterSpendExposure', 'PrompterIndexSpendExposure', 'PrompterProviderErrors', 'PrompterProviderRateLimited', 'PrompterProviderUnavailable', 'PrompterAdmissionPressure']) {
+    for (const name of ['PrompterTelemetryMissing', 'PrompterIndexFailed', 'PrompterIndexStale', 'PrompterSpendExposure', 'PrompterIndexSpendExposure', 'PrompterIndexFullReindexSpend', 'PrompterIndexSpendRunaway', 'PrompterProviderErrors', 'PrompterProviderRateLimited', 'PrompterProviderUnavailable', 'PrompterAdmissionPressure']) {
         assert.ok(rules.some(rule => rule.alert === name), name);
     }
     for (const rule of rules) {
@@ -44,11 +44,26 @@ test('interactive and indexing budgets alert at seventy, ninety and one hundred 
             ratio('max(prompter_state_anthropic_usd)', 'anthropic_daily_usd'),
             ratio('max(prompter_state_voyage_usd)', 'voyage_daily_usd')
         ].map(expression => `(${expression})`).join(' or '));
-        assert.equal(indexing.expr, ratio('max(prompter_state_index_usd)', 'index_daily_usd'));
+        assert.equal(indexing.expr, `(${ratio('max(prompter_state_index_usd)', 'index_daily_usd')}) unless on() (max(prompter_state_index_full_ceiling_usd) > 0)`);
         for (const rule of [interactive, indexing]) {
             assert.equal(rule.labels.severity, severity);
             assert.equal(rule.for, duration);
         }
+    }
+});
+
+test('a confirmed full-reindex day warns instead of paging and runaway spend stays critical', () => {
+    const fullDay = rules.find(rule => rule.alert === 'PrompterIndexFullReindexSpend');
+    assert.equal(fullDay.expr, '(max(prompter_state_index_usd) / clamp_min(max(prompter_limit_index_daily_usd), 0.001) >= 1) and on() (max(prompter_state_index_full_ceiling_usd) > 0)');
+    assert.equal(fullDay.labels.severity, 'warning');
+    assert.equal(fullDay.for, '5m');
+    const runaway = rules.find(rule => rule.alert === 'PrompterIndexSpendRunaway');
+    assert.equal(runaway.expr, '(max(prompter_state_index_usd) > max(prompter_state_index_full_ceiling_usd)) and on() (max(prompter_state_index_full_ceiling_usd) > 0)');
+    assert.equal(runaway.labels.severity, 'critical');
+    assert.equal(runaway.for, '0s');
+    for (const rule of rules.filter(rule => rule.labels.severity === 'critical' && rule.expr.includes('prompter_state_index_usd'))) {
+        assert.ok(rule.expr.includes('unless on() (max(prompter_state_index_full_ceiling_usd) > 0)') ||
+            rule.expr.includes('max(prompter_state_index_usd) > max(prompter_state_index_full_ceiling_usd)'), rule.alert);
     }
 });
 

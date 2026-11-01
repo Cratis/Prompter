@@ -19,5 +19,5 @@ public class and_the_run_ceiling_would_be_exceeded : Specification
     }
 
     [Fact] void should_fail_closed() => _error.ShouldBeOfExactType<IndexBudgetExceeded>();
-    [Fact] async Task should_not_reserve() => await _lease.DidNotReceive().Reserve(Arg.Any<IndexExposure>(), Arg.Any<decimal>(), Arg.Any<bool>(), Arg.Any<CancellationToken>());
+    [Fact] async Task should_not_reserve() => await _lease.DidNotReceive().Reserve(Arg.Any<IndexExposure>(), Arg.Any<decimal>(), Arg.Any<bool>(), full: Arg.Any<bool>(), Arg.Any<CancellationToken>());
 }

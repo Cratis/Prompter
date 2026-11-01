@@ -19,19 +19,19 @@ public class and_unused_exposure_is_released : given.a_database
     {
         await using (var first = await IndexLease.Acquire(Database, CancellationToken.None))
         {
-            await first.Reserve(new(200, 0.2m), 0.3m, true, CancellationToken.None);
+            await first.Reserve(new(200, 0.2m), 0.3m, scheduled: true, full: false, CancellationToken.None);
             await first.Release(new(150, 0.15m), CancellationToken.None);
-            _afterRelease = await Catch.Exception(() => first.Reserve(new(250, 0.25m), 0.3m, false, CancellationToken.None));
+            _afterRelease = await Catch.Exception(() => first.Reserve(new(250, 0.25m), 0.3m, scheduled: false, full: false, CancellationToken.None));
             await first.Release(new(1_000, 1m), CancellationToken.None);
             await first.Release(new(1_000, 1m), CancellationToken.None);
-            _overdraft = await Catch.Exception(() => first.Reserve(new(301, 0.301m), 0.3m, false, CancellationToken.None));
-            await first.Reserve(new(100, 0.1m), 0.3m, false, CancellationToken.None);
+            _overdraft = await Catch.Exception(() => first.Reserve(new(301, 0.301m), 0.3m, scheduled: false, full: false, CancellationToken.None));
+            await first.Reserve(new(100, 0.1m), 0.3m, scheduled: false, full: false, CancellationToken.None);
         }
 
         await using var next = await IndexLease.Acquire(Database, CancellationToken.None);
         await next.Release(new(1_000, 1m), CancellationToken.None);
-        _otherLease = await Catch.Exception(() => next.Reserve(new(201, 0.201m), 0.3m, false, CancellationToken.None));
-        _secondSchedule = await Catch.Exception(() => next.Reserve(new(0, 0), 0.3m, true, CancellationToken.None));
+        _otherLease = await Catch.Exception(() => next.Reserve(new(201, 0.201m), 0.3m, scheduled: false, full: false, CancellationToken.None));
+        _secondSchedule = await Catch.Exception(() => next.Reserve(new(0, 0), 0.3m, scheduled: true, full: false, CancellationToken.None));
     }
 
     [Fact] void should_admit_the_next_batch_after_releasing_surplus() => _afterRelease.ShouldBeNull();

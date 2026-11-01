@@ -77,8 +77,10 @@ does not activate alerts. With no destination configured, leave the rules paused
 Defaults: telemetry absent/stale for five minutes; failed/cancelled pipeline after latest success for two
 minutes; no success in more than 30 hours for 15 minutes; 70% and 90% of a UTC-day exposure ceiling for
 five minutes (warning and critical respectively); hard cap reached (100%) with no pending delay.
-Spend tiers cover the interactive total, each provider, and the separate indexing ceiling. These are
-initial operational thresholds, not measured percentiles. Other defaults:
+Spend tiers cover the interactive total, each provider, and the separate indexing ceiling. Incremental
+index tiers apply only when no confirmed full run was admitted that UTC day. On a confirmed full day,
+exposure at or above the incremental ceiling raises a warning; exposure above the admitted full-run
+ceiling remains critical. These are initial operational thresholds, not measured percentiles. Other defaults:
 provider errors above 20% over ten minutes with at least five attempts for five minutes; at least three
 429s over ten minutes for two minutes; any auth/quota/exhausted-overload event for one minute; ten
 admission/protection denials over ten minutes for five minutes. Review these thresholds against traffic.
@@ -108,7 +110,9 @@ migration are unknown (timestamp zero) until the first new successful run.
 
 `prompter_state_anthropic_usd` and `prompter_state_voyage_usd` read the existing interactive UTC-day spend
 ledger. `prompter_state_index_usd` reads indexing's metered exposure: measured usage plus in-flight
-and unknown byte bounds. These are
+and unknown byte bounds. `prompter_state_index_full_ceiling_usd` records the highest admitted full-run
+day ceiling (0 when none), written atomically with exposure by whichever process reserved, including
+the index Job. These are
 **reserved exposure, not provider invoices**; unknown usage retains conservative reservations and is
 never refunded by metrics. Interactive and indexing ceilings are separate and alert separately.
 Known input/output tokens produce `prompter_provider_estimated_usd_total` only with verified matching
@@ -123,7 +127,8 @@ still has its durable indexing exposure, but no known-usage USD estimate.
 
 Check the enabled flag, bot health, private collector reachability and Core's collector scrape health.
 An old snapshot indicates database/migration trouble, not zero spend. Confirm the additive
-`v1_5_0.sql` migration ran. Check `prompter_events_total{reason="telemetry_failure"}`. Never open a public
+`v1_5_0.sql` migration and the additive `v1_9_0.sql` full-ceiling column migration ran; old binaries
+ignore the new column. Check `prompter_events_total{reason="telemetry_failure"}`. Never open a public
 scrape path to work around private networking. Roll back by disabling metrics; the additive aggregate
 table can remain for old binaries to ignore.
 
@@ -140,7 +145,11 @@ After a fresh install, one successful refresh is required to establish freshness
 Compare reserved exposure with the configured global/provider and index ceilings. Unknown usage may
 legitimately retain exposure. Investigate repeated admission/concurrency denials without collecting
 identities. Reduce workload, disable paid work, or review verified prices/ceilings with the operator;
-never automatically raise caps in response to an alert.
+never automatically raise caps in response to an alert. For a confirmed full-day warning, check the
+Reindex workflow run that confirmed `FULL REINDEX` and compare exposure with the recorded full-run
+ceiling. A runaway critical means exposure exceeds that admitted ceiling; without a confirmed full
+run, the incremental tiers remain active. Investigate the reserving process and stop unexpected paid
+work; never raise caps to clear either alert.
 
 ## Provider errors
 

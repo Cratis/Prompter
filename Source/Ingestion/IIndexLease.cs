@@ -41,9 +41,10 @@ public interface IIndexLease : IAsyncDisposable
     /// <param name="exposure">The conservative token and dollar exposure.</param>
     /// <param name="dailyLimit">The configured daily dollar ceiling.</param>
     /// <param name="scheduled">Whether this is scheduled work.</param>
+    /// <param name="full">Whether this reserves a confirmed full run; admitted full reservations record the day's full-run ceiling.</param>
     /// <param name="cancellationToken">Token for cancellation.</param>
     /// <returns>Awaitable task; rejection throws before dispatch.</returns>
-    Task Reserve(IndexExposure exposure, decimal dailyLimit, bool scheduled, CancellationToken cancellationToken);
+    Task Reserve(IndexExposure exposure, decimal dailyLimit, bool scheduled, bool full, CancellationToken cancellationToken);
 
     /// <summary>Releases only exposure reserved by this lease, newest UTC day first, never below zero.</summary>
     /// <param name="unused">The known unused token and dollar exposure.</param>

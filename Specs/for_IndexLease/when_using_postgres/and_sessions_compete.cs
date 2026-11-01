@@ -21,13 +21,13 @@ public class and_sessions_compete : given.a_database
         await using (var first = await IndexLease.Acquire(Database, CancellationToken.None))
         {
             _contention = await Catch.Exception(async () => await IndexLease.Acquire(Database, CancellationToken.None));
-            await first.Reserve(new(100, 0.1m), 0.2m, true, CancellationToken.None);
+            await first.Reserve(new(100, 0.1m), 0.2m, scheduled: true, full: false, CancellationToken.None);
         }
 
         await using var next = await IndexLease.Acquire(Database, CancellationToken.None);
         _reacquired = true;
-        _secondSchedule = await Catch.Exception(async () => await next.Reserve(new(0, 0), 0.2m, true, CancellationToken.None));
-        _dailyCap = await Catch.Exception(async () => await next.Reserve(new(100, 0.11m), 0.2m, false, CancellationToken.None));
+        _secondSchedule = await Catch.Exception(async () => await next.Reserve(new(0, 0), 0.2m, scheduled: true, full: false, CancellationToken.None));
+        _dailyCap = await Catch.Exception(async () => await next.Reserve(new(100, 0.11m), 0.2m, scheduled: false, full: false, CancellationToken.None));
         _removed = await next.CommitIndex([], new HashSet<ChunkId> { new("keep") }, [], CancellationToken.None);
     }
 
