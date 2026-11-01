@@ -25,7 +25,7 @@ provider keys, or provider calls are needed. Each context creates and drops its 
 the vector extension is created before mapped Npgsql connections and is never dropped by cleanup.
 The production embedded chunks migration and real `Passages.Search` SQL run against that schema.
 
-The two `for_Passages/when_searching` integration facts check:
+The `for_Passages/when_searching` integration facts check:
 
 - A synthetic 1024-dimensional Chronicle excerpt with cosine similarity approximately `0.8`,
   no full-question lexical match, and real semantic-only RRF `1/61` reaches fake chat with provenance.
@@ -33,9 +33,11 @@ The two `for_Passages/when_searching` integration facts check:
 - A weak `0.2` cosine match with dual-arm RRF `2/61` still refuses.
 - A lexical-only glossary match outside the semantic top 20 has cosine `-1`, refuses, and cannot
   reach chat. Distinct synthetic query vectors prevent accidental positive-fixture reuse.
+- A strong semantic-only match that RRF ranks ninth, behind eight lexically matching weak chunks,
+  still answers because the cutoff gates the whole candidate pool.
 
 These facts skip locally only if the disposable port is absent. An invalid supplied port or missing
-vector extension fails instead of skipping. CI must execute both facts, not report new skips.
+vector extension fails instead of skipping. CI must execute all of these facts, not report new skips.
 This task did not run local containers; the SQL facts are CI-required and locally unverified.
 
 ## Limits

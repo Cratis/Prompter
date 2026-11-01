@@ -95,7 +95,7 @@ flowchart LR
 ```
 
 - **Ingest** — walk cratis.io's sitemap, fetch each page's markdown mirror, strip the MDX noise, and split
-  into heading-aware chunks. Published GitHub release notes and curated Cratis samples join the same
+  into heading-aware chunks, plus a short summary chunk from each page's frontmatter description. Published GitHub release notes and curated Cratis samples join the same
   corpus. Only changed chunks are re-embedded, so re-indexing is cheap.
 - **Retrieve** — one SQL query fuses lexical (BM25 via `tsvector`) and semantic (cosine over pgvector) hits
   with Reciprocal Rank Fusion (RRF), used only for ordering.
@@ -279,8 +279,13 @@ The initial **0.5 is uncalibrated policy**, not a measured Voyage quality/recall
 positive, orthogonal, weak-similarity and lexical-only fixtures verify the implementation, not
 production answerability. Production acceptance remains unverified until separately authorized,
 bounded live positive and negative acceptance evidence exists. A failed positive acceptance is a
-stop, not permission to lower the cutoff or repeat paid calls. Filtering remains after the existing
-top-eight retrieval limit; this change does not widen recall or alter lexical query parsing.
+stop, not permission to lower the cutoff or repeat paid calls. The cosine cutoff is applied over the
+full hybrid candidate pool (up to 20 semantic plus 20 lexical candidates), not only the RRF top eight,
+so a strong semantic match is not crowded out by lexical matches. Up to `MaxPassages` admitted
+passages enter context, in RRF order. Lexical query parsing, the cutoff and refusal without a chat
+call are unchanged. Refusal diagnostics keep the RRF top `MaxPassages`, and refusal confidence is the
+highest valid similarity across the whole pool, so new refusal confidences are not comparable with
+earlier ones.
 
 ### Admission and spend protection
 
