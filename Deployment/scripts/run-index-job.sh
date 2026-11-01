@@ -39,16 +39,18 @@ esac
 price="${PROMPTER_INDEX_PRICE_PER_MILLION_TOKENS:-0}"
 run_dollars="${PROMPTER_INDEX_MAX_RUN_DOLLARS:-0}"
 daily_dollars="${PROMPTER_INDEX_MAX_DAILY_DOLLARS:-0}"
-for value in "$price" "$run_dollars" "$daily_dollars"; do
+full_run_dollars="${PROMPTER_INDEX_MAX_FULL_RUN_DOLLARS:-0}"
+for value in "$price" "$run_dollars" "$daily_dollars" "$full_run_dollars"; do
     if ! [[ "$value" =~ ^[0-9]{1,2}([.][0-9]{1,6})?$ ]]; then
         echo '::error::Index pricing and dollar limits must be bounded positive decimals.' >&2
         exit 1
     fi
 done
 if [[ "${PROMPTER_INDEX_MODEL:-}" != 'voyage-4' ]] || ! jq -en \
-    --arg price "$price" --arg run "$run_dollars" --arg day "$daily_dollars" \
+    --arg price "$price" --arg run "$run_dollars" --arg day "$daily_dollars" --arg full "$full_run_dollars" \
     '($price | tonumber) == 0.06 and ($run | tonumber) > 0 and
-     ($run | tonumber) <= ($day | tonumber) and ($day | tonumber) <= 5' >/dev/null; then
+     ($run | tonumber) <= ($day | tonumber) and ($day | tonumber) <= 0.50 and
+     ($day | tonumber) <= ($full | tonumber) and ($full | tonumber) <= 1.00' >/dev/null; then
     echo '::error::Unsupported index model, price or budget ordering.' >&2
     exit 1
 fi
@@ -65,7 +67,7 @@ if [[ "${1:-}" == '--print-manifest' && $# -eq 3 ]]; then
         exit 1
     fi
     jq -n --arg image "$2" --arg name "$3" --argjson timeout "$timeout_seconds" \
-        --argjson index_args "$index_args" --arg price "$price" --arg run_dollars "$run_dollars" --arg daily_dollars "$daily_dollars" '{
+        --argjson index_args "$index_args" --arg price "$price" --arg run_dollars "$run_dollars" --arg daily_dollars "$daily_dollars" --arg full_run_dollars "$full_run_dollars" '{
         apiVersion: "batch/v1",
         kind: "Job",
         metadata: {
@@ -123,6 +125,8 @@ if [[ "${1:-}" == '--print-manifest' && $# -eq 3 ]]; then
                             {name: "Cratis__Prompter__Ingestion__PricePerMillionTokens", value: $price},
                             {name: "Cratis__Prompter__Ingestion__MaxRunDollars", value: $run_dollars},
                             {name: "Cratis__Prompter__Ingestion__MaxDailyDollars", value: $daily_dollars},
+                            {name: "Cratis__Prompter__Ingestion__MaxFullRunDollars", value: $full_run_dollars},
+                            {name: "Cratis__Prompter__Ingestion__MaxFullTokens", value: "16000000"},
                             {name: "DOTNET_ENVIRONMENT", value: "Production"},
                             {
                                 name: "Cratis__Prompter__ConnectionString",

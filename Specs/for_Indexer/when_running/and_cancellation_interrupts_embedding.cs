@@ -8,10 +8,16 @@ namespace Cratis.Prompter.Specs.for_Indexer.when_running;
 
 public class and_cancellation_interrupts_embedding : given.an_indexer
 {
-    void Establish() => Embeddings.BeforeGenerate = _ => throw new OperationCanceledException();
+    void Establish()
+    {
+        Embeddings.Attempts = 1;
+        Embeddings.UsageFor = inputs => 1;
+        Embeddings.BeforeGenerate = _ => throw new OperationCanceledException();
+    }
     async Task Because() => Error = await Catch.Exception(async () => await Indexer.Run());
 
     [Fact] void should_propagate_cancellation() => Error.ShouldBeOfExactType<OperationCanceledException>();
     [Fact] void should_preserve_the_corpus() => Lease.DidNotReceive().CommitIndex(Arg.Any<IReadOnlyCollection<EmbeddedChunk>>(), Arg.Any<IReadOnlySet<ChunkId>>(), Arg.Any<IReadOnlyCollection<DocumentationMetadata>>(), Arg.Any<CancellationToken>());
+    [Fact] async Task should_keep_the_full_reservation() => await Lease.DidNotReceive().Release(Arg.Any<IndexExposure>(), Arg.Any<CancellationToken>());
     [Fact] async Task should_release_the_lease() => await Lease.Received(1).DisposeAsync();
 }

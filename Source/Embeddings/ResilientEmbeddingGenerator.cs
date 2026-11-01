@@ -49,7 +49,10 @@ public sealed class ResilientEmbeddingGenerator(
             var dispatch = new ProviderDispatch(operation, "voyage", "primary", policy.Task, attempt + 1, inputBound, 0, voyage.Model, string.Empty);
             try
             {
-                return await GenerateAttempt(inputs, options, dispatch, timeout.Token);
+                var response = await GenerateAttempt(inputs, options, dispatch, timeout.Token);
+                response.AdditionalProperties ??= [];
+                response.AdditionalProperties[EmbeddingRetry.AttemptsKey] = attempt + 1;
+                return response;
             }
             catch (HttpRequestException failure) when (EmbeddingRetry.IsTransient(failure.StatusCode))
             {

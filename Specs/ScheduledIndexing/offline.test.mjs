@@ -4,13 +4,15 @@ import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { spawnSync } from 'node:child_process';
 import { readFileSync } from 'node:fs';
+import { due, check } from '../../.github/scripts/reindex-due.mjs';
 
 const script = 'Deployment/scripts/run-index-job.sh';
 const settings = {
     PROMPTER_INDEX_MODEL: 'voyage-4',
     PROMPTER_INDEX_PRICE_PER_MILLION_TOKENS: '0.06',
     PROMPTER_INDEX_MAX_RUN_DOLLARS: '0.25',
-    PROMPTER_INDEX_MAX_DAILY_DOLLARS: '0.50'
+    PROMPTER_INDEX_MAX_DAILY_DOLLARS: '0.50',
+    PROMPTER_INDEX_MAX_FULL_RUN_DOLLARS: '1.00'
 };
 function manifest(overrides = {}, image = 'example.invalid/prompter:spec', name = 'index-spec') {
     return spawnSync('bash', [script, '--print-manifest', image, name], {
@@ -50,7 +52,8 @@ test('authorized schedule has bounded configuration and restricted security', ()
         Voyage__BatchSize: '128', Voyage__MaxRetries: '3', Voyage__IndexMaxRetries: '5',
         Voyage__RetryBaseDelayMilliseconds: '500', Voyage__TimeoutSeconds: '60', Voyage__IndexTimeoutSeconds: '120',
         Ingestion__MaxIncrementalTokens: '4000000', Ingestion__PricePerMillionTokens: '0.06',
-        Ingestion__MaxRunDollars: '0.25', Ingestion__MaxDailyDollars: '0.50'
+        Ingestion__MaxRunDollars: '0.25', Ingestion__MaxDailyDollars: '0.50',
+        Ingestion__MaxFullRunDollars: '1.00', Ingestion__MaxFullTokens: '16000000'
     };
     for (const [key, value] of Object.entries(expected)) assert.equal(values[`Cratis__Prompter__${key}`], value, key);
     const references = container.env.filter(item => item.valueFrom);
@@ -78,7 +81,8 @@ for (const key of Object.keys(settings)) {
 }
 for (const overrides of [
     { PROMPTER_INDEX_MODEL: 'voyage-3' }, { PROMPTER_INDEX_PRICE_PER_MILLION_TOKENS: '0.5' },
-    { PROMPTER_INDEX_MAX_RUN_DOLLARS: '0.51' }, { PROMPTER_INDEX_MAX_DAILY_DOLLARS: '5.01' },
+    { PROMPTER_INDEX_MAX_RUN_DOLLARS: '0.51' }, { PROMPTER_INDEX_MAX_DAILY_DOLLARS: '0.51' },
+    { PROMPTER_INDEX_MAX_FULL_RUN_DOLLARS: '1.01' }, { PROMPTER_INDEX_MAX_FULL_RUN_DOLLARS: '0.40' },
     { PROMPTER_INDEX_TIMEOUT_SECONDS: '1501' }, { PROMPTER_INDEX_TIMEOUT_SECONDS: '999999999999999999999999' }
 ]) test(`refuses unsupported settings ${JSON.stringify(overrides)}`, () => assert.notEqual(manifest(overrides).status, 0));
 for (const [image, name] of [['--bad', 'index-spec'], ['image\nsecret', 'index-spec'], ['example.invalid/prompter:spec', '../bad'], ['example.invalid/prompter:spec', 'A'.repeat(64)]]) {
@@ -93,9 +97,42 @@ test('workflow gates schedules but preserves explicit manual invocations', () =>
     assert.match(workflow, /if: github.ref == 'refs\/heads\/main' && \(github.event_name == 'workflow_dispatch' \|\| \(github.event_name == 'schedule' && vars.PROMPTER_SCHEDULED_INDEXING_ENABLED == 'true'\)\)/);
     assert.match(workflow, /PROMPTER_SCHEDULED_INDEXING_ENABLED: \$\{\{ vars.PROMPTER_SCHEDULED_INDEXING_ENABLED \}\}/);
     for (const text of ['environment: production', 'group: prompter-production-operations', 'persist-credentials: false', "github.event_name == 'schedule' && 'scheduled' || inputs.full && 'full' || 'incremental'"]) assert.ok(workflow.includes(text));
-    assert.deepEqual([...workflow.matchAll(/cron:\s*["']([^"']+)["']/g)].map(match => match[1]), ['52 3 * * *']);
+    assert.deepEqual([...workflow.matchAll(/cron:\s*["']([^"']+)["']/g)].map(match => match[1]), ['52 3 * * *', '41 6 * * *']);
     assert.doesNotMatch(workflow, /^\s+(push|pull_request|pull_request_target|workflow_run|repository_dispatch):/m);
-    assert.equal((workflow.match(/uses: [^\n]+@[a-f0-9]{40}\b/g) || []).length, 2);
+    assert.equal((workflow.match(/uses: [^\n]+@[a-f0-9]{40}\b/g) || []).length, 3);
+    const dueJob = workflow.split('  due:')[1].split('  reindex:')[0];
+    assert.match(dueJob, /if: github.ref == 'refs\/heads\/main'/);
+    assert.match(dueJob, /permissions:\s+actions: read\s+contents: read/);
+    assert.doesNotMatch(dueJob, /environment:|secrets\./);
+    assert.match(workflow, /needs: due\s+if: needs.due.outputs.run == 'true'/);
     const build = readFileSync('.github/workflows/build.yml', 'utf8');
+    assert.ok(build.includes('node --check .github/scripts/reindex-due.mjs'));
     for (const command of ['node --test Specs/ScheduledIndexing/*.test.mjs', 'bash Deployment/scripts/run-index-job.spec.sh', 'shellcheck Deployment/scripts/run-index-job.sh Deployment/scripts/run-index-job.spec.sh']) assert.ok(build.includes(command));
+});
+
+const today = new Date('2026-05-20T06:41:00Z');
+for (const conclusion of [null, 'success', 'failure', 'timed_out']) {
+    test(`scheduled catch-up skips another present run: ${conclusion}`, () => {
+        assert.equal(due('schedule', [{ id: 1, created_at: '2026-05-20T03:52:00Z', conclusion }], '2', today), false);
+    });
+}
+for (const conclusion of ['cancelled', 'skipped', 'startup_failure', 'stale']) {
+    test(`scheduled catch-up replaces an absent run: ${conclusion}`, () => {
+        assert.equal(due('schedule', [{ id: 1, created_at: '2026-05-20T03:52:00Z', conclusion }], '2', today), true);
+    });
+}
+test('catch-up ignores yesterday and itself, and admits an empty day', () => {
+    assert.equal(due('schedule', [], '2', today), true);
+    assert.equal(due('schedule', [{ id: 1, created_at: '2026-05-19T03:52:00Z', conclusion: 'success' }], '2', today), true);
+    assert.equal(due('schedule', [{ id: 2, created_at: '2026-05-20T06:41:00Z', conclusion: null }], '2', today), true);
+});
+test('the earlier of two queued scheduled runs proceeds and the later one skips', () => {
+    const runs = [{ id: 1, created_at: '2026-05-20T05:00:00Z', conclusion: null }, { id: 2, created_at: '2026-05-20T06:41:00Z', conclusion: null }];
+    assert.equal(due('schedule', runs, '1', today), true);
+    assert.equal(due('schedule', runs, '2', today), false);
+});
+test('manual runs always proceed', () => assert.equal(due('workflow_dispatch', [{ id: 1, created_at: today, conclusion: 'success' }], '2', today), true));
+test('API failures fail open to the database daily guard', async () => {
+    assert.equal(await check({ EVENT: 'schedule', GITHUB_REPOSITORY: 'Cratis/Prompter' }, async () => { throw new Error('offline'); }), true);
+    assert.equal(await check({ EVENT: 'schedule', GITHUB_REPOSITORY: 'Cratis/Prompter' }, async () => ({ ok: false })), true);
 });

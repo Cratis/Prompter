@@ -44,4 +44,10 @@ public interface IIndexLease : IAsyncDisposable
     /// <param name="cancellationToken">Token for cancellation.</param>
     /// <returns>Awaitable task; rejection throws before dispatch.</returns>
     Task Reserve(IndexExposure exposure, decimal dailyLimit, bool scheduled, CancellationToken cancellationToken);
+
+    /// <summary>Releases only exposure reserved by this lease, newest UTC day first, never below zero.</summary>
+    /// <param name="unused">The known unused token and dollar exposure.</param>
+    /// <param name="cancellationToken">Token for cancellation.</param>
+    /// <returns>Awaitable task.</returns>
+    Task Release(IndexExposure unused, CancellationToken cancellationToken);
 }

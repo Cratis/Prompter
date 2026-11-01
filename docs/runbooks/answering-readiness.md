@@ -18,8 +18,11 @@ projects it as `Cratis__Prompter__Answering__MinSemanticSimilarity` using invari
 The cutoff must be finite and in `(0, 1]`; deployment and startup validation reject invalid values. RRF
 continues to order candidates. Every answer-context passage must independently pass the cosine
 cutoff and have finite similarity in `[-1, 1]`. No qualifying passages means refusal without chat.
-The existing top-eight candidate limit, lexical query parsing, prompt trust boundary, and citation
-rules remain unchanged. Cosine relevance is not a correctness probability or prompt-injection defense.
+The cutoff is applied over the full hybrid candidate pool (up to 20 semantic plus 20 lexical
+candidates), not only the RRF top eight, and up to `MaxPassages` admitted passages enter context in RRF
+order. Lexical query parsing, prompt trust boundary, and citation rules remain unchanged. Refusal
+diagnostics keep the RRF top `MaxPassages`; refusal confidence is the highest valid similarity across
+the pool, so it is not comparable with earlier refusal values. Cosine relevance is not a correctness probability or prompt-injection defense.
 
 Verbose output labels `rrf` and `semantic similarity` independently. New successful answer and
 interaction confidence values are the RRF-first admitted passage's cosine similarity. Refusal

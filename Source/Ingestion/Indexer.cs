@@ -41,6 +41,7 @@ public class Indexer(
             await lease.Reserve(new(0, 0), options.Value.Ingestion.MaxDailyDollars, true, cancellationToken);
         }
 
+        var meter = new IndexMeter(lease, options.Value, request);
         var existing = await chunks.GetHashes(cancellationToken);
         var seen = new HashSet<ChunkId>();
         var changed = new List<Chunk>();
@@ -77,11 +78,11 @@ public class Indexer(
         else
         {
             var budget = IndexBudget.Preflight(changed.Select(chunk => chunk.EmbeddingInput), options.Value, request);
-            await lease.Reserve(budget, options.Value.Ingestion.MaxDailyDollars, false, cancellationToken);
             logger.IndexExposureReserved(budget.Tokens, budget.Dollars);
-            var staged = await Embed(changed, lease, cancellationToken);
+            var staged = await Embed(changed, meter, cancellationToken);
             var snapshot = new IndexSnapshot(staged, seen, metadata) { PreservedSources = failed.ToArray() };
             removed = await Publish(lease, snapshot, cancellationToken);
+            logger.IndexSpendMetered(meter.Spent.Tokens, meter.Spent.Dollars);
         }
 
         var run = new IndexRun(pages, changed.Count, unchanged, removed, Stopwatch.GetElapsedTime(start));
@@ -100,7 +101,7 @@ public class Indexer(
         return run;
     }
 
-    async Task<IReadOnlyCollection<EmbeddedChunk>> Embed(IReadOnlyList<Chunk> changed, IIndexLease lease, CancellationToken cancellationToken)
+    async Task<IReadOnlyCollection<EmbeddedChunk>> Embed(IReadOnlyList<Chunk> changed, IndexMeter meter, CancellationToken cancellationToken)
     {
         var staged = new List<EmbeddedChunk>();
         var batch = new List<Chunk>();
@@ -113,7 +114,7 @@ public class Indexer(
             var needsFlush = tooManyInputs || tooManyTokens;
             if (batch.Count > 0 && needsFlush)
             {
-                await Flush(batch, staged, lease, cancellationToken);
+                await Flush(batch, staged, meter, cancellationToken);
                 batchTokens = 0;
             }
 
@@ -121,21 +122,26 @@ public class Indexer(
             batchTokens += tokens;
         }
 
-        await Flush(batch, staged, lease, cancellationToken);
+        await Flush(batch, staged, meter, cancellationToken);
         return staged;
     }
 
-    async Task Flush(List<Chunk> batch, List<EmbeddedChunk> staged, IIndexLease lease, CancellationToken cancellationToken)
+    async Task Flush(List<Chunk> batch, List<EmbeddedChunk> staged, IndexMeter meter, CancellationToken cancellationToken)
     {
         if (batch.Count == 0) return;
-        await lease.EnsureHeld(cancellationToken);
+        var inputs = batch.Select(chunk => chunk.EmbeddingInput).ToArray();
+        var bound = IndexBudget.Batch(inputs, options.Value);
+        await meter.Reserve(bound, cancellationToken);
         logger.IndexBatchStarted(batch.Count, staged.Count);
         try
         {
             var generated = await embeddings.GenerateAsync(
-                batch.Select(chunk => chunk.EmbeddingInput).ToArray(),
+                inputs,
                 new() { AdditionalProperties = new() { [EmbeddingRetry.TaskKey] = "index" } },
                 cancellationToken);
+            var attempts = generated.AdditionalProperties?.TryGetValue(EmbeddingRetry.AttemptsKey, out var count) == true && count is int value ? value : 0;
+            var used = IndexBudget.Used(inputs.Sum(IndexBudget.TokensFor), attempts, generated.Usage?.InputTokenCount, options.Value);
+            if (!await meter.Settle(bound, used)) logger.IndexReleaseKept();
             for (var index = 0; index < batch.Count; index++)
             {
                 staged.Add(new(batch[index], generated[index].Vector));

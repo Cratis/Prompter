@@ -10,8 +10,14 @@ internal static partial class IndexerLogging
     [LoggerMessage(LogLevel.Information, "Index run completed in {Duration} - {Pages} pages, {Embedded} chunks embedded, {Unchanged} unchanged, {Removed} removed")]
     internal static partial void IndexRunCompleted(this ILogger<Indexer> logger, int pages, int embedded, int unchanged, int removed, TimeSpan duration);
 
-    [LoggerMessage(LogLevel.Information, "Index exposure reserved: {Tokens} retry-inclusive tokens, {Dollars} dollars (upper bounds, not measured usage)")]
+    [LoggerMessage(LogLevel.Information, "Index admitted: {Tokens} estimated tokens incl. one batch of retry headroom, {Dollars} dollars (estimate; spend is metered per batch)")]
     internal static partial void IndexExposureReserved(this ILogger<Indexer> logger, long tokens, decimal dollars);
+
+    [LoggerMessage(LogLevel.Information, "Index spend metered: {Tokens} tokens, {Dollars} dollars (measured usage plus retained bounds)")]
+    internal static partial void IndexSpendMetered(this ILogger<Indexer> logger, long tokens, decimal dollars);
+
+    [LoggerMessage(LogLevel.Warning, "Index unused exposure release failed; keeping the full reservation.")]
+    internal static partial void IndexReleaseKept(this ILogger<Indexer> logger);
 
     [LoggerMessage(LogLevel.Information, "Index batch: {Attempted} inputs attempted, {Succeeded} inputs previously staged")]
     internal static partial void IndexBatchStarted(this ILogger<Indexer> logger, int attempted, int succeeded);

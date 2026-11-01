@@ -24,8 +24,8 @@ public class and_retry_settings_differ : Specification
         var options = Config();
         options.Voyage.IndexMaxRetries = retries;
         var exposure = IndexBudget.Preflight(["é"], options, new());
-        exposure.Tokens.ShouldEqual(66L * attempts);
-        exposure.Dollars.ShouldEqual(0.000066m * attempts);
+        exposure.Tokens.ShouldEqual(17 + (66L * attempts));
+        exposure.Dollars.ShouldEqual(0.000017m + (0.000066m * attempts));
         EmbeddingRetryPolicy.Attempts(options.Voyage, indexing: true).ShouldEqual(attempts);
     }
 
@@ -34,7 +34,7 @@ public class and_retry_settings_differ : Specification
     {
         var options = Config();
         var attempts = EmbeddingRetryPolicy.Attempts(options.Voyage, indexing: true);
-        IndexBudget.Preflight(["é"], options, new()).Tokens.ShouldEqual(66L * attempts);
+        IndexBudget.Preflight(["é"], options, new()).Tokens.ShouldEqual(17 + (66L * attempts));
         attempts.ShouldEqual(6);
     }
 
