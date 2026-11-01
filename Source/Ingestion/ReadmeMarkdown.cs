@@ -17,6 +17,9 @@ public static partial class ReadmeMarkdown
     [GeneratedRegex("<[^>]*>", RegexOptions.None, 1000)]
     private static partial Regex Tags { get; }
 
+    [GeneratedRegex(@"(?<fence>^[ \t]*```[^\n]*\n.*?^[ \t]*```[ \t]*$|^[ \t]*~~~[^\n]*\n.*?^[ \t]*~~~[ \t]*$)", RegexOptions.Multiline | RegexOptions.Singleline, 1000)]
+    private static partial Regex Fences { get; }
+
     /// <summary>Cleans volatile decoration and prepends safe overview metadata.</summary>
     /// <param name="markdown">The README body.</param>
     /// <param name="title">The repository title.</param>
@@ -30,7 +33,9 @@ public static partial class ReadmeMarkdown
         {
             var lines = new List<string>();
             var fence = string.Empty;
-            foreach (var line in Comments.Replace(markdown, string.Empty).Replace("\r\n", "\n", StringComparison.Ordinal).Split('\n'))
+            var sections = Fences.Split(markdown.Replace("\r\n", "\n", StringComparison.Ordinal));
+            var cleaned = string.Concat(sections.Select((section, index) => index % 2 == 0 ? Comments.Replace(section, string.Empty) : section));
+            foreach (var line in cleaned.Split('\n'))
             {
                 var trimmed = line.Trim();
                 if (trimmed.StartsWith("```", StringComparison.Ordinal) || trimmed.StartsWith("~~~", StringComparison.Ordinal))

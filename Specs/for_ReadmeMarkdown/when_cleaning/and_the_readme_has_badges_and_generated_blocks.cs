@@ -17,13 +17,14 @@ public class and_the_readme_has_badges_and_generated_blocks : Specification
 
         ```html
         <p>Code sample</p>
+        <!-- keep code comments -->
         ```
         """,
         "Cratis/Arc",
         "A \"quoted\"\nsummary",
         1000);
     [Fact] void should_remove_badges_comments_and_generated_stats() => _clean.Contains("http", StringComparison.Ordinal).ShouldBeFalse();
-    [Fact] void should_keep_inner_text_and_code_tags() => _clean.ShouldContain("Visible\n\n```html\n<p>Code sample</p>\n```");
+    [Fact] void should_keep_inner_text_and_code_tags() => _clean.ShouldContain("Visible\n\n```html\n<p>Code sample</p>\n<!-- keep code comments -->\n```");
     [Fact] void should_supply_safe_frontmatter_and_a_title() => _clean.StartsWith("---\ntitle: \"Cratis/Arc\"\ndescription: \"A 'quoted' summary\"\n---\n# Cratis/Arc", StringComparison.Ordinal).ShouldBeTrue();
     [Fact] void should_truncate_the_body_at_a_line_break() => ReadmeMarkdown.Clean("First line\nSecond line\nThird line", "Cratis/Arc", string.Empty, 15).EndsWith("First line", StringComparison.Ordinal).ShouldBeTrue();
 }
