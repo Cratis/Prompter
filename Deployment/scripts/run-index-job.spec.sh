@@ -8,6 +8,7 @@ export PROMPTER_INDEX_MODEL=voyage-4
 export PROMPTER_INDEX_PRICE_PER_MILLION_TOKENS=0.06
 export PROMPTER_INDEX_MAX_RUN_DOLLARS=0.25
 export PROMPTER_INDEX_MAX_DAILY_DOLLARS=0.50
+export PROMPTER_INDEX_MAX_FULL_RUN_DOLLARS=1.00
 # Offline specs must not inherit an enabled schedule from the caller.
 unset PROMPTER_SCHEDULED_INDEXING_ENABLED
 
@@ -33,10 +34,15 @@ manifest=$(PROMPTER_INDEX_MODE=full PROMPTER_INDEX_CONFIRMATION='FULL REINDEX' \
     PROMPTER_INDEX_PRICE_PER_MILLION_TOKENS=0.06 PROMPTER_INDEX_MAX_RUN_DOLLARS=0.25 PROMPTER_INDEX_MAX_DAILY_DOLLARS=0.50 \
     "$script" --print-manifest example.invalid/prompter:spec index-spec)
 jq -e '.spec.template.spec.containers[0] | .args == ["index", "--full", "--confirm-full-reindex=FULL REINDEX"] and
-    any(.env[]; .name == "Cratis__Prompter__Ingestion__MaxDailyDollars" and .value == "0.50")' <<<"$manifest"
+    any(.env[]; .name == "Cratis__Prompter__Ingestion__MaxDailyDollars" and .value == "0.50") and
+    any(.env[]; .name == "Cratis__Prompter__Ingestion__MaxFullRunDollars" and .value == "1.00") and
+    any(.env[]; .name == "Cratis__Prompter__Ingestion__MaxFullTokens" and .value == "16000000")' <<<"$manifest"
 
 expect_rejection env PROMPTER_INDEX_MODE=full PROMPTER_INDEX_CONFIRMATION=wrong "$script"
 expect_rejection env PROMPTER_INDEX_MODE=invalid "$script"
+expect_rejection env PROMPTER_INDEX_MAX_DAILY_DOLLARS=0.51 "$script"
+expect_rejection env PROMPTER_INDEX_MAX_FULL_RUN_DOLLARS=1.01 "$script"
+expect_rejection env PROMPTER_INDEX_MAX_FULL_RUN_DOLLARS=0.40 "$script"
 expect_rejection env PROMPTER_INDEX_MODE=incremental PROMPTER_INDEX_MAX_RUN_DOLLARS=invalid "$script"
 
 # Fake client only: never read a kubeconfig or contact a cluster.

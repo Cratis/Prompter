@@ -146,10 +146,12 @@ dotnet run -- ask "How do I append an event in Chronicle?" # answer from the CLI
 
 Run it as the Discord bot — bot mode also serves `GET /healthz` and the shared-secret `POST /reindex`
 in-cluster/local endpoint, and sweeps expired interactions on a daily retention job. Production re-indexes
-daily at 03:52 UTC once `PROMPTER_SCHEDULED_INDEXING_ENABLED` is set to `true`, and on demand via the
+daily at 03:52 UTC with a 06:41 UTC catch-up if no scheduled run happened that UTC day, once
+`PROMPTER_SCHEDULED_INDEXING_ENABLED` is set to `true`, and on demand via the
 **Reindex - Production** workflow, without a public route. Documentation changes never trigger reindexing.
-All entry points share a non-waiting Postgres advisory lease. A complete crawl and retry-inclusive
-UTF-8 byte/token budget check precede embedding; a failed batch or crawl leaves the last-good corpus intact.
+All entry points share a non-waiting Postgres advisory lease. A complete crawl and estimated-token
+admission check precede embedding. Each batch reserves its retry-inclusive UTF-8 byte bound before dispatch
+and releases only known unused exposure after success; a failed batch or crawl leaves the last-good corpus intact.
 Plain `index` is incremental. A manual full replacement requires
 `index --full '--confirm-full-reindex=FULL REINDEX'`; scheduled full runs are forbidden.
 The authenticated HTTP equivalent is `POST /reindex?full=true` with `X-Reindex-Confirmation: FULL REINDEX`.
@@ -214,8 +216,9 @@ Configuration binds to the `Cratis:Prompter` section (environment variables use 
 | Sample allowlist (indexed array) | `Cratis__Prompter__Ingestion__Samples__Paths__0` (and subsequent indices) | Curated paths above |
 | Maximum sample file bytes | `Cratis__Prompter__Ingestion__Samples__MaxFileBytes` | `16384` |
 | Maximum sample files | `Cratis__Prompter__Ingestion__Samples__MaxFiles` | `300` |
-| Incremental token ceiling (including retries) | `Cratis__Prompter__Ingestion__MaxIncrementalTokens` | `4000000` |
-| Confirmed full token ceiling (including retries) | `Cratis__Prompter__Ingestion__MaxFullTokens` | `25000000` |
+| Incremental estimated-token admission ceiling | `Cratis__Prompter__Ingestion__MaxIncrementalTokens` | `4000000` |
+| Confirmed full estimated-token admission ceiling | `Cratis__Prompter__Ingestion__MaxFullTokens` | `16000000` |
+| Confirmed full run and UTC-day dollar ceiling | `Cratis__Prompter__Ingestion__MaxFullRunDollars` | `0` (full paid indexing disabled) |
 | Verified model price per million tokens | `Cratis__Prompter__Ingestion__PricePerMillionTokens` | `0` (paid indexing disabled) |
 | Index dollar ceiling per run | `Cratis__Prompter__Ingestion__MaxRunDollars` | `0` (paid indexing disabled) |
 | Shared index dollar ceiling per UTC day | `Cratis__Prompter__Ingestion__MaxDailyDollars` | `0` (paid indexing disabled) |

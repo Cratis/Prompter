@@ -57,7 +57,9 @@ jobs:
       - name: Validate monitoring artifacts and notification behavior
         run: node --test Monitoring/specs/*.spec.mjs
       - name: Check failure notifier syntax
-        run: node --check .github/scripts/notify-reindex-failure.mjs
+        run: |
+          node --check .github/scripts/notify-reindex-failure.mjs
+          node --check .github/scripts/reindex-due.mjs
       - name: Check scheduled indexing offline
         run: node --test Specs/ScheduledIndexing/*.test.mjs
       - name: Validate index Job manifests

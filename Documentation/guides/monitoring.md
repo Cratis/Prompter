@@ -107,7 +107,8 @@ migration are unknown (timestamp zero) until the first new successful run.
 ## What spend means
 
 `prompter_state_anthropic_usd` and `prompter_state_voyage_usd` read the existing interactive UTC-day spend
-ledger. `prompter_state_index_usd` reads indexing's retry-inclusive daily reservations. These are
+ledger. `prompter_state_index_usd` reads indexing's metered exposure: measured usage plus in-flight
+and unknown byte bounds. These are
 **reserved exposure, not provider invoices**; unknown usage retains conservative reservations and is
 never refunded by metrics. Interactive and indexing ceilings are separate and alert separately.
 Known input/output tokens produce `prompter_provider_estimated_usd_total` only with verified matching

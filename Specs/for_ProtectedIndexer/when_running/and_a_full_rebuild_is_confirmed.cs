@@ -11,7 +11,11 @@ public class and_a_full_rebuild_is_confirmed : for_Indexer.given.an_indexer
 {
     IndexRun _run = null!;
 
-    void Establish() => Options.Ingestion.MaxIncrementalTokens = 1;
+    void Establish()
+    {
+        Options.Ingestion.MaxIncrementalTokens = 1;
+        Options.Ingestion.MaxFullRunDollars = 10;
+    }
 
     async Task Because()
     {

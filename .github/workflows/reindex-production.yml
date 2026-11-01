@@ -3,7 +3,7 @@
 #
 # No public route by decision. The deploy identity cannot port-forward and has no CronJob verbs,
 # but it can create Jobs. The production environment restricts runs to main.
-# No pull_request trigger: forks never reach the self-hosted runner.
+# No pull_request trigger: forks never reach the self-hosted runner. A read-only due job guards catch-up.
 name: Reindex - Production
 
 on:
@@ -20,6 +20,8 @@ on:
   schedule:
     # Daily at 03:52 UTC: a minute unique in the organization, inside the 03:00-07:00 UTC window.
     - cron: "52 3 * * *"
+    # Catch-up: runs only when no scheduled run happened this UTC day.
+    - cron: "41 6 * * *"
 
 concurrency:
   group: prompter-production-operations
@@ -30,8 +32,30 @@ permissions:
   contents: read
 
 jobs:
-  reindex:
+  due:
     if: github.ref == 'refs/heads/main' && (github.event_name == 'workflow_dispatch' || (github.event_name == 'schedule' && vars.PROMPTER_SCHEDULED_INDEXING_ENABLED == 'true'))
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    permissions:
+      actions: read
+      contents: read
+    outputs:
+      run: ${{ steps.check.outputs.run }}
+    steps:
+      - name: Checkout
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - name: Check scheduled runs
+        id: check
+        env:
+          GH_TOKEN: ${{ github.token }}
+          EVENT: ${{ github.event_name }}
+        run: node .github/scripts/reindex-due.mjs
+
+  reindex:
+    needs: due
+    if: needs.due.outputs.run == 'true'
     runs-on: ${{ vars.RUNNER_FORCE || 'cratis-arc' }}
     environment: production
     timeout-minutes: 30
@@ -57,6 +81,7 @@ jobs:
           PROMPTER_INDEX_PRICE_PER_MILLION_TOKENS: '0.06'
           PROMPTER_INDEX_MAX_RUN_DOLLARS: '0.25'
           PROMPTER_INDEX_MAX_DAILY_DOLLARS: '0.50'
+          PROMPTER_INDEX_MAX_FULL_RUN_DOLLARS: '1.00'
         run: |
           set -euo pipefail
           printf '%s' "$KUBECONFIG_CONTENT" > "$RUNNER_TEMP/kubeconfig"

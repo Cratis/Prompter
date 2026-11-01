@@ -12,6 +12,9 @@ namespace Cratis.Prompter.Embeddings;
 /// </summary>
 public static class EmbeddingRetry
 {
+    /// <summary>The successful response metadata key for the number of dispatched attempts.</summary>
+    public const string AttemptsKey = "PrompterEmbeddingAttempts";
+
     /// <summary>
     /// AdditionalProperties key for the fixed index task; absent means an interactive query.
     /// </summary>

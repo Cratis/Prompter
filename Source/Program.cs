@@ -101,46 +101,51 @@ if (mode == "index" || mode == "ask")
 
 // Bot mode runs as a web application: Kestrel co-hosts the Discord gateway client (a background hosted
 // service dialing out to Discord) with the operational HTTP endpoints (health probe + re-index webhook).
-var configSection = ConfigurationPath.Combine("Cratis", "Prompter");
-var webBuilder = WebApplication.CreateBuilder(args);
-
-webBuilder.AddPrompter();
-
-// Bot mode is the only run mode that opens a Discord gateway, so the token requirement is validated here
-// rather than in the shared registration (the console index/ask modes run without a token). This validator
-// lives only in the bot process and fails startup fast on an empty token instead of surfacing later as an
-// opaque gateway authentication failure.
-webBuilder.Services
-    .AddOptions<Cratis.Prompter.PrompterOptions>()
-    .Validate(
-        options => options.Discord.TokenIsPresent,
-        "Cratis:Prompter:Discord:Token must be set in bot mode; an empty token fails late at the Discord gateway rather than at startup.")
-    .ValidateOnStart();
-
-webBuilder.Services.AddSingleton<ReindexGate>();
-webBuilder.Services.AddSingleton<GitHubWebhook>();
-webBuilder.Services.AddHostedService<RetentionPurge>();
-webBuilder.Services.AddSingleton<IDocsGapInteractions, DocsGapInteractions>();
-webBuilder.Services.AddSingleton<IMaintainerChannel, DiscordMaintainerChannel>();
-webBuilder.Services.AddHostedService<DocsGapDigest>();
-webBuilder.Services.AddSingleton<IForumThreads, DiscordForumThreads>();
-webBuilder.Services.AddSingleton<IForumAnswerer, ForumAnswerer>();
-webBuilder.Services.AddHostedService<DelayedForumAnswers>();
-webBuilder.Services
-    .AddDiscordGateway(options =>
+Environment.ExitCode = await BotFailure.Run(
+    async () =>
     {
-        options.Token = webBuilder.Configuration[ConfigurationPath.Combine(configSection, "Discord", "Token")];
-        options.Intents = GatewayIntents.Guilds | GatewayIntents.GuildMessages | GatewayIntents.MessageContent;
-    })
-    .AddGatewayHandlers(typeof(Program).Assembly)
-    .AddApplicationCommands()
-    .AddComponentInteractions();
+        var configSection = ConfigurationPath.Combine("Cratis", "Prompter");
+        var webBuilder = WebApplication.CreateBuilder(args);
 
-var app = webBuilder.Build();
+        webBuilder.AddPrompter();
 
-await app.Services.GetRequiredService<IChunks>().EnsureSchema();
+        // Bot mode is the only run mode that opens a Discord gateway, so the token requirement is validated here
+        // rather than in the shared registration (the console index/ask modes run without a token). This validator
+        // lives only in the bot process and fails startup fast on an empty token instead of surfacing later as an
+        // opaque gateway authentication failure.
+        webBuilder.Services
+            .AddOptions<Cratis.Prompter.PrompterOptions>()
+            .Validate(
+                options => options.Discord.TokenIsPresent,
+                "Cratis:Prompter:Discord:Token must be set in bot mode; an empty token fails late at the Discord gateway rather than at startup.")
+            .ValidateOnStart();
 
-app.AddModules(typeof(Program).Assembly);
-app.MapPrompterEndpoints();
+        webBuilder.Services.AddSingleton<ReindexGate>();
+        webBuilder.Services.AddSingleton<GitHubWebhook>();
+        webBuilder.Services.AddHostedService<RetentionPurge>();
+        webBuilder.Services.AddSingleton<IDocsGapInteractions, DocsGapInteractions>();
+        webBuilder.Services.AddSingleton<IMaintainerChannel, DiscordMaintainerChannel>();
+        webBuilder.Services.AddHostedService<DocsGapDigest>();
+        webBuilder.Services.AddSingleton<IForumThreads, DiscordForumThreads>();
+        webBuilder.Services.AddSingleton<IForumAnswerer, ForumAnswerer>();
+        webBuilder.Services.AddHostedService<DelayedForumAnswers>();
+        webBuilder.Services
+            .AddDiscordGateway(options =>
+            {
+                options.Token = webBuilder.Configuration[ConfigurationPath.Combine(configSection, "Discord", "Token")];
+                options.Intents = GatewayIntents.Guilds | GatewayIntents.GuildMessages | GatewayIntents.MessageContent;
+            })
+            .AddGatewayHandlers(typeof(Program).Assembly)
+            .AddApplicationCommands()
+            .AddComponentInteractions();
 
-await app.RunAsync();
+        var app = webBuilder.Build();
+
+        await app.Services.GetRequiredService<IChunks>().EnsureSchema();
+
+        app.AddModules(typeof(Program).Assembly);
+        app.MapPrompterEndpoints();
+
+        await app.RunAsync();
+    },
+    Console.Error);

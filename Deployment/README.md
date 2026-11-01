@@ -199,7 +199,7 @@ up published changes.
 ### Re-indexing
 
 Run **Reindex - Production** on `main` with `gh workflow run reindex-production.yml --ref main`, or let its
-nightly schedule run at **03:52 UTC**. It uses the `production` environment's namespace-scoped `KUBECONFIG`
+nightly schedule run at **03:52 UTC**, with a **06:41 UTC** catch-up if no scheduled run happened that UTC day. It uses the `production` environment's namespace-scoped `KUBECONFIG`
 to create a one-shot Job running the deployed image's `index` command. It refuses to overlap an active
 index Job. The Job reads only the connection string and Voyage key from `prompter-secrets` and has the
 same outbound HTTPS access as the bot, without joining the bot's Service. The database advisory lease
@@ -207,15 +207,18 @@ also serializes CLI, HTTP and Jobs across processes; contention fails immediatel
 concurrency group is `prompter-production-operations`, with no cancellation or deletion of an active Job.
 
 The workflow fixes Voyage pricing at **$0.06/million tokens**, with **$0.25/run** and **$0.50/day**
-ceilings; these are not repository variables. Missing/zero pricing or ceilings disable paid work.
-Configure the equivalent `Ingestion` options on the bot for HTTP/CLI runs; all runs reserve against the
-same database UTC-day allowance. Reservations include `Voyage.IndexMaxRetries + 1` attempts (6),
-use UTF-8 bytes plus framing (not characters/4), and are retained after
-failure or unknown provider outcomes. They are upper bounds, not measured provider usage or invoices.
+ceilings for incremental runs and **$1.00** for confirmed full runs; these are not repository variables.
+The full-run ceiling also caps the shared UTC-day total on a full-run day. Later incremental runs still
+must fit under $0.50/day. Missing/zero pricing or ceilings disable paid work.
+Configure the equivalent `Ingestion` options on the bot for HTTP/CLI runs. Admission estimates tokens
+as UTF-8 bytes/3 rounded up plus 16 per input, with one batch of retry headroom. Before each dispatch,
+the batch reserves UTF-8 bytes plus framing for `Voyage.IndexMaxRetries + 1` attempts (6).
+Successful attempts settle to Voyage-reported usage; failed attempts and unknown usage retain their
+byte bounds. The shared database UTC-day allowance is metered exposure, not a provider invoice.
 
 The daily Job passes `--scheduled`: at most one admitted scheduled run per UTC day, with a
-retry-inclusive **4M tokens/run** ceiling (about 667 KB of changed chunk text; the reservation is a byte-level upper bound, real Voyage usage is roughly a quarter of the bytes). Plain manual runs remain incremental. Full runs have a default
-**25M tokens/run** ceiling and require the workflow's `full` input plus literal confirmation **FULL REINDEX**
+**4M estimated tokens/run** admission ceiling. Plain manual runs remain incremental. Full runs have a default
+**16M estimated tokens/run** admission ceiling and require the workflow's `full` input plus literal confirmation **FULL REINDEX**
 and the existing `production` environment approval. The script equivalent uses `PROMPTER_INDEX_MODE=full`
 and `PROMPTER_INDEX_CONFIRMATION='FULL REINDEX'`. Never schedule full mode. Token ceilings are configurable
 with `Ingestion.MaxIncrementalTokens` and `Ingestion.MaxFullTokens`; raising them requires budget approval.
