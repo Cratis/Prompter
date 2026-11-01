@@ -53,7 +53,7 @@ public sealed class FeedbackVotes(IOptions<PrompterOptions> options, TimeProvide
     /// </summary>
     /// <param name="interactionId">The answer being voted on.</param>
     /// <param name="userId">The clicking user, retained only as a keyed hash.</param>
-    /// <returns>The turn to dispose when the click is finished, or <see langword="null"/> when it must be refused.</returns>
+    /// <returns>The turn to dispose when the click is finished, releasing any uncommitted reservation, or <see langword="null"/> when it must be refused.</returns>
     public async Task<FeedbackTurn?> Enter(long interactionId, ulong userId)
     {
         using var wait = new CancellationTokenSource(_turnTimeout, clock);
@@ -72,12 +72,13 @@ public sealed class FeedbackVotes(IOptions<PrompterOptions> options, TimeProvide
 
         return new(() =>
         {
+            Release(interactionId);
             answer.Dispose();
             user.Dispose();
         });
     }
 
-    /// <summary>Compares a click with the latest persisted verdict for its answer. Call it inside the answer's turn.</summary>
+    /// <summary>Compares a click and atomically reserves capacity for its write. Call it inside the answer's turn.</summary>
     /// <param name="click">The decoded click.</param>
     /// <returns>What the handler should do with the click.</returns>
     public FeedbackVote Check(FeedbackClick click)
@@ -88,14 +89,26 @@ public sealed class FeedbackVotes(IOptions<PrompterOptions> options, TimeProvide
             Sweep(clock.GetUtcNow());
             if (_latest.TryGetValue(click.InteractionId, out var known))
             {
-                return known.Verdict == click.Verdict ? FeedbackVote.Repeat : FeedbackVote.Record;
+                if (known.Verdict == click.Verdict)
+                {
+                    return FeedbackVote.Repeat;
+                }
+
+                _latest[click.InteractionId] = known with { Pending = true };
+                return FeedbackVote.Record;
             }
 
-            return _latest.Count >= limits.LocalCapacity ? FeedbackVote.Refused : FeedbackVote.Record;
+            if (_latest.Count >= limits.LocalCapacity)
+            {
+                return FeedbackVote.Refused;
+            }
+
+            _latest[click.InteractionId] = new(null, DateTimeOffset.MaxValue, true);
+            return FeedbackVote.Record;
         }
     }
 
-    /// <summary>Remembers a verdict once it has been persisted. A failed write is simply never committed.</summary>
+    /// <summary>Completes a reserved slot once its verdict has been persisted. A failed write is released by disposing its turn.</summary>
     /// <param name="click">The decoded click whose write succeeded.</param>
     public void Commit(FeedbackClick click)
     {
@@ -105,7 +118,7 @@ public sealed class FeedbackVotes(IOptions<PrompterOptions> options, TimeProvide
             var now = clock.GetUtcNow();
             if (_latest.ContainsKey(click.InteractionId) || _latest.Count < limits.LocalCapacity)
             {
-                _latest[click.InteractionId] = new(click.Verdict, now + TimeSpan.FromSeconds(limits.FeedbackWindowSeconds));
+                _latest[click.InteractionId] = new(click.Verdict, now + TimeSpan.FromSeconds(limits.FeedbackWindowSeconds), false);
             }
         }
     }
@@ -173,9 +186,28 @@ public sealed class FeedbackVotes(IOptions<PrompterOptions> options, TimeProvide
         }
     }
 
+    void Release(long interactionId)
+    {
+        lock (_lock)
+        {
+            if (!_latest.TryGetValue(interactionId, out var known) || !known.Pending)
+            {
+                return;
+            }
+
+            if (known.Verdict is null)
+            {
+                _latest.Remove(interactionId);
+                return;
+            }
+
+            _latest[interactionId] = known with { Pending = false };
+        }
+    }
+
     void Sweep(DateTimeOffset now)
     {
-        foreach (var expired in _latest.Where(pair => pair.Value.Expires <= now).Select(pair => pair.Key).ToArray())
+        foreach (var expired in _latest.Where(pair => !pair.Value.Pending && pair.Value.Expires <= now).Select(pair => pair.Key).ToArray())
         {
             _latest.Remove(expired);
         }
@@ -188,5 +220,5 @@ public sealed class FeedbackVotes(IOptions<PrompterOptions> options, TimeProvide
         public int Users { get; set; }
     }
 
-    sealed record Latest(FeedbackVerdict Verdict, DateTimeOffset Expires);
+    sealed record Latest(FeedbackVerdict? Verdict, DateTimeOffset Expires, bool Pending);
 }

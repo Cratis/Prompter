@@ -35,8 +35,9 @@ public static partial class MarkdownChunker
     {
         var content = StripMdxComponents(StripFrontmatter(markdown));
         var lines = content.Split('\n');
-        var title = lines.FirstOrDefault(line => line.StartsWith("# ", StringComparison.Ordinal))?[2..].Trim()
-            ?? PageTitleFrom(page);
+        var titleLine = lines.FirstOrDefault(line => line.StartsWith("# ", StringComparison.Ordinal));
+        var title = BoundHeading(titleLine is null ? PageTitleFrom(page).AsSpan() : titleLine.AsSpan(2).Trim());
+        var output = new EmbeddingOutputBudget(Math.Max(8192L, markdown.Length * 64L));
 
         var sections = SplitIntoSections(lines, title);
         var index = 0;
@@ -47,7 +48,10 @@ public static partial class MarkdownChunker
             foreach (var trimmed in SplitOnParagraphs(section.Content, maxChunkLength).Select(part => part.Trim()).Where(part => part.Length > 0))
             {
                 var piece = 0;
-                foreach (var text in ChunkPieces.Split(trimmed, maxChunkLength, maxTableLength, fence).Select(text => text.Trim()).Where(text => text.Length > 0))
+                var texts = ChunkPieces.Split(trimmed, maxChunkLength, maxTableLength, fence)
+                    .Select(text => text.Trim()).Where(text => text.Length > 0)
+                    .TakeWhile(text => output.TryTake(title, section.HeadingPath, text));
+                foreach (var text in texts)
                 {
                     var id = piece == 0 ? $"{page.Value}#{index}" : $"{page.Value}#{index}.{piece}";
                     yield return new(
@@ -60,11 +64,16 @@ public static partial class MarkdownChunker
                     piece++;
                 }
 
+                if (output.Exhausted)
+                {
+                    yield break;
+                }
+
                 index++;
             }
         }
 
-        if (Summary(page, markdown, title) is { } summary)
+        if (Summary(page, markdown, title, output) is { } summary)
         {
             yield return summary;
         }
@@ -76,8 +85,9 @@ public static partial class MarkdownChunker
     /// <param name="page">The URL of the page.</param>
     /// <param name="markdown">The markdown content of the page, including frontmatter.</param>
     /// <param name="title">The title of the page.</param>
+    /// <param name="output">The remaining page-wide embedding output allowance.</param>
     /// <returns>The summary chunk, or <see langword="null"/> when the page has no usable description.</returns>
-    static global::Cratis.Prompter.Ingestion.Chunk? Summary(PageUrl page, string markdown, string title)
+    static global::Cratis.Prompter.Ingestion.Chunk? Summary(PageUrl page, string markdown, string title, EmbeddingOutputBudget output)
     {
         var (lines, _) = DocumentationMetadata.Split(markdown);
         var description = DocumentationMetadata.Unique(lines, "description")?.Trim();
@@ -92,6 +102,10 @@ public static partial class MarkdownChunker
             : title;
         var headingPath = $"{title} > Summary";
         var content = $"{displayTitle}\n\n{description}";
+        if (!output.TryTake(title, headingPath, content))
+        {
+            return null;
+        }
 
         return new(
             new ChunkId($"{page.Value}#summary"),
@@ -275,6 +289,17 @@ public static partial class MarkdownChunker
         return index < trimmed.Length && char.IsAsciiLetterUpper(trimmed[index]);
     }
 
+    static string BoundHeading(ReadOnlySpan<char> heading)
+    {
+        var end = Math.Min(heading.Length, MaximumTitleLength);
+        if (end < heading.Length && char.IsHighSurrogate(heading[end - 1]))
+        {
+            end--;
+        }
+
+        return heading[..end].ToString();
+    }
+
     static List<(string HeadingPath, string Content)> SplitIntoSections(string[] lines, string title)
     {
         var sections = new List<(string HeadingPath, string Content)>();
@@ -302,7 +327,7 @@ public static partial class MarkdownChunker
             if (!inCodeFence && line.StartsWith("## ", StringComparison.Ordinal))
             {
                 CloseSection();
-                currentSecondLevel = line[3..].Trim();
+                currentSecondLevel = BoundHeading(line.AsSpan(3).Trim());
                 currentPath = $"{title} > {currentSecondLevel}";
                 continue;
             }
@@ -310,7 +335,7 @@ public static partial class MarkdownChunker
             if (!inCodeFence && line.StartsWith("### ", StringComparison.Ordinal))
             {
                 CloseSection();
-                var thirdLevel = line[4..].Trim();
+                var thirdLevel = BoundHeading(line.AsSpan(4).Trim());
                 currentPath = currentSecondLevel.Length == 0
                     ? $"{title} > {thirdLevel}"
                     : $"{title} > {currentSecondLevel} > {thirdLevel}";
@@ -360,6 +385,32 @@ public static partial class MarkdownChunker
         if (current.Length > 0)
         {
             yield return current.ToString();
+        }
+    }
+
+    /// <summary>
+    /// Charges the composite embedding length before allocating it for hashing or emission. A pathological page
+    /// stops at its affordable prefix rather than amplifying metadata without bound.
+    /// </summary>
+    /// <param name="remaining">The page-wide allowance in UTF-16 characters.</param>
+    sealed class EmbeddingOutputBudget(long remaining)
+    {
+        long _remaining = remaining;
+
+        public bool Exhausted { get; private set; }
+
+        public bool TryTake(string title, string headingPath, string content)
+        {
+            // Keep this length in sync with Chunk.EmbeddingInputFor: "title — path\n\ncontent".
+            var length = (long)title.Length + headingPath.Length + content.Length + 5;
+            if (length > _remaining)
+            {
+                Exhausted = true;
+                return false;
+            }
+
+            _remaining -= length;
+            return true;
         }
     }
 }

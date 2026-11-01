@@ -28,6 +28,7 @@ public class a_button_dispatcher : for_ActionButtons.given.an_action_interaction
 
     protected IComponentInteractionResultHandler<ButtonInteractionContext> Results { get; private set; } = null!;
     protected IInteractionLog Interactions { get; private set; } = null!;
+    protected FeedbackVotes Votes { get; private set; } = null!;
     protected int DependencyResolutions { get; private set; }
     protected int Dispatches { get; private set; }
 
@@ -66,7 +67,8 @@ public class a_button_dispatcher : for_ActionButtons.given.an_action_interaction
         var config = Microsoft.Extensions.Options.Options.Create(Options);
         services.AddSingleton(config);
         services.AddSingleton(Work);
-        services.AddSingleton(new FeedbackVotes(config, Clock));
+        Votes = new(config, Clock);
+        services.AddSingleton(Votes);
         services.AddSingleton(new ConversationContextReader(History, Clock));
         services.AddTransient(_ =>
         {
