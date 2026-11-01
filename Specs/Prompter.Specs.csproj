@@ -27,5 +27,6 @@
     <ItemGroup>
         <EmbeddedResource Include="Fixtures\landing-page.md" LogicalName="landing-page.md" />
         <EmbeddedResource Include="Fixtures\arc.md" LogicalName="arc.md" />
+        <EmbeddedResource Include="Fixtures\cratis-stack.md" LogicalName="cratis-stack.md" />
     </ItemGroup>
 </Project>

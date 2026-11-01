@@ -54,7 +54,7 @@ public partial record DocumentationMetadata(PageUrl Page, DateTimeOffset? PageLa
         return new(page, modified, version);
     }
 
-    static (List<string> Lines, string Body) Split(string markdown)
+    internal static (List<string> Lines, string Body) Split(string markdown)
     {
         if (!markdown.StartsWith("---", StringComparison.Ordinal))
         {
@@ -71,7 +71,7 @@ public partial record DocumentationMetadata(PageUrl Page, DateTimeOffset? PageLa
         return (lines, markdown[(end + 4)..]);
     }
 
-    static string? Unique(List<string> lines, string key)
+    internal static string? Unique(List<string> lines, string key)
     {
         var values = lines
             .Select(line => Scalar.Match(line))

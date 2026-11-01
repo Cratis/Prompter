@@ -23,7 +23,8 @@ public class and_page_has_frontmatter : Specification
 
     void Because() => _chunks = [.. MarkdownChunker.Chunk(new PageUrl("https://cratis.io/getting-started.md"), Markdown)];
 
-    [Fact] void should_produce_a_single_chunk() => _chunks.Length.ShouldEqual(1);
-    [Fact] void should_strip_the_frontmatter() => _chunks[0].Content.ShouldNotContain("description:");
+    [Fact] void should_produce_the_body_and_a_summary_chunk() => _chunks.Length.ShouldEqual(2);
+    [Fact] void should_strip_the_frontmatter() => _chunks.Any(chunk => chunk.Content.Contains("description:")).ShouldBeFalse();
     [Fact] void should_keep_the_body() => _chunks[0].Content.ShouldContain("Install the packages.");
+    [Fact] void should_not_leak_the_title_key() => _chunks.Any(chunk => chunk.Content.Contains("title:")).ShouldBeFalse();
 }
