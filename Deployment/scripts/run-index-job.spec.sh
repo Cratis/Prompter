@@ -6,7 +6,7 @@ set -euo pipefail
 script="$(cd "$(dirname "$0")" && pwd)/run-index-job.sh"
 export PROMPTER_INDEX_MODEL=voyage-4
 export PROMPTER_INDEX_PRICE_PER_MILLION_TOKENS=0.06
-export PROMPTER_INDEX_MAX_RUN_DOLLARS=0.10
+export PROMPTER_INDEX_MAX_RUN_DOLLARS=0.25
 export PROMPTER_INDEX_MAX_DAILY_DOLLARS=0.50
 # Offline specs must not inherit an enabled schedule from the caller.
 unset PROMPTER_SCHEDULED_INDEXING_ENABLED
@@ -26,11 +26,11 @@ expect_rejection env PROMPTER_INDEX_MODE=scheduled PROMPTER_SCHEDULED_INDEXING_E
 manifest=$(PROMPTER_INDEX_MODE=scheduled PROMPTER_SCHEDULED_INDEXING_ENABLED=true "$script" --print-manifest example.invalid/prompter:spec index-spec)
 jq -e '.spec.template.spec.containers[0].args == ["index", "--scheduled"]' <<<"$manifest"
 jq -e '.spec.template.spec.containers[0].env |
-    any(.[]; .name == "Cratis__Prompter__Ingestion__MaxIncrementalTokens" and .value == "1000000") and
-    any(.[]; .name == "Cratis__Prompter__Ingestion__MaxRunDollars" and .value == "0.10")' <<<"$manifest"
+    any(.[]; .name == "Cratis__Prompter__Ingestion__MaxIncrementalTokens" and .value == "4000000") and
+    any(.[]; .name == "Cratis__Prompter__Ingestion__MaxRunDollars" and .value == "0.25")' <<<"$manifest"
 
 manifest=$(PROMPTER_INDEX_MODE=full PROMPTER_INDEX_CONFIRMATION='FULL REINDEX' \
-    PROMPTER_INDEX_PRICE_PER_MILLION_TOKENS=0.06 PROMPTER_INDEX_MAX_RUN_DOLLARS=0.10 PROMPTER_INDEX_MAX_DAILY_DOLLARS=0.50 \
+    PROMPTER_INDEX_PRICE_PER_MILLION_TOKENS=0.06 PROMPTER_INDEX_MAX_RUN_DOLLARS=0.25 PROMPTER_INDEX_MAX_DAILY_DOLLARS=0.50 \
     "$script" --print-manifest example.invalid/prompter:spec index-spec)
 jq -e '.spec.template.spec.containers[0] | .args == ["index", "--full", "--confirm-full-reindex=FULL REINDEX"] and
     any(.env[]; .name == "Cratis__Prompter__Ingestion__MaxDailyDollars" and .value == "0.50")' <<<"$manifest"

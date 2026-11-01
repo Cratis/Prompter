@@ -206,7 +206,7 @@ same outbound HTTPS access as the bot, without joining the bot's Service. The da
 also serializes CLI, HTTP and Jobs across processes; contention fails immediately. The shared workflow
 concurrency group is `prompter-production-operations`, with no cancellation or deletion of an active Job.
 
-The workflow fixes Voyage pricing at **$0.06/million tokens**, with **$0.10/run** and **$0.50/day**
+The workflow fixes Voyage pricing at **$0.06/million tokens**, with **$0.25/run** and **$0.50/day**
 ceilings; these are not repository variables. Missing/zero pricing or ceilings disable paid work.
 Configure the equivalent `Ingestion` options on the bot for HTTP/CLI runs; all runs reserve against the
 same database UTC-day allowance. Reservations include `Voyage.IndexMaxRetries + 1` attempts (6),
@@ -214,7 +214,7 @@ use UTF-8 bytes plus framing (not characters/4), and are retained after
 failure or unknown provider outcomes. They are upper bounds, not measured provider usage or invoices.
 
 The daily Job passes `--scheduled`: at most one admitted scheduled run per UTC day, with a
-retry-inclusive **1M tokens/run** ceiling (about 167 KB of changed chunk text). Plain manual runs remain incremental. Full runs have a default
+retry-inclusive **4M tokens/run** ceiling (about 667 KB of changed chunk text; the reservation is a byte-level upper bound, real Voyage usage is roughly a quarter of the bytes). Plain manual runs remain incremental. Full runs have a default
 **25M tokens/run** ceiling and require the workflow's `full` input plus literal confirmation **FULL REINDEX**
 and the existing `production` environment approval. The script equivalent uses `PROMPTER_INDEX_MODE=full`
 and `PROMPTER_INDEX_CONFIRMATION='FULL REINDEX'`. Never schedule full mode. Token ceilings are configurable

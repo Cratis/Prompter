@@ -22,7 +22,7 @@ public class IngestionOptions
     public IList<string> ExcludedPathSegments { get; set; } = ["client-snippets", "api-reference"];
 
     /// <summary>Gets or sets the retry-inclusive token cap for an incremental pass.</summary>
-    public long MaxIncrementalTokens { get; set; } = 1_000_000;
+    public long MaxIncrementalTokens { get; set; } = 4_000_000;
 
     /// <summary>Gets or sets the retry-inclusive token cap for an explicitly confirmed full pass.</summary>
     public long MaxFullTokens { get; set; } = 25_000_000;
