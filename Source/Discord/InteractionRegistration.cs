@@ -16,5 +16,6 @@ public static class InteractionRegistration
     /// <param name="services">The host services.</param>
     /// <returns>The services for further registration.</returns>
     public static IServiceCollection AddPrompterInteractions(this IServiceCollection services) =>
-        services.AddApplicationCommands().AddComponentInteractions<ButtonInteraction, ButtonInteractionContext>();
+        services.AddApplicationCommands().AddComponentInteractions<ButtonInteraction, ButtonInteractionContext>(options =>
+            options.PreExecutionHandler = new ButtonAdmission());
 }

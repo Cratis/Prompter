@@ -7,6 +7,9 @@ using Cratis.Prompter.Discord;
 using Cratis.Prompter.Storage;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.Options;
+using NetCord;
+using NetCord.Hosting.Services.ComponentInteractions;
 using NetCord.Rest;
 using NetCord.Services.ComponentInteractions;
 
@@ -18,6 +21,19 @@ public class and_all_button_factories_are_used : Specification
     Type[] _modules = [];
     string[] _prefixes = [];
 
+    static Type? ModuleContext(Type module)
+    {
+        for (var parent = module.BaseType; parent is not null; parent = parent.BaseType)
+        {
+            if (parent.IsGenericType && parent.GetGenericTypeDefinition() == typeof(ComponentInteractionModule<>))
+            {
+                return parent.GenericTypeArguments[0];
+            }
+        }
+
+        return null;
+    }
+
     void Establish()
     {
         var services = new ServiceCollection();
@@ -26,7 +42,7 @@ public class and_all_button_factories_are_used : Specification
         services.AddPrompterInteractions();
         _provider = services.BuildServiceProvider();
         _modules = typeof(Feedback).Assembly.GetTypes()
-            .Where(type => type.BaseType is { IsGenericType: true } parent && parent.GetGenericTypeDefinition() == typeof(ComponentInteractionModule<>)).ToArray();
+            .Where(type => ModuleContext(type) is not null).ToArray();
         var question = new QuestionLink(123, 456);
         var token = new string('a', 32);
         var ids = new[]
@@ -53,10 +69,10 @@ public class and_all_button_factories_are_used : Specification
     }
 
     [Fact] void should_register_every_module_context() => _modules.ShouldEachConformTo(module =>
-        _provider.GetService(typeof(ComponentInteractionService<>).MakeGenericType(module.BaseType!.GenericTypeArguments[0])) is not null);
+        _provider.GetService(typeof(ComponentInteractionService<>).MakeGenericType(ModuleContext(module)!)) is not null);
 
     [Fact] void should_cover_every_rendered_prefix_with_a_registered_module() => _prefixes.ShouldEachConformTo(prefix =>
-        _modules.Any(module => _provider.GetService(typeof(ComponentInteractionService<>).MakeGenericType(module.BaseType!.GenericTypeArguments[0])) is not null &&
+        _modules.Any(module => _provider.GetService(typeof(ComponentInteractionService<>).MakeGenericType(ModuleContext(module)!)) is not null &&
             module.GetMethods().Any(method => method.GetCustomAttribute<ComponentInteractionAttribute>()?.CustomId == prefix)));
 
     [Fact] void should_resolve_one_service_that_knows_every_prefix()
@@ -65,6 +81,21 @@ public class and_all_button_factories_are_used : Specification
         var registered = service.GetComponentInteractions().Keys.Select(key => key.ToString()).ToArray();
         _prefixes.ShouldEachConformTo(prefix => registered.Contains(prefix));
         _provider.GetServices<IComponentInteractionService>().Count().ShouldEqual(1);
+    }
+
+    [Fact] void should_gate_every_module_with_the_single_button_context() => _modules.ShouldEachConformTo(module =>
+        ModuleContext(module) == typeof(ButtonInteractionContext) &&
+        _provider.GetRequiredService<IOptions<ComponentInteractionServiceOptions<ButtonInteraction, ButtonInteractionContext>>>().Value.PreExecutionHandler is ButtonAdmission);
+
+    [Fact] void should_cover_every_attributed_method_with_the_gated_dispatcher()
+    {
+        var methods = typeof(Feedback).Assembly.GetTypes().SelectMany(type => type.GetMethods())
+            .Where(method => Attribute.IsDefined(method, typeof(ComponentInteractionAttribute))).ToArray();
+        var registered = _provider.GetRequiredService<ComponentInteractionService<ButtonInteractionContext>>().GetComponentInteractions().Keys
+            .Select(key => key.ToString()).ToArray();
+        methods.Length.ShouldBeGreaterThan(0);
+        methods.ShouldEachConformTo(method => ModuleContext(method.ReflectedType!) == typeof(ButtonInteractionContext) &&
+            registered.Contains(method.GetCustomAttribute<ComponentInteractionAttribute>()!.CustomId));
     }
 
     void Destroy() => _provider.Dispose();
