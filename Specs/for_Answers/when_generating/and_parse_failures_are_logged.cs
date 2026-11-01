@@ -30,7 +30,7 @@ public class and_parse_failures_are_logged : given.a_grounded_answerer
 
     async Task Because() => result = await _answerer.For(new("Question?"), "cli", TestContext.Current.CancellationToken);
 
-    [Fact] void should_log_both_parse_failures() => Warnings.Length.ShouldEqual(2);
+    [Fact] void should_log_the_single_parse_failure() => Warnings.Length.ShouldEqual(1);
     [Fact] void should_log_only_length_and_finish_reason() => Warnings.All(values => values.Select(pair => pair.Key).SequenceEqual(["ResponseLength", "FinishReason", "{OriginalFormat}"])).ShouldBeTrue();
     [Fact] void should_report_the_response_length() => Warnings.All(values => Equals(values.Single(pair => pair.Key == "ResponseLength").Value, Response.Length)).ShouldBeTrue();
     [Fact] void should_report_the_finish_reason() => Warnings.All(values => Equals(values.Single(pair => pair.Key == "FinishReason").Value, ChatFinishReason.Length.ToString())).ShouldBeTrue();

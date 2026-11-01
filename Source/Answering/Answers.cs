@@ -168,25 +168,20 @@ public partial class Answers(
             ChatRole.System,
             [new TextContent(SystemPrompt.Text).WithCacheControl(new CacheControlEphemeral())]);
 
-        for (var attempt = 0; attempt < 2; attempt++)
+        var response = await chatClient.GetResponseAsync(
+            [
+                systemMessage,
+                new(ChatRole.User, ComposeUserMessage(question, qualified, mode))
+            ],
+            new() { MaxOutputTokens = options.Value.Answering.MaxOutputTokens, ResponseFormat = AnswerGeneration.Format },
+            cancellationToken);
+        var generated = AnswerGeneration.Parse(response.Text);
+        if (generated is null)
         {
-            var response = await chatClient.GetResponseAsync(
-                [
-                    systemMessage,
-                    new(ChatRole.User, ComposeUserMessage(question, qualified, mode))
-                ],
-                new() { MaxOutputTokens = options.Value.Answering.MaxOutputTokens, ResponseFormat = AnswerGeneration.Format },
-                cancellationToken);
-            var generated = AnswerGeneration.Parse(response.Text);
-            if (generated is not null)
-            {
-                return generated;
-            }
-
             logger.GenerationParseFailed(response.Text.Length, response.FinishReason?.ToString());
         }
 
-        return null;
+        return generated;
     }
 
     IReadOnlyList<string> Suggest(GeneratedAnswer generated, Question question) =>

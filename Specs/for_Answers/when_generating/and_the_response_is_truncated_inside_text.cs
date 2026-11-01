@@ -26,7 +26,7 @@ public class and_the_response_is_truncated_inside_text : given.a_grounded_answer
 
     async Task Because() => result = await answers.For(new("What are all Cratis products?"), "discord", TestContext.Current.CancellationToken);
 
-    [Fact] void should_retry_exactly_once() => chat.Received(2).GetResponseAsync(Arg.Any<IEnumerable<ChatMessage>>(), Arg.Any<ChatOptions>(), Arg.Any<CancellationToken>());
+    [Fact] void should_dispatch_exactly_once() => chat.Received(1).GetResponseAsync(Arg.Any<IEnumerable<ChatMessage>>(), Arg.Any<ChatOptions>(), Arg.Any<CancellationToken>());
     [Fact] void should_not_claim_a_lack_of_grounding() => result.IsRefusal.ShouldBeFalse();
     [Fact] void should_explain_the_composition_failure() => result.Text.ShouldEqual("I found relevant pages but couldn't compose an answer. These pages may help.");
     [Fact] void should_offer_the_top_four_distinct_pages() => result.Citations.Select(page => page.Value).ShouldEqual(["https://cratis.io/chronicle/", "https://cratis.io/arc/", "https://cratis.io/components/", "https://cratis.io/cli/"]);

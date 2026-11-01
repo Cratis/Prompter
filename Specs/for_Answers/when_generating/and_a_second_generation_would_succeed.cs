@@ -7,7 +7,7 @@ using NSubstitute;
 
 namespace Cratis.Prompter.Specs.for_Answers.when_generating;
 
-public class and_the_retry_is_parseable : given.a_grounded_answerer
+public class and_a_second_generation_would_succeed : given.a_grounded_answerer
 {
     void Establish()
     {
@@ -20,10 +20,10 @@ public class and_the_retry_is_parseable : given.a_grounded_answerer
 
     async Task Because() => result = await answers.For(new("What is Chronicle?"), "cli", TestContext.Current.CancellationToken);
 
-    [Fact] void should_retry_once_with_the_same_output_bound() => chat.Received(2).GetResponseAsync(Arg.Any<IEnumerable<ChatMessage>>(), Arg.Is<ChatOptions>(value => value.MaxOutputTokens == options.Answering.MaxOutputTokens), Arg.Any<CancellationToken>());
-    [Fact] void should_use_the_retry_text() => result.Text.ShouldEqual("Chronicle stores facts [1].");
-    [Fact] void should_use_the_retry_category() => result.Category.ShouldEqual(InteractionCategory.Answered);
-    [Fact] void should_use_the_retry_product() => result.Product.ShouldEqual(InteractionProduct.Chronicle);
+    [Fact] void should_dispatch_once_with_the_output_bound() => chat.Received(1).GetResponseAsync(Arg.Any<IEnumerable<ChatMessage>>(), Arg.Is<ChatOptions>(value => value.MaxOutputTokens == options.Answering.MaxOutputTokens), Arg.Any<CancellationToken>());
+    [Fact] void should_offer_relevant_pages() => result.Text.ShouldEqual("I found relevant pages but couldn't compose an answer. These pages may help.");
+    [Fact] void should_not_classify_from_another_generation() => result.Category.ShouldEqual(InteractionCategory.Unknown);
+    [Fact] void should_not_identify_a_product_from_another_generation() => result.Product.ShouldEqual(InteractionProduct.OtherOrUnknown);
     [Fact] void should_not_refuse() => result.IsRefusal.ShouldBeFalse();
     [Fact] void should_cite_the_qualified_page() => result.Citations.Single().Value.ShouldEqual("https://cratis.io/chronicle/");
 }
