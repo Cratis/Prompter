@@ -274,7 +274,7 @@ Configuration binds to the `Cratis:Prompter` section (environment variables use 
 | Provider-confirmed primary allocation reset | `Cratis__Prompter__Anthropic__PrimaryQuotaResetAt` | — |
 | Answer model override | `Cratis__Prompter__Anthropic__Answer__Model` | `claude-haiku-5-5` (priced by `Protection__AnthropicAnswer__*`; default input `0.20` worst cache-write, output `0.50` USD per million) |
 | Answer adaptive effort | `Cratis__Prompter__Anthropic__Answer__Effort` | empty (none) |
-| Answer output-token ceiling  | `Cratis__Prompter__Anthropic__Answer__MaxOutputTokens` | `768` |
+| Answer output-token ceiling  | `Cratis__Prompter__Anthropic__Answer__MaxOutputTokens` | `1536` |
 | Answer provider deadline (seconds, max 60) | `Cratis__Prompter__Anthropic__Answer__TimeoutSeconds` | `60` |
 | Answer secondary-account opt-in | `Cratis__Prompter__Anthropic__Answer__AllowSecondary` | `false` |
 | Issue-draft model override | `Cratis__Prompter__Anthropic__IssueDraft__Model` | default task model |

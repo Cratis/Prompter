@@ -20,5 +20,6 @@ public class and_the_question_is_scoped : given.a_grounded_answerer
     async Task Because() => result = await answers.For(new("How do I handle commands?") { Scope = InteractionProduct.Arc }, "cli", TestContext.Current.CancellationToken);
 
     [Fact] void should_pass_the_scope_to_retrieval() => passages.Received(1).Search(Arg.Is<Question>(question => question.Scope == InteractionProduct.Arc), Arg.Any<int>(), Arg.Any<CancellationToken>());
+    [Fact] void should_not_retry_unscoped() => passages.DidNotReceive().Search(Arg.Is<Question>(question => question.Scope == null), Arg.Any<int>(), Arg.Any<CancellationToken>());
     [Fact] void should_generate_an_answer() => result.Clarification.ShouldBeNull();
 }

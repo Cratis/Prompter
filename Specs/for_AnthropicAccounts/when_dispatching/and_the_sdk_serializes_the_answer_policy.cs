@@ -32,7 +32,7 @@ public class and_the_sdk_serializes_the_answer_policy : Specification
     [Fact] void should_send_haiku_55() => _body.RootElement.GetProperty("model").GetString().ShouldEqual("claude-haiku-5-5");
     [Fact] void should_not_send_thinking() => _body.RootElement.TryGetProperty("thinking", out _).ShouldBeFalse();
     [Fact] void should_not_send_effort() => _body.RootElement.TryGetProperty("output_config", out _).ShouldBeFalse();
-    [Fact] void should_send_bounded_output() => _body.RootElement.GetProperty("max_tokens").GetInt32().ShouldEqual(768);
+    [Fact] void should_send_bounded_output() => _body.RootElement.GetProperty("max_tokens").GetInt32().ShouldEqual(1536);
     [Fact] void should_omit_temperature() => _body.RootElement.TryGetProperty("temperature", out _).ShouldBeFalse();
     [Fact] void should_capture_input_usage() => _response.Usage!.InputTokenCount.ShouldEqual(5);
     [Fact] void should_capture_output_usage() => _response.Usage!.OutputTokenCount.ShouldEqual(2);

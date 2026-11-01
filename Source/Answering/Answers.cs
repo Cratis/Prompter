@@ -38,11 +38,13 @@ public partial class Answers(
     public async Task<Answer> For(Question question, string source, CancellationToken cancellationToken = default)
     {
         var answering = options.Value.Answering;
-        var candidates = (await passages.Search(new(question.Value) { Scope = question.Scope }, Math.Max(answering.MaxPassages, Passages.MaximumCandidates), cancellationToken))
-            .Where(passage => SourceHosts.IsCitable(passage.Page, options.Value)).ToArray();
+        var (candidates, qualified) = await Retrieve(question, cancellationToken);
+        if (qualified.Length == 0 && question.Scope is not null)
+        {
+            (candidates, qualified) = await Retrieve(question with { Scope = null }, cancellationToken);
+        }
+
         var found = candidates.Take(answering.MaxPassages).ToArray();
-        var qualified = candidates.Where(passage => double.IsFinite(passage.SemanticSimilarity) &&
-            passage.SemanticSimilarity is >= -1 and <= 1 && passage.SemanticSimilarity >= answering.MinSemanticSimilarity).Take(answering.MaxPassages).ToArray();
         var confidence = qualified.Length > 0 ? qualified[0].SemanticSimilarity : candidates
             .Where(passage => double.IsFinite(passage.SemanticSimilarity) && passage.SemanticSimilarity is >= -1 and <= 1)
             .Select(passage => passage.SemanticSimilarity).DefaultIfEmpty(0).Max();
@@ -66,27 +68,13 @@ public partial class Answers(
         }
         else
         {
-            // The system prompt is a frozen constant, so mark it as an Anthropic prompt-cache
-            // breakpoint (D-5). The AsIChatClient adapter maps this to cache_control:
-            // { type: "ephemeral" } on the system block, letting the cached prefix be reused
-            // across questions once it exceeds the model's minimum cacheable length.
-            var systemMessage = new ChatMessage(
-                ChatRole.System,
-                [new TextContent(SystemPrompt.Text).WithCacheControl(new CacheControlEphemeral())]);
-
-            var response = await chatClient.GetResponseAsync(
-                [
-                    systemMessage,
-                    new(ChatRole.User, ComposeUserMessage(question, qualified, mode))
-                ],
-                new() { MaxOutputTokens = answering.MaxOutputTokens, ResponseFormat = AnswerGeneration.Format },
-                cancellationToken);
-
-            var generated = AnswerGeneration.Parse(response.Text);
-            var citations = CitedPages(generated?.Text, qualified);
-            answer = generated is null
-                ? Answer.Refusal(confidence, found)
-                : new(generated.Text, citations, confidence, IsRefusal: false, qualified) { Category = generated.Category, Product = generated.Product, CitationProvenance = Provenance(citations, qualified), Suggestions = Suggest(generated, question) };
+            logger.AnsweringWithPassage(qualified[0].Page.Value, qualified[0].SemanticSimilarity);
+            var generated = await Generate(question, qualified, mode, cancellationToken) ?? new GeneratedAnswer(
+                "I found relevant pages but couldn't compose an answer. These pages may help.",
+                InteractionCategory.Unknown,
+                InteractionProduct.OtherOrUnknown);
+            var citations = CitedPages(generated.Text, qualified);
+            answer = new(generated.Text, citations, confidence, IsRefusal: false, qualified) { Category = generated.Category, Product = generated.Product, CitationProvenance = Provenance(citations, qualified), Suggestions = Suggest(generated, question) };
         }
 
         var interactionId = await interactionLog.Record(
@@ -159,6 +147,47 @@ public partial class Answers(
     /// <returns>The agreed value, or the default when absent or disputed.</returns>
     static T? Agreed<T>(Passage[] passages, Func<Passage, T?> select) =>
         passages.Select(select).Distinct().ToArray() is [var only] ? only : default;
+
+    async Task<(Passage[] Candidates, Passage[] Qualified)> Retrieve(Question question, CancellationToken cancellationToken)
+    {
+        var answering = options.Value.Answering;
+        var candidates = (await passages.Search(new(question.Value) { Scope = question.Scope }, Math.Max(answering.MaxPassages, Passages.MaximumCandidates), cancellationToken))
+            .Where(passage => SourceHosts.IsCitable(passage.Page, options.Value)).ToArray();
+        var qualified = candidates.Where(passage => double.IsFinite(passage.SemanticSimilarity) &&
+            passage.SemanticSimilarity is >= -1 and <= 1 && passage.SemanticSimilarity >= answering.MinSemanticSimilarity).Take(answering.MaxPassages).ToArray();
+        return (candidates, qualified);
+    }
+
+    async Task<GeneratedAnswer?> Generate(Question question, Passage[] qualified, AnswerMode mode, CancellationToken cancellationToken)
+    {
+        // The system prompt is a frozen constant, so mark it as an Anthropic prompt-cache
+        // breakpoint (D-5). The AsIChatClient adapter maps this to cache_control:
+        // { type: "ephemeral" } on the system block, letting the cached prefix be reused
+        // across questions once it exceeds the model's minimum cacheable length.
+        var systemMessage = new ChatMessage(
+            ChatRole.System,
+            [new TextContent(SystemPrompt.Text).WithCacheControl(new CacheControlEphemeral())]);
+
+        for (var attempt = 0; attempt < 2; attempt++)
+        {
+            var response = await chatClient.GetResponseAsync(
+                [
+                    systemMessage,
+                    new(ChatRole.User, ComposeUserMessage(question, qualified, mode))
+                ],
+                new() { MaxOutputTokens = options.Value.Answering.MaxOutputTokens, ResponseFormat = AnswerGeneration.Format },
+                cancellationToken);
+            var generated = AnswerGeneration.Parse(response.Text);
+            if (generated is not null)
+            {
+                return generated;
+            }
+
+            logger.GenerationParseFailed(response.Text.Length, response.FinishReason?.ToString());
+        }
+
+        return null;
+    }
 
     IReadOnlyList<string> Suggest(GeneratedAnswer generated, Question question) =>
         options.Value.Answering.SuggestFollowUps ? FollowUps.From(generated.Suggestions, question.Value) : [];

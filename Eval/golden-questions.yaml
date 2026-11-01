@@ -763,6 +763,42 @@ questions:
     tags: [overview]
     rationale: "The landing description defines Cratis."
 
+  - id: gen-007
+    must_mention: [Chronicle, Arc, Components]
+    product: cross-cutting
+    type: concept
+    question: "what are all cratis products and what do they do?"
+    expected: answer
+    expected_pages:
+      - https://cratis.io/cratis-stack/
+      - https://cratis.io/
+    tags: [overview, product-list]
+    rationale: "Lowercase variant of gen-005; the Capability map still grounds the product overview."
+
+  - id: gen-008
+    must_mention: [Chronicle, Arc, Components]
+    product: cross-cutting
+    type: concept
+    question: "What are all cratis products and what do they do"
+    expected: answer
+    expected_pages:
+      - https://cratis.io/cratis-stack/
+      - https://cratis.io/
+    tags: [overview, product-list]
+    rationale: "Question-mark-free variant of gen-005, matching informal Discord phrasing."
+
+  - id: gen-009
+    must_mention: [Chronicle, Arc, Components]
+    product: cross-cutting
+    type: concept
+    question: "list all cratis products"
+    expected: answer
+    expected_pages:
+      - https://cratis.io/cratis-stack/
+      - https://cratis.io/
+    tags: [overview, product-list]
+    rationale: "Imperative variant of gen-005; the Capability map supports a concise product list."
+
   # ===========================================================================
   # Out of scope — the bot MUST refuse honestly. No expected_pages. These
   # calibrate the refusal threshold (P-07) and guard the over-answer failure mode.
