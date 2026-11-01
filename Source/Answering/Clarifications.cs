@@ -25,7 +25,7 @@ public static partial class Clarifications
     /// <returns>The clarification, or <see langword="null"/> when the question is not ambiguous.</returns>
     public static Clarification? Detect(Question question, IReadOnlyList<Passage> qualified, string docsSiteUrl, double margin)
     {
-        if (question.Scope is not null || NamesProduct(question))
+        if (question.Scope is not null || NamesProduct(question) || IsCrossCutting(qualified, docsSiteUrl))
         {
             return null;
         }
@@ -73,4 +73,16 @@ public static partial class Clarifications
 
     static bool NamesProduct(Question question) =>
         ProductName.IsMatch(question.Value) || question.Conversation.Messages.Any(message => ProductName.IsMatch(message.Content));
+
+    /// <summary>
+    /// Determines whether the strongest passage is cross-cutting (belongs to no single product). A question
+    /// whose best evidence is already cross-cutting - such as "what are all the Cratis products?" - is answered
+    /// directly from that evidence rather than clarified between single-product pages ranking beneath it.
+    /// </summary>
+    /// <param name="qualified">The passages that met the similarity threshold.</param>
+    /// <param name="docsSiteUrl">The documentation site base URL.</param>
+    /// <returns><see langword="true"/> when the strongest passage belongs to no single product.</returns>
+    static bool IsCrossCutting(IReadOnlyList<Passage> qualified, string docsSiteUrl) =>
+        qualified.Count > 0 &&
+        ProductScope.ProductOf(qualified.MaxBy(passage => passage.SemanticSimilarity)!.Page.Value, docsSiteUrl) is null;
 }
