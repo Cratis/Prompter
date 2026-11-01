@@ -214,7 +214,7 @@ Configuration binds to the `Cratis:Prompter` section (environment variables use 
 | Sample allowlist (indexed array) | `Cratis__Prompter__Ingestion__Samples__Paths__0` (and subsequent indices) | Curated paths above |
 | Maximum sample file bytes | `Cratis__Prompter__Ingestion__Samples__MaxFileBytes` | `16384` |
 | Maximum sample files | `Cratis__Prompter__Ingestion__Samples__MaxFiles` | `300` |
-| Incremental token ceiling (including retries) | `Cratis__Prompter__Ingestion__MaxIncrementalTokens` | `1000000` |
+| Incremental token ceiling (including retries) | `Cratis__Prompter__Ingestion__MaxIncrementalTokens` | `4000000` |
 | Confirmed full token ceiling (including retries) | `Cratis__Prompter__Ingestion__MaxFullTokens` | `25000000` |
 | Verified model price per million tokens | `Cratis__Prompter__Ingestion__PricePerMillionTokens` | `0` (paid indexing disabled) |
 | Index dollar ceiling per run | `Cratis__Prompter__Ingestion__MaxRunDollars` | `0` (paid indexing disabled) |

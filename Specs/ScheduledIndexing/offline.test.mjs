@@ -9,7 +9,7 @@ const script = 'Deployment/scripts/run-index-job.sh';
 const settings = {
     PROMPTER_INDEX_MODEL: 'voyage-4',
     PROMPTER_INDEX_PRICE_PER_MILLION_TOKENS: '0.06',
-    PROMPTER_INDEX_MAX_RUN_DOLLARS: '0.10',
+    PROMPTER_INDEX_MAX_RUN_DOLLARS: '0.25',
     PROMPTER_INDEX_MAX_DAILY_DOLLARS: '0.50'
 };
 function manifest(overrides = {}, image = 'example.invalid/prompter:spec', name = 'index-spec') {
@@ -49,8 +49,8 @@ test('authorized schedule has bounded configuration and restricted security', ()
         Protection__Voyage__MaxInputTokens: '32000', Voyage__Model: 'voyage-4', Voyage__Dimensions: '1024',
         Voyage__BatchSize: '128', Voyage__MaxRetries: '3', Voyage__IndexMaxRetries: '5',
         Voyage__RetryBaseDelayMilliseconds: '500', Voyage__TimeoutSeconds: '60', Voyage__IndexTimeoutSeconds: '120',
-        Ingestion__MaxIncrementalTokens: '1000000', Ingestion__PricePerMillionTokens: '0.06',
-        Ingestion__MaxRunDollars: '0.10', Ingestion__MaxDailyDollars: '0.50'
+        Ingestion__MaxIncrementalTokens: '4000000', Ingestion__PricePerMillionTokens: '0.06',
+        Ingestion__MaxRunDollars: '0.25', Ingestion__MaxDailyDollars: '0.50'
     };
     for (const [key, value] of Object.entries(expected)) assert.equal(values[`Cratis__Prompter__${key}`], value, key);
     const references = container.env.filter(item => item.valueFrom);
