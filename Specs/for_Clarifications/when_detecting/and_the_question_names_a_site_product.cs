@@ -22,5 +22,6 @@ public class and_the_question_names_a_site_product : Specification
     [InlineData("direct")]
     [InlineData("stage")]
     [InlineData("specifications")]
+    [InlineData("debug in Visual Studio")]
     public void should_not_treat_common_words_as_product_names(string word) => Clarifications.Detect(new($"How do I {word}?"), _passages, "https://cratis.io", 0.03).ShouldNotBeNull();
 }
