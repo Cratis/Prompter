@@ -18,6 +18,6 @@ public class and_inputs_require_retries : Specification
         _budget = IndexBudget.Preflight(["é"], options, new IndexRequest());
     }
 
-    [Fact] void should_use_utf8_bytes_plus_framing_for_every_attempt() => _budget.Tokens.ShouldEqual(198);
-    [Fact] void should_reserve_every_potential_attempt() => _budget.Dollars.ShouldEqual(0.000198m);
+    [Fact] void should_include_one_batch_of_retry_headroom() => _budget.Tokens.ShouldEqual(215);
+    [Fact] void should_price_the_admission_estimate() => _budget.Dollars.ShouldEqual(0.000215m);
 }

@@ -14,6 +14,7 @@ namespace Cratis.Prompter.Storage;
 public sealed class IndexLease(NpgsqlConnection connection) : IIndexLease
 {
     const long LockKey = 0x50524F4D494E44;
+    readonly Dictionary<DateOnly, IndexExposure> _reserved = [];
     string? _profile;
     string? _storedProfile;
 
@@ -74,12 +75,38 @@ public sealed class IndexLease(NpgsqlConnection connection) : IIndexLease
                 scheduled = index_reservations.scheduled OR EXCLUDED.scheduled
             WHERE (EXCLUDED.dollars = 0 OR index_reservations.dollars + EXCLUDED.dollars <= $4)
                 AND NOT (index_reservations.scheduled AND EXCLUDED.scheduled)
+            RETURNING day
             """;
         command.Parameters.AddWithValue(exposure.Tokens);
         command.Parameters.AddWithValue(exposure.Dollars);
         command.Parameters.AddWithValue(scheduled);
         command.Parameters.AddWithValue(dailyLimit);
-        if (await command.ExecuteNonQueryAsync(cancellationToken) != 1) throw new IndexBudgetExceeded();
+        await using var reader = await command.ExecuteReaderAsync(cancellationToken);
+        if (!await reader.ReadAsync(cancellationToken)) throw new IndexBudgetExceeded();
+        var day = await reader.GetFieldValueAsync<DateOnly>(0, cancellationToken);
+        var previous = _reserved.GetValueOrDefault(day, new(0, 0));
+        _reserved[day] = new(checked(previous.Tokens + exposure.Tokens), previous.Dollars + exposure.Dollars);
+    }
+
+    /// <inheritdoc/>
+    public async Task Release(IndexExposure unused, CancellationToken cancellationToken)
+    {
+        var remaining = unused;
+        foreach (var day in _reserved.Keys.OrderDescending().ToArray())
+        {
+            var reserved = _reserved[day];
+            var tokens = Math.Clamp(remaining.Tokens, 0, reserved.Tokens);
+            var dollars = Math.Clamp(remaining.Dollars, 0, reserved.Dollars);
+            if (tokens == 0 && dollars == 0) continue;
+            await using var command = connection.CreateCommand();
+            command.CommandText = "UPDATE index_reservations SET tokens = tokens - $1, dollars = dollars - $2 WHERE day = $3 AND tokens >= $1 AND dollars >= $2";
+            command.Parameters.AddWithValue(tokens);
+            command.Parameters.AddWithValue(dollars);
+            command.Parameters.AddWithValue(day);
+            if (await command.ExecuteNonQueryAsync(cancellationToken) != 1) throw new IndexBudgetExceeded();
+            _reserved[day] = new(reserved.Tokens - tokens, reserved.Dollars - dollars);
+            remaining = new(remaining.Tokens - tokens, remaining.Dollars - dollars);
+        }
     }
 
     /// <inheritdoc/>

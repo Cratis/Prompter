@@ -26,4 +26,5 @@ public class and_a_transient_failure_precedes_success : Specification
 
     [Fact] void should_eventually_succeed() => _result.Count.ShouldEqual(2);
     [Fact] void should_retry_until_it_succeeds() => _inner.Calls.ShouldEqual(3);
+    [Fact] void should_report_three_attempts() => _result.AdditionalProperties![EmbeddingRetry.AttemptsKey].ShouldEqual(3);
 }

@@ -12,6 +12,7 @@ public class and_a_full_rebuild_is_confirmed : given.an_indexer
     void Establish()
     {
         Options.Ingestion.MaxIncrementalTokens = 1;
+        Options.Ingestion.MaxFullRunDollars = 1;
         var page = new DocsPage(new PageUrl("https://cratis.io/a.md"), "# A\n\nAlpha.");
         Chunks.GetHashes(Arg.Any<CancellationToken>()).Returns(MarkdownChunker.Chunk(page.Url, page.Markdown).ToDictionary(chunk => chunk.Id, chunk => chunk.Hash));
     }
