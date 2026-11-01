@@ -23,6 +23,7 @@
   </ItemGroup>
   <ItemGroup>
     <EmbeddedResource Include="Storage/Migrations/**/*.sql" />
+    <None Include="..\Eval\golden-questions.yaml" Link="Eval\golden-questions.yaml" CopyToOutputDirectory="Never" CopyToPublishDirectory="PreserveNewest" />
     <None Update="appsettings.json" CopyToOutputDirectory="PreserveNewest" />
   </ItemGroup>
 </Project>

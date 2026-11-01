@@ -23,6 +23,7 @@ on:
       - ".github/workflows/build.yml"
       - ".github/workflows/postgres-backups.yml"
       - ".github/workflows/reindex-production.yml"
+      - ".github/workflows/eval-production.yml"
       - ".github/scripts/**"
       - "Monitoring/**"
   pull_request:
@@ -39,6 +40,7 @@ on:
       - ".github/workflows/build.yml"
       - ".github/workflows/postgres-backups.yml"
       - ".github/workflows/reindex-production.yml"
+      - ".github/workflows/eval-production.yml"
       - ".github/scripts/**"
       - "Monitoring/**"
 
@@ -62,6 +64,12 @@ jobs:
         run: bash Deployment/scripts/run-index-job.spec.sh
       - name: Lint index Job scripts
         run: shellcheck Deployment/scripts/run-index-job.sh Deployment/scripts/run-index-job.spec.sh
+      - name: Check production eval offline
+        run: node --test Specs/EvalProduction/*.test.mjs
+      - name: Validate eval Job manifests
+        run: bash Deployment/scripts/run-eval-job.spec.sh
+      - name: Lint eval Job scripts
+        run: shellcheck Deployment/scripts/run-eval-job.sh Deployment/scripts/run-eval-job.spec.sh
   dotnet-build:
     permissions:
       contents: read

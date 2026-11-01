@@ -4,6 +4,7 @@
 using Cratis.Prompter.Answering;
 using Cratis.Prompter.Cli;
 using Cratis.Prompter.Digest;
+using Cratis.Prompter.Discord;
 using Cratis.Prompter.Evaluation;
 using Cratis.Prompter.Hosting;
 using Cratis.Prompter.Ingestion;
@@ -60,30 +61,39 @@ if (mode == "eval")
 
 if (mode == "index" || mode == "ask")
 {
-    var builder = Host.CreateApplicationBuilder(mode == "index" ? IndexArguments.ConfigurationArguments(args) : args);
-    builder.AddPrompter();
-
-    using var host = builder.Build();
-    _ = host.Services.GetRequiredService<MetricsExport>();
-    await host.Services.GetRequiredService<IChunks>().EnsureSchema();
-
-    if (mode == "index")
+    try
     {
-        var run = await host.Services.GetRequiredService<IIndexer>().Run(IndexArguments.Parse(args));
-        Console.WriteLine(
-            $"Indexed {run.Pages} pages in {run.Duration:mm\\:ss}: " +
-            $"{run.Embedded} embedded, {run.Unchanged} unchanged, {run.Removed} removed.");
-    }
-    else
-    {
-        var ask = AskArguments.Parse(args.Skip(1));
-        var answer = await host.Services.GetRequiredService<IAnswers>().For(new(ask.Question), "cli");
-        foreach (var line in AskOutput.Lines(answer, ask.Verbose))
+        var builder = Host.CreateApplicationBuilder(mode == "index" ? IndexArguments.ConfigurationArguments(args) : args);
+        builder.AddPrompter();
+
+        using var host = builder.Build();
+        _ = host.Services.GetRequiredService<MetricsExport>();
+        await host.Services.GetRequiredService<IChunks>().EnsureSchema();
+
+        if (mode == "index")
         {
-            Console.WriteLine(line);
+            var run = await host.Services.GetRequiredService<IIndexer>().Run(IndexArguments.Parse(args));
+            Console.WriteLine(
+                $"Indexed {run.Pages} pages in {run.Duration:mm\\:ss}: " +
+                $"{run.Embedded} embedded, {run.Unchanged} unchanged, {run.Removed} removed.");
         }
+        else
+        {
+            var ask = AskArguments.Parse(args.Skip(1));
+            var answer = await host.Services.GetRequiredService<IAnswers>().For(new(ask.Question), "cli");
+            foreach (var line in AskOutput.Lines(answer, ask.Verbose))
+            {
+                Console.WriteLine(line);
+            }
 
-        Environment.ExitCode = AskOutput.ExitCode(answer);
+            Environment.ExitCode = AskOutput.ExitCode(answer);
+        }
+    }
+    catch (Exception error) when (mode == "index")
+    {
+        // An exception escaping Main aborts PID 1 in the container, which surfaces as exit 139, not the cause.
+        await Console.Error.WriteLineAsync(IndexFailure.Message(error));
+        Environment.ExitCode = IndexFailure.ExitCode;
     }
 
     return;
@@ -113,6 +123,9 @@ webBuilder.Services.AddHostedService<RetentionPurge>();
 webBuilder.Services.AddSingleton<IDocsGapInteractions, DocsGapInteractions>();
 webBuilder.Services.AddSingleton<IMaintainerChannel, DiscordMaintainerChannel>();
 webBuilder.Services.AddHostedService<DocsGapDigest>();
+webBuilder.Services.AddSingleton<IForumThreads, DiscordForumThreads>();
+webBuilder.Services.AddSingleton<IForumAnswerer, ForumAnswerer>();
+webBuilder.Services.AddHostedService<DelayedForumAnswers>();
 webBuilder.Services
     .AddDiscordGateway(options =>
     {

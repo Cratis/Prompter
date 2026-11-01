@@ -54,6 +54,25 @@ drafting, using `[REDACTED_SECRET]`; Discord advice recommends rotating real cre
 This heuristic is not a general secret detector: arbitrary opaque values and unfamiliar
 formats may be missed. Never deliberately send real credentials to the bot or eval set.
 
+## Run against production
+
+The "Eval - Production" workflow runs `eval --paid` as a one-off Kubernetes Job in the
+`prompter` namespace, from the deployed release's image, answer-path configuration and shared
+Postgres spend ledger. It is dispatch-only, runs only from `main` and needs approval of the
+`production` environment. The Job is created with the `KUBECONFIG` secret, like the reindex Job.
+
+| Input | Default | Limit |
+| --- | --- | --- |
+| `max_cost` | `2.00` | At most `5.00` dollars; the run stops between cases at the ceiling |
+| `limit` | `60` | At most `60` cases, matching the hourly admission cap |
+| `case` | empty | One case id such as `arc-001` |
+
+- The Job uses the curated set shipped in the image (`/app/Eval/golden-questions.yaml`), so edits to the set take effect with the next release.
+- It fails closed when production answering is disabled; the kill switch is never bypassed.
+- Its spend counts against production's shared daily caps (default daily cap $5, so a $2 run uses up to 40% of a day).
+- The text-free report is uploaded as the `production-eval-report` artifact (`report.json`, `report.md`) and summarized in the job summary. The run fails when scores fall below the thresholds.
+- Eval interactions (source `eval`) are excluded from the weekly docs-gap digest.
+
 ## Legacy paid execution is blocked
 
 There is no implicit paid mode. `--paid`, `--index` and the default invocation fail before any

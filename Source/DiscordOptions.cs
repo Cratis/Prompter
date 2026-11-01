@@ -1,6 +1,8 @@
 // Copyright (c) Cratis. All rights reserved.
 // Licensed under the MIT license. See LICENSE file in the project root for full license information.
 
+using Cratis.Prompter.Discord;
+
 namespace Cratis.Prompter;
 
 /// <summary>
@@ -33,6 +35,9 @@ public class DiscordOptions
 
     /// <summary>Gets or sets channels where answers start public threads. Empty disables this behavior.</summary>
     public IList<ulong> AnswerInThreadChannelIds { get; set; } = [];
+
+    /// <summary>Gets or sets forum channels whose unanswered posts Prompter answers after a delay. Empty disables.</summary>
+    public IList<DelayedForumOptions> DelayedForums { get; set; } = [];
 
     /// <summary>Gets or sets the mentionable role for Ask a human. Null disables the button.</summary>
     public ulong? MaintainerRoleId { get; set; }

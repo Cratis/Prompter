@@ -1,0 +1,77 @@
+# Copyright (c) Cratis. All rights reserved.
+# Licensed under the MIT license. See LICENSE file in the project root for full license information.
+#
+# No public route by decision. The deploy identity cannot port-forward and has no CronJob verbs,
+# but it can create Jobs. Dispatch-only and main-only: it runs the paid eval against production's
+# corpus and shared spend ledger, so it never runs from pull requests, pushes or schedules.
+name: Eval - Production
+
+on:
+  workflow_dispatch:
+    inputs:
+      max_cost:
+        description: Hard ceiling in dollars, at most 5.00
+        type: string
+        default: '2.00'
+      limit:
+        description: Cases to run, at most 60
+        type: string
+        default: '60'
+      case:
+        description: Optional single case id, for example arc-001
+        type: string
+        default: ''
+
+concurrency:
+  group: prompter-production-operations
+  cancel-in-progress: false
+  queue: max
+
+permissions:
+  contents: read
+
+jobs:
+  eval:
+    if: github.ref == 'refs/heads/main'
+    runs-on: ${{ vars.RUNNER_FORCE || 'cratis-arc' }}
+    environment: production
+    timeout-minutes: 40
+    steps:
+      - name: Checkout
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+
+      - name: Validate eval Job manifests
+        run: bash Deployment/scripts/run-eval-job.spec.sh
+
+      - name: Setup kubectl
+        uses: azure/setup-kubectl@bda439f5f36b99b262ebdcd3613869bddb064c8e # v5.2.0
+
+      - name: Run the paid eval in production
+        env:
+          KUBECONFIG_CONTENT: ${{ secrets.KUBECONFIG }}
+          PROMPTER_EVAL_MAX_COST: ${{ inputs.max_cost }}
+          PROMPTER_EVAL_LIMIT: ${{ inputs.limit }}
+          PROMPTER_EVAL_CASE: ${{ inputs.case }}
+          PROMPTER_EVAL_REPORT_DIR: ${{ runner.temp }}/eval-report
+        run: |
+          set -euo pipefail
+          mkdir -p "$PROMPTER_EVAL_REPORT_DIR"
+          printf '%s' "$KUBECONFIG_CONTENT" > "$RUNNER_TEMP/kubeconfig"
+          chmod 600 "$RUNNER_TEMP/kubeconfig"
+          export KUBECONFIG="$RUNNER_TEMP/kubeconfig"
+          Deployment/scripts/run-eval-job.sh
+
+      - name: Upload eval report
+        if: ${{ !cancelled() }}
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+        with:
+          name: production-eval-report
+          path: ${{ runner.temp }}/eval-report/
+          retention-days: 14
+          if-no-files-found: warn
+
+      - name: Remove kubeconfig
+        if: always()
+        run: rm -f "$RUNNER_TEMP/kubeconfig"

@@ -2,6 +2,7 @@
 // Licensed under the MIT license. See LICENSE file in the project root for full license information.
 
 using System.Globalization;
+using System.Text.Json;
 using Cratis.Prompter.Cli;
 
 namespace Cratis.Prompter.Evaluation;
@@ -17,6 +18,9 @@ namespace Cratis.Prompter.Evaluation;
 public sealed record EvalSummary(IReadOnlyList<EvalResult> Results, double PassRate, double RetrievalHitRate,
     double RefusalAccuracy, decimal TotalCost, bool CostCapStopped, int ExitCode)
 {
+    /// <summary>Gets the prefix that marks the single-line JSON report on standard output.</summary>
+    public const string ReportMarker = "EVAL-REPORT ";
+
     /// <summary>Builds aggregate rates and applies every configured threshold.</summary>
     /// <param name="results">The scored cases.</param>
     /// <param name="arguments">The required quality thresholds.</param>
@@ -41,6 +45,10 @@ public sealed record EvalSummary(IReadOnlyList<EvalResult> Results, double PassR
         yield return string.Create(CultureInfo.InvariantCulture, $"Eval: {Results.Count} cases; pass {PassRate:P1}; retrieval {RetrievalHitRate:P1}; refusal {RefusalAccuracy:P1}; cost ${TotalCost:F4}");
         if (CostCapStopped) yield return "Stopped at the configured cost cap.";
     }
+
+    /// <summary>Formats the text-free report as one marker-prefixed JSON line.</summary>
+    /// <returns>The marker followed by compact JSON.</returns>
+    public string ReportLine() => ReportMarker + JsonSerializer.Serialize(this);
 
     static double Rate(int hits, int total) => total == 0 ? 0 : (double)hits / total;
 }

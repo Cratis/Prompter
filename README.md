@@ -214,7 +214,7 @@ Configuration binds to the `Cratis:Prompter` section (environment variables use 
 | Sample allowlist (indexed array) | `Cratis__Prompter__Ingestion__Samples__Paths__0` (and subsequent indices) | Curated paths above |
 | Maximum sample file bytes | `Cratis__Prompter__Ingestion__Samples__MaxFileBytes` | `16384` |
 | Maximum sample files | `Cratis__Prompter__Ingestion__Samples__MaxFiles` | `300` |
-| Incremental token ceiling (including retries) | `Cratis__Prompter__Ingestion__MaxIncrementalTokens` | `1000000` |
+| Incremental token ceiling (including retries) | `Cratis__Prompter__Ingestion__MaxIncrementalTokens` | `4000000` |
 | Confirmed full token ceiling (including retries) | `Cratis__Prompter__Ingestion__MaxFullTokens` | `25000000` |
 | Verified model price per million tokens | `Cratis__Prompter__Ingestion__PricePerMillionTokens` | `0` (paid indexing disabled) |
 | Index dollar ceiling per run | `Cratis__Prompter__Ingestion__MaxRunDollars` | `0` (paid indexing disabled) |
@@ -223,6 +223,7 @@ Configuration binds to the `Cratis:Prompter` section (environment variables use 
 | Ask channel (mention-free questions) | `Cratis__Prompter__Discord__AskChannelId` | — |
 | Help forum channel (auto-reply) | `Cratis__Prompter__Discord__HelpForumChannelId` | — |
 | Answer-in-thread channels (off when empty) | `Cratis__Prompter__Discord__AnswerInThreadChannelIds__0` | — |
+| Delayed forum answers (off when empty) | `Cratis__Prompter__Discord__DelayedForums__0__ChannelId` and `__DelayMinutes` | — / `30` |
 | Maintainer role for Ask a human (off when unset) | `Cratis__Prompter__Discord__MaintainerRoleId` | — |
 | Rate limit — questions per window | `Cratis__Prompter__Discord__RateLimit__MaxQuestions` | `5` |
 | Rate limit — window length (minutes) | `Cratis__Prompter__Discord__RateLimit__WindowMinutes` | `10` |

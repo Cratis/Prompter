@@ -14,13 +14,16 @@ namespace Cratis.Prompter.Cli;
 /// <param name="MinRetrievalHitRate">The required answer retrieval-hit rate.</param>
 /// <param name="MinRefusalAccuracy">The required refusal accuracy.</param>
 /// <param name="MaxCost">The dollar cap, checked between cases.</param>
-/// <param name="Out">The optional JSON output path.</param>
+/// <param name="Out">The optional JSON output path, or a single dash for one report line on standard output.</param>
 public sealed record EvalArguments(bool Paid, string? Set = null, string? Case = null, int? Limit = null,
     double MinPassRate = 0.8, double MinRetrievalHitRate = 0.8, double MinRefusalAccuracy = 0.9,
     decimal MaxCost = 2.00m, string? Out = null)
 {
+    /// <summary>Gets the highest per-run cost ceiling; production's daily cap makes more unreachable.</summary>
+    public const decimal MaxCostCeiling = 5.00m;
+
     /// <summary>Gets usage without any user-supplied values.</summary>
-    public const string Usage = "Usage: eval --paid [--set path] [--case id] [--limit count] [--min-pass-rate 0..1] [--min-retrieval-hit-rate 0..1] [--min-refusal-accuracy 0..1] [--max-cost dollars] [--out path]";
+    public const string Usage = "Usage: eval --paid [--set path] [--case id] [--limit count] [--min-pass-rate 0..1] [--min-retrieval-hit-rate 0..1] [--min-refusal-accuracy 0..1] [--max-cost dollars<=5] [--out path|-]";
 
     /// <summary>Parses only known flags; malformed input returns no arguments.</summary>
     /// <param name="tokens">Tokens after the mode.</param>
@@ -70,7 +73,7 @@ public sealed record EvalArguments(bool Paid, string? Set = null, string? Case =
         };
     }
 
-    static decimal? Cost(string value) => decimal.TryParse(value, NumberStyles.Number, CultureInfo.InvariantCulture, out var cost) && cost > 0 ? cost : null;
+    static decimal? Cost(string value) => decimal.TryParse(value, NumberStyles.Number, CultureInfo.InvariantCulture, out var cost) && cost > 0 && cost <= MaxCostCeiling ? cost : null;
 
     static double? Rate(string text) => double.TryParse(text, NumberStyles.Float, CultureInfo.InvariantCulture, out var rate) &&
         double.IsFinite(rate) && rate is >= 0 and <= 1 ? rate : null;
