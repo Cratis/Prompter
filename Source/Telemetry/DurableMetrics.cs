@@ -24,7 +24,7 @@ public sealed class DurableMetrics : BackgroundService
     {
         _database = database;
         _ = export;
-        foreach (var signal in new[] { "attempts", "successes", "failures", "cancellations", "last_attempt", "last_success", "last_failure", "duration_seconds", "documents", "chunks", "anthropic_usd", "voyage_usd", "index_usd", "updated_at" })
+        foreach (var signal in new[] { "attempts", "successes", "failures", "cancellations", "last_attempt", "last_success", "last_failure", "duration_seconds", "documents", "chunks", "anthropic_usd", "voyage_usd", "index_usd", "index_full_ceiling_usd", "updated_at" })
         {
             _meter.CreateObservableGauge($"prompter.state.{signal}", () => Value(signal));
         }
@@ -68,7 +68,8 @@ public sealed class DurableMetrics : BackgroundService
                     duration_seconds, documents, chunks,
                     COALESCE((SELECT anthropic FROM prompter_spend_days WHERE day = (now() AT TIME ZONE 'UTC')::date), 0) AS anthropic_usd,
                     COALESCE((SELECT voyage FROM prompter_spend_days WHERE day = (now() AT TIME ZONE 'UTC')::date), 0) AS voyage_usd,
-                    COALESCE((SELECT dollars FROM index_reservations WHERE day = (now() AT TIME ZONE 'UTC')::date), 0) AS index_usd
+                    COALESCE((SELECT dollars FROM index_reservations WHERE day = (now() AT TIME ZONE 'UTC')::date), 0) AS index_usd,
+                    COALESCE((SELECT full_ceiling FROM index_reservations WHERE day = (now() AT TIME ZONE 'UTC')::date), 0) AS index_full_ceiling_usd
                 FROM prompter_index_health WHERE singleton
                 """);
             await using var reader = await command.ExecuteReaderAsync(timeout.Token);

@@ -38,12 +38,10 @@ public interface IIndexLease : IAsyncDisposable
     /// Reserves retry-inclusive exposure and, for scheduled work, the single daily slot.
     /// Reservations are deliberately not refunded after an unknown provider outcome.
     /// </summary>
-    /// <param name="exposure">The conservative token and dollar exposure.</param>
-    /// <param name="dailyLimit">The configured daily dollar ceiling.</param>
-    /// <param name="scheduled">Whether this is scheduled work.</param>
+    /// <param name="reservation">The exposure, daily ceiling and run flags to reserve.</param>
     /// <param name="cancellationToken">Token for cancellation.</param>
     /// <returns>Awaitable task; rejection throws before dispatch.</returns>
-    Task Reserve(IndexExposure exposure, decimal dailyLimit, bool scheduled, CancellationToken cancellationToken);
+    Task Reserve(IndexReservation reservation, CancellationToken cancellationToken);
 
     /// <summary>Releases only exposure reserved by this lease, newest UTC day first, never below zero.</summary>
     /// <param name="unused">The known unused token and dollar exposure.</param>

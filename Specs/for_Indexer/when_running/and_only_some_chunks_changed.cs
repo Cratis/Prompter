@@ -39,7 +39,7 @@ public class and_only_some_chunks_changed : given.an_indexer
     [Fact] void should_embed_one_chunk() => _run.Embedded.ShouldEqual(1);
     [Fact] void should_leave_the_first_page_unchanged() => _run.Unchanged.ShouldEqual(_unchanged);
     [Fact] void should_reserve_only_changed_input_with_six_attempts() =>
-        Lease.Received(1).Reserve(Arg.Is<IndexExposure>(exposure => exposure.Tokens == IndexBudget.TokensFor(_changed.EmbeddingInput) * 6), Options.Ingestion.MaxDailyDollars, false, Arg.Any<CancellationToken>());
+        Lease.Received(1).Reserve(Arg.Is<IndexReservation>(reservation => reservation.Exposure.Tokens == IndexBudget.TokensFor(_changed.EmbeddingInput) * 6 && reservation.DailyLimit == Options.Ingestion.MaxDailyDollars && !reservation.Scheduled && !reservation.Full), Arg.Any<CancellationToken>());
     [Fact] void should_embed_only_the_changed_input() =>
         _generator.Received(1).GenerateAsync(Arg.Is<IEnumerable<string>>(inputs => inputs.SequenceEqual(new[] { _changed.EmbeddingInput })), Arg.Any<EmbeddingGenerationOptions>(), Arg.Any<CancellationToken>());
     [Fact] void should_commit_only_the_changed_chunk() =>

@@ -33,10 +33,10 @@
       },
       {
         "alert": "PrompterIndexSpendExposure",
-        "expr": "max(prompter_state_index_usd) / clamp_min(max(prompter_limit_index_daily_usd), 0.001) >= 0.7",
+        "expr": "(max(prompter_state_index_usd) / clamp_min(max(prompter_limit_index_daily_usd), 0.001) >= 0.7) unless on() (max(prompter_state_index_full_ceiling_usd) > 0)",
         "for": "5m",
         "labels": { "service": "prompter", "severity": "warning" },
-        "annotations": { "summary": "UTC-day retry-inclusive indexing exposure reaches 70 percent of its ceiling", "runbook_url": "https://github.com/Cratis/Prompter/blob/main/Documentation/guides/monitoring.md#spend-and-protection" }
+        "annotations": { "summary": "UTC-day retry-inclusive indexing exposure reaches 70 percent of its incremental ceiling (no confirmed full run today)", "runbook_url": "https://github.com/Cratis/Prompter/blob/main/Documentation/guides/monitoring.md#spend-and-protection" }
       },
       {
         "alert": "PrompterSpendExposureHigh",
@@ -47,10 +47,10 @@
       },
       {
         "alert": "PrompterIndexSpendExposureHigh",
-        "expr": "max(prompter_state_index_usd) / clamp_min(max(prompter_limit_index_daily_usd), 0.001) >= 0.9",
+        "expr": "(max(prompter_state_index_usd) / clamp_min(max(prompter_limit_index_daily_usd), 0.001) >= 0.9) unless on() (max(prompter_state_index_full_ceiling_usd) > 0)",
         "for": "5m",
         "labels": { "service": "prompter", "severity": "critical" },
-        "annotations": { "summary": "UTC-day retry-inclusive indexing exposure reaches 90 percent of its ceiling", "runbook_url": "https://github.com/Cratis/Prompter/blob/main/Documentation/guides/monitoring.md#spend-and-protection" }
+        "annotations": { "summary": "UTC-day retry-inclusive indexing exposure reaches 90 percent of its incremental ceiling (no confirmed full run today)", "runbook_url": "https://github.com/Cratis/Prompter/blob/main/Documentation/guides/monitoring.md#spend-and-protection" }
       },
       {
         "alert": "PrompterSpendHardCap",
@@ -61,10 +61,10 @@
       },
       {
         "alert": "PrompterIndexSpendHardCap",
-        "expr": "max(prompter_state_index_usd) / clamp_min(max(prompter_limit_index_daily_usd), 0.001) >= 1",
+        "expr": "(max(prompter_state_index_usd) / clamp_min(max(prompter_limit_index_daily_usd), 0.001) >= 1) unless on() (max(prompter_state_index_full_ceiling_usd) > 0)",
         "for": "0s",
         "labels": { "service": "prompter", "severity": "critical" },
-        "annotations": { "summary": "UTC-day retry-inclusive indexing exposure reaches its hard cap", "runbook_url": "https://github.com/Cratis/Prompter/blob/main/Documentation/guides/monitoring.md#spend-and-protection" }
+        "annotations": { "summary": "UTC-day retry-inclusive indexing exposure reaches its incremental ceiling (no confirmed full run today)", "runbook_url": "https://github.com/Cratis/Prompter/blob/main/Documentation/guides/monitoring.md#spend-and-protection" }
       },
       {
         "alert": "PrompterProviderErrors",
@@ -93,6 +93,20 @@
         "for": "5m",
         "labels": { "service": "prompter", "severity": "warning" },
         "annotations": { "summary": "Admission or paid-work guards rejected repeated work", "runbook_url": "https://github.com/Cratis/Prompter/blob/main/Documentation/guides/monitoring.md#spend-and-protection" }
+      },
+      {
+        "alert": "PrompterIndexFullReindexSpend",
+        "expr": "(max(prompter_state_index_usd) / clamp_min(max(prompter_limit_index_daily_usd), 0.001) >= 1) and on() (max(prompter_state_index_full_ceiling_usd) > 0)",
+        "for": "5m",
+        "labels": { "service": "prompter", "severity": "warning" },
+        "annotations": { "summary": "Confirmed full-reindex day: indexing exposure exceeds the incremental daily ceiling within the full-run allowance", "runbook_url": "https://github.com/Cratis/Prompter/blob/main/Documentation/guides/monitoring.md#spend-and-protection" }
+      },
+      {
+        "alert": "PrompterIndexSpendRunaway",
+        "expr": "(max(prompter_state_index_usd) > max(prompter_state_index_full_ceiling_usd)) and on() (max(prompter_state_index_full_ceiling_usd) > 0)",
+        "for": "0s",
+        "labels": { "service": "prompter", "severity": "critical" },
+        "annotations": { "summary": "Indexing exposure exceeds the admitted full-run ceiling", "runbook_url": "https://github.com/Cratis/Prompter/blob/main/Documentation/guides/monitoring.md#spend-and-protection" }
       }
     ]
   }]

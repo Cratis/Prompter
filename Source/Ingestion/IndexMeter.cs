@@ -23,7 +23,7 @@ public sealed class IndexMeter(IIndexLease lease, PrompterOptions options, Index
     {
         if (Spent.Dollars + batch.Dollars > IndexBudget.RunDollars(options.Ingestion, request)) throw new IndexBudgetExceeded();
         await lease.EnsureHeld(ct);
-        await lease.Reserve(batch, IndexBudget.DayDollars(options.Ingestion, request), false, ct);
+        await lease.Reserve(new(batch, IndexBudget.DayDollars(options.Ingestion, request), Scheduled: false, Full: request.Full), ct);
         Spent = new(checked(Spent.Tokens + batch.Tokens), Spent.Dollars + batch.Dollars);
     }
 

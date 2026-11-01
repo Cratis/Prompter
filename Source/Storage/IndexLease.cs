@@ -62,25 +62,28 @@ public sealed class IndexLease(NpgsqlConnection connection) : IIndexLease
     }
 
     /// <inheritdoc/>
-    public async Task Reserve(IndexExposure exposure, decimal dailyLimit, bool scheduled, CancellationToken cancellationToken)
+    public async Task Reserve(IndexReservation reservation, CancellationToken cancellationToken)
     {
+        var exposure = reservation.Exposure;
         await using var command = connection.CreateCommand();
         command.CommandText =
             """
-            INSERT INTO index_reservations (day, tokens, dollars, scheduled)
-            SELECT (now() AT TIME ZONE 'UTC')::date, $1, $2, $3 WHERE $2 = 0 OR $2 <= $4
+            INSERT INTO index_reservations (day, tokens, dollars, scheduled, full_ceiling)
+            SELECT (now() AT TIME ZONE 'UTC')::date, $1, $2, $3, CASE WHEN $5 THEN $4 ELSE 0 END WHERE $2 = 0 OR $2 <= $4
             ON CONFLICT (day) DO UPDATE SET
                 tokens = index_reservations.tokens + EXCLUDED.tokens,
                 dollars = index_reservations.dollars + EXCLUDED.dollars,
-                scheduled = index_reservations.scheduled OR EXCLUDED.scheduled
+                scheduled = index_reservations.scheduled OR EXCLUDED.scheduled,
+                full_ceiling = GREATEST(index_reservations.full_ceiling, EXCLUDED.full_ceiling)
             WHERE (EXCLUDED.dollars = 0 OR index_reservations.dollars + EXCLUDED.dollars <= $4)
                 AND NOT (index_reservations.scheduled AND EXCLUDED.scheduled)
             RETURNING day
             """;
         command.Parameters.AddWithValue(exposure.Tokens);
         command.Parameters.AddWithValue(exposure.Dollars);
-        command.Parameters.AddWithValue(scheduled);
-        command.Parameters.AddWithValue(dailyLimit);
+        command.Parameters.AddWithValue(reservation.Scheduled);
+        command.Parameters.AddWithValue(reservation.DailyLimit);
+        command.Parameters.AddWithValue(reservation.Full);
         await using var reader = await command.ExecuteReaderAsync(cancellationToken);
         if (!await reader.ReadAsync(cancellationToken)) throw new IndexBudgetExceeded();
         var day = await reader.GetFieldValueAsync<DateOnly>(0, cancellationToken);

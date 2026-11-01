@@ -24,9 +24,13 @@ public class a_database : Specification
             INSERT INTO chunks VALUES ('keep'), ('stale');
             """);
         await setup.ExecuteNonQueryAsync();
-        var migration = EmbeddedMigrations.LoadFrom(typeof(Chunks).Assembly).Single(item => item.ResourceName.EndsWith("v1_4_0.sql", StringComparison.Ordinal));
-        await using var migrate = Database.CreateCommand(migration.Sql);
-        await migrate.ExecuteNonQueryAsync();
+        var migrations = EmbeddedMigrations.LoadFrom(typeof(Chunks).Assembly);
+        foreach (var version in new[] { "v1_4_0.sql", "v1_9_0.sql" })
+        {
+            var migration = migrations.Single(item => item.ResourceName.EndsWith(version, StringComparison.Ordinal));
+            await using var migrate = Database.CreateCommand(migration.Sql);
+            await migrate.ExecuteNonQueryAsync();
+        }
     }
 
     async Task Destroy() => await Database.DisposeAsync();

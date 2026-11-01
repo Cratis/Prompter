@@ -210,9 +210,10 @@ The workflow fixes Voyage pricing at **$0.06/million tokens**, with **$0.25/run*
 ceilings for incremental runs and **$1.00** for confirmed full runs; these are not repository variables.
 The full-run ceiling also caps the shared UTC-day total on a full-run day. Later incremental runs still
 must fit under $0.50/day. Missing/zero pricing or ceilings disable paid work.
-Configure the equivalent `Ingestion` options on the bot for HTTP/CLI runs. Admission estimates tokens
-as UTF-8 bytes/3 rounded up plus 16 per input, with one batch of retry headroom. Before each dispatch,
-the batch reserves UTF-8 bytes plus framing for `Voyage.IndexMaxRetries + 1` attempts (6).
+The bot projects the same **$0.06/million tokens** price and **$0.25/run**, **$0.50/day** ceilings for
+HTTP and webhook incremental runs. It has no full-run ceiling, so confirmed full runs only go through
+the workflow. Admission estimates tokens as UTF-8 bytes/3 rounded up plus 16 per input, with one batch
+of retry headroom. Before each dispatch, the batch reserves UTF-8 bytes plus framing for `Voyage.IndexMaxRetries + 1` attempts (6).
 Successful attempts settle to Voyage-reported usage; failed attempts and unknown usage retain their
 byte bounds. The shared database UTC-day allowance is metered exposure, not a provider invoice.
 

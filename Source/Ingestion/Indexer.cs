@@ -38,7 +38,7 @@ public class Indexer(
         await lease.CheckProfile(profile, request.Full, cancellationToken);
         if (request.Scheduled)
         {
-            await lease.Reserve(new(0, 0), options.Value.Ingestion.MaxDailyDollars, true, cancellationToken);
+            await lease.Reserve(new(new(0, 0), options.Value.Ingestion.MaxDailyDollars, Scheduled: true, Full: false), cancellationToken);
         }
 
         var meter = new IndexMeter(lease, options.Value, request);

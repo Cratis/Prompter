@@ -64,8 +64,8 @@ public static class AnsweringReadinessEnvironment
             ["Voyage__Model"] = "voyage-4",
             ["Voyage__Dimensions"] = "1024",
             ["Ingestion__PricePerMillionTokens"] = "0.06",
-            ["Ingestion__MaxRunDollars"] = "5",
-            ["Ingestion__MaxDailyDollars"] = "5"
+            ["Ingestion__MaxRunDollars"] = "0.25",
+            ["Ingestion__MaxDailyDollars"] = "0.50"
         };
         foreach (var (guild, index) in args.AllowedGuilds.Distinct(StringComparer.Ordinal).Select((guild, index) => (guild, index)))
         {
