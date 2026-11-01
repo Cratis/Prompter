@@ -22,6 +22,12 @@ public class Passages(
     IOptions<PrompterOptions> options) : IPassages
 {
     const int CandidatesPerMethod = 20;
+
+    /// <summary>
+    /// The largest hybrid candidate pool one search can return (semantic and lexical arms of 20 each).
+    /// </summary>
+    public const int MaximumCandidates = CandidatesPerMethod * 2;
+
     const int RrfConstant = 60;
 
     /// <summary>Keeps every candidate when no prefix is given, otherwise only pages under one of the prefixes.</summary>

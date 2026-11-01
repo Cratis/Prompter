@@ -33,10 +33,11 @@ public class Answers(
     public async Task<Answer> For(Question question, string source, CancellationToken cancellationToken = default)
     {
         var answering = options.Value.Answering;
-        var found = (await passages.Search(new(question.Value) { Scope = question.Scope }, answering.MaxPassages, cancellationToken)).ToArray();
-        var qualified = found.Where(passage => double.IsFinite(passage.SemanticSimilarity) &&
-            passage.SemanticSimilarity is >= -1 and <= 1 && passage.SemanticSimilarity >= answering.MinSemanticSimilarity).ToArray();
-        var confidence = qualified.Length > 0 ? qualified[0].SemanticSimilarity : found
+        var candidates = (await passages.Search(new(question.Value) { Scope = question.Scope }, Math.Max(answering.MaxPassages, Passages.MaximumCandidates), cancellationToken)).ToArray();
+        var found = candidates.Take(answering.MaxPassages).ToArray();
+        var qualified = candidates.Where(passage => double.IsFinite(passage.SemanticSimilarity) &&
+            passage.SemanticSimilarity is >= -1 and <= 1 && passage.SemanticSimilarity >= answering.MinSemanticSimilarity).Take(answering.MaxPassages).ToArray();
+        var confidence = qualified.Length > 0 ? qualified[0].SemanticSimilarity : candidates
             .Where(passage => double.IsFinite(passage.SemanticSimilarity) && passage.SemanticSimilarity is >= -1 and <= 1)
             .Select(passage => passage.SemanticSimilarity).DefaultIfEmpty(0).Max();
 
