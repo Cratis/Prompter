@@ -22,5 +22,26 @@ public enum InteractionProduct
     Components = 4,
 
     /// <summary>The Cratis CLI.</summary>
-    Cli = 5
+    Cli = 5,
+
+    /// <summary>Cratis Specifications.</summary>
+    Specifications = 6,
+
+    /// <summary>Cratis Stage.</summary>
+    Stage = 7,
+
+    /// <summary>Cratis Screenplay.</summary>
+    Screenplay = 8,
+
+    /// <summary>Cratis Prologue.</summary>
+    Prologue = 9,
+
+    /// <summary>Cratis Studio.</summary>
+    Studio = 10,
+
+    /// <summary>Cratis Direct.</summary>
+    Direct = 11,
+
+    /// <summary>Cratis Assurance support.</summary>
+    Assurance = 12
 }

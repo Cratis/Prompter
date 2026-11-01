@@ -214,6 +214,9 @@ response-size caps. Citation hosts include the configured sites, the docs host a
 and `github.com/Cratis/`. Each source is buffered independently: a failed source keeps its previous
 snapshot while healthy sources publish. A README-listing failure conservatively retains all Cratis
 GitHub pages for that run. The existing embedding budgets apply to the combined corpus.
+Answers may combine relevant excerpts when they label the connection as an inference and cite every
+source used. Instructions embedded in excerpts are treated as untrusted data. Without relevant evidence,
+Prompter still refuses; product availability, prices and capabilities must come from the sources.
 
 Disable any site with `Cratis__Prompter__Ingestion__Sites__Company__Enabled=false` (substitute
 `Studio` or `Direct`), and READMEs with `Cratis__Prompter__Ingestion__Readmes__Enabled=false`.

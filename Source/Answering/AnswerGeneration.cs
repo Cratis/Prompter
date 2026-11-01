@@ -21,7 +21,7 @@ public static class AnswerGeneration
           "properties": {
             "text": { "type": "string" },
             "category": { "type": "string", "enum": ["answered", "docs-gap", "missing-capability", "likely-bug", "out-of-scope", "unknown"] },
-            "product": { "type": "string", "enum": ["Chronicle", "Arc", "Fundamentals", "Components", "CLI", "other/unknown"] },
+            "product": { "type": "string", "enum": ["Chronicle", "Arc", "Fundamentals", "Components", "CLI", "Specifications", "Stage", "Screenplay", "Prologue", "Studio", "Direct", "Assurance", "other/unknown"] },
             "suggestions": { "type": "array", "items": { "type": "string" } }
           },
           "required": ["text", "category", "product", "suggestions"],
@@ -120,6 +120,13 @@ public static class AnswerGeneration
         "Fundamentals" => InteractionProduct.Fundamentals,
         "Components" => InteractionProduct.Components,
         "CLI" => InteractionProduct.Cli,
+        "Specifications" => InteractionProduct.Specifications,
+        "Stage" => InteractionProduct.Stage,
+        "Screenplay" => InteractionProduct.Screenplay,
+        "Prologue" => InteractionProduct.Prologue,
+        "Studio" => InteractionProduct.Studio,
+        "Direct" => InteractionProduct.Direct,
+        "Assurance" => InteractionProduct.Assurance,
         _ => InteractionProduct.OtherOrUnknown
     };
 

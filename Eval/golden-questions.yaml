@@ -5,9 +5,9 @@
 # This is the quality gate for the whole bot. Every question here is phrased the
 # way a real Cratis community member would ask it in Discord — natural, sometimes
 # conversational, sometimes vague — and is answerable (or, for the out-of-scope
-# block, deliberately NOT answerable) purely from the published docs at
-# https://cratis.io. Nothing here depends on the bot being running; it grounds
-# only in real doc pages.
+# block, deliberately NOT answerable) from published Cratis documentation,
+# company and product sites, and public Cratis repository READMEs.
+# Nothing here depends on the bot being running; it grounds only in real pages.
 #
 # -----------------------------------------------------------------------------
 # Schema (one entry per question, all under the top-level `questions:` list)
@@ -16,11 +16,11 @@
 #                  only terms that appear verbatim on an expected page.
 #   id             Stable, unique identifier. Never renumber — results,
 #                  baselines (Eval/baseline.json) and regression diffs key off it.
-#                  Prefix encodes the product: chr-/arc-/fun-/cmp-/cli-/gen-/oos-.
+#                  Prefix encodes the product: chr-/arc-/fun-/cmp-/cli-/gen-/oos-/std-/dir-/co-/rep-/syn-.
 #   product        chronicle | arc | fundamentals | components | cli |
-#                  cross-cutting | out-of-scope
+#                  cross-cutting | out-of-scope | studio | direct | company | repository | synthesis
 #   type           definition | how-to | configuration | troubleshooting |
-#                  concept | comparison | getting-started | refusal
+#                  concept | comparison | getting-started | refusal | synthesis
 #   question       Verbatim user phrasing, as it would land in Discord.
 #   expected       answer  → the bot MUST answer, grounded and cited.
 #                  refuse  → the bot MUST decline (out of scope / not in the docs).
@@ -60,8 +60,8 @@
 # citations — a good answer may additionally cite closely-related pages.
 #
 # -----------------------------------------------------------------------------
-# Coverage: 59 in-scope questions across all five products + cross-cutting, and
-# 13 out-of-scope refusals. Breadth over cleverness — real questions the docs
+# Coverage: 68 in-scope questions across products, company, repositories and synthesis,
+# and 14 out-of-scope refusals. Breadth over cleverness — real questions the docs
 # genuinely answer, spanning definition / how-to / configuration / troubleshooting
 # / concept / comparison / getting-started. Every page below was checked against
 # the live site (sitemap-0.xml + per-page .md mirrors) on 2026-07-15.
@@ -859,3 +859,91 @@ questions:
     question: "what are all the Microsoft Office products and what do they do?"
     expected: refuse
     rationale: "Near-miss twin of gen-005's phrasing. Guards against summary chunks and pool gating answering generic list-the-products questions."
+
+  - id: std-001
+    product: studio
+    type: definition
+    question: "what is Cratis Studio and is there a free trial?"
+    expected: answer
+    expected_pages: ["https://cratis.studio/"]
+    must_mention: ["14-day", "event modeling"]
+    rationale: "Grounds the product overview and trial in the Studio site."
+
+  - id: std-002
+    product: studio
+    type: concept
+    question: "is Cratis Studio open source like the rest of the stack?"
+    expected: answer
+    expected_pages: ["https://cratis.no/about/", "https://cratis.no/support/"]
+    must_mention: ["Preview"]
+    rationale: "Distinguishes Studio availability from the open-source stack using company evidence."
+
+  - id: dir-001
+    product: direct
+    type: definition
+    question: "what is Cratis Direct?"
+    expected: answer
+    expected_pages: ["https://cratis.direct/"]
+    must_mention: ["journeys"]
+    rationale: "Uses Direct's own product overview rather than a similarly named concept."
+
+  - id: dir-002
+    product: direct
+    type: concept
+    question: "can I start using Cratis Direct today?"
+    expected: answer
+    expected_pages: ["https://cratis.direct/"]
+    must_mention: ["Coming soon"]
+    rationale: "Requires explicit availability evidence and prevents invented launch dates."
+
+  - id: co-001
+    product: company
+    type: definition
+    question: "who founded Cratis and where is the company based?"
+    expected: answer
+    expected_pages: ["https://cratis.no/about/"]
+    must_mention: ["Norway", "Einar Ingebrigtsen"]
+    rationale: "Grounds people and company facts in the company site."
+
+  - id: co-002
+    product: company
+    type: definition
+    question: "what is Cratis Assurance?"
+    expected: answer
+    expected_pages: ["https://cratis.no/support/"]
+    must_mention: ["Assurance"]
+    rationale: "Answers support offering questions from the published support page."
+
+  - id: rep-001
+    product: repository
+    type: definition
+    question: "what does Cratis Synopsis do?"
+    expected: answer
+    expected_pages: ["https://github.com/Cratis/Synopsis/blob/main/README.md"]
+    must_mention: ["executable specifications"]
+    rationale: "Finds a public repository overview outside the core product docs."
+
+  - id: rep-002
+    product: repository
+    type: concept
+    question: "is there a Chronicle client for Kotlin or Java?"
+    expected: answer
+    expected_pages: ["https://github.com/Cratis/Chronicle.Kotlin/blob/main/README.md"]
+    must_mention: ["Kotlin"]
+    rationale: "Grounds client language availability in a public repository README."
+
+  - id: syn-001
+    product: synthesis
+    type: synthesis
+    question: "if I design my event model in Studio, which free Cratis tools would I build it with?"
+    expected: answer
+    expected_pages: ["https://cratis.studio/", "https://cratis.no/about/"]
+    must_mention: ["MIT"]
+    rationale: "Combines Studio event modeling with the MIT open-source stack and marks the connection as an inference."
+
+  - id: oos-014
+    product: out-of-scope
+    type: refusal
+    question: "what does the README of the torvalds/linux repository say about building the kernel?"
+    expected: refuse
+    rationale: "Repository coverage must not extend beyond the Cratis organization."

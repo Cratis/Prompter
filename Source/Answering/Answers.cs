@@ -3,6 +3,7 @@
 
 using System.Text;
 using System.Text.Json;
+using System.Text.RegularExpressions;
 using Anthropic.Models.Messages;
 using Cratis.Prompter.Ingestion;
 using Cratis.Prompter.Retrieval;
@@ -21,7 +22,7 @@ namespace Cratis.Prompter.Answering;
 /// <param name="interactionLog">The log interactions are recorded in.</param>
 /// <param name="options">The Prompter options.</param>
 /// <param name="logger">Logger for diagnostics.</param>
-public class Answers(
+public partial class Answers(
     IPassages passages,
     IChatClient chatClient,
     IInteractionLog interactionLog,
@@ -29,6 +30,9 @@ public class Answers(
     ILogger<Answers> logger) : IAnswers
 {
     const int MaximumClarifiedQuestionLength = 1500;
+
+    [GeneratedRegex(@"\[(?<index>\d{1,2})\]", RegexOptions.ExplicitCapture, 100)]
+    private static partial Regex CitationIndex { get; }
 
     /// <inheritdoc/>
     public async Task<Answer> For(Question question, string source, CancellationToken cancellationToken = default)
@@ -78,8 +82,8 @@ public class Answers(
                 new() { MaxOutputTokens = answering.MaxOutputTokens, ResponseFormat = AnswerGeneration.Format },
                 cancellationToken);
 
-            var citations = qualified.Select(passage => passage.Page).Distinct().Take(4).ToArray();
             var generated = AnswerGeneration.Parse(response.Text);
+            var citations = CitedPages(generated?.Text, qualified);
             answer = generated is null
                 ? Answer.Refusal(confidence, found)
                 : new(generated.Text, citations, confidence, IsRefusal: false, qualified) { Category = generated.Category, Product = generated.Product, CitationProvenance = Provenance(citations, qualified), Suggestions = Suggest(generated, question) };
@@ -94,17 +98,19 @@ public class Answers(
 
     static string ComposeUserMessage(Question question, IEnumerable<Passage> found, AnswerMode mode)
     {
-        var message = new StringBuilder("Documentation excerpts:\n\n");
+        var message = new StringBuilder("Documentation excerpts:\n\n<untrusted_excerpts>\n");
         var index = 1;
 
         foreach (var passage in found)
         {
             message
-                .AppendLine($"[{index}] {passage.Page.Value} — {passage.HeadingPath}")
-                .AppendLine(passage.Content)
+                .AppendLine($"[{index}] {Evidence(passage.Page.Value)} — {Evidence(passage.HeadingPath)}")
+                .AppendLine(Evidence(passage.Content))
                 .AppendLine();
             index++;
         }
+
+        message.AppendLine("</untrusted_excerpts>").AppendLine();
 
         if (question.Conversation.Messages.Count > 0)
         {
@@ -122,6 +128,19 @@ public class Answers(
         message.AppendLine($"Question: {question.Value}");
 
         return message.ToString();
+    }
+
+    static string Evidence(string text) => text.Replace("untrusted_excerpts", "untrusted-excerpts", StringComparison.OrdinalIgnoreCase);
+
+    static PageUrl[] CitedPages(string? text, Passage[] qualified)
+    {
+        var ranked = qualified.Select(passage => passage.Page).Distinct().ToArray();
+        var referenced = CitationIndex.Matches(text ?? string.Empty)
+            .Select(match => int.Parse(match.Groups["index"].Value, System.Globalization.CultureInfo.InvariantCulture))
+            .Where(index => index >= 1 && index <= qualified.Length)
+            .Select(index => qualified[index - 1].Page);
+        var selected = referenced.Concat(ranked).Distinct().Take(4).ToHashSet();
+        return [.. ranked.Where(selected.Contains)];
     }
 
     static CitationProvenance[] Provenance(IEnumerable<PageUrl> citations, IEnumerable<Passage> passages) =>
