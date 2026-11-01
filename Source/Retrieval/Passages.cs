@@ -21,6 +21,11 @@ public class Passages(
     IEmbeddingGenerator<string, Embedding<float>> embeddings,
     IOptions<PrompterOptions> options) : IPassages
 {
+    /// <summary>
+    /// The largest hybrid candidate pool one search can return (semantic and lexical arms of 20 each).
+    /// </summary>
+    public const int MaximumCandidates = CandidatesPerMethod * 2;
+
     const int CandidatesPerMethod = 20;
     const int RrfConstant = 60;
 

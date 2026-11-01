@@ -2,15 +2,21 @@
 // Licensed under the MIT license. See LICENSE file in the project root for full license information.
 
 using System.Text;
+using System.Text.RegularExpressions;
 
 namespace Cratis.Prompter.Ingestion;
 
 /// <summary>
 /// Splits a markdown documentation page into retrievable chunks along its heading structure.
 /// </summary>
-public static class MarkdownChunker
+public static partial class MarkdownChunker
 {
     const int DefaultMaxChunkLength = 4000;
+    const int MaximumDescriptionLength = 1000;
+    const int MaximumTitleLength = 200;
+
+    [GeneratedRegex(@"^[>|][+-]?[0-9]?$", RegexOptions.None, 1000)]
+    private static partial Regex BlockIndicator { get; }
 
     /// <summary>
     /// Chunks a markdown page into sections split on second and third level headings, keeping the
@@ -50,6 +56,43 @@ public static class MarkdownChunker
                 index++;
             }
         }
+
+        if (Summary(page, markdown, title) is { } summary)
+        {
+            yield return summary;
+        }
+    }
+
+    /// <summary>
+    /// Builds the short summary chunk for a page from its frontmatter description, when it is a plain single-line scalar.
+    /// </summary>
+    /// <param name="page">The URL of the page.</param>
+    /// <param name="markdown">The markdown content of the page, including frontmatter.</param>
+    /// <param name="title">The title of the page.</param>
+    /// <returns>The summary chunk, or <see langword="null"/> when the page has no usable description.</returns>
+    static global::Cratis.Prompter.Ingestion.Chunk? Summary(PageUrl page, string markdown, string title)
+    {
+        var (lines, _) = DocumentationMetadata.Split(markdown);
+        var description = DocumentationMetadata.Unique(lines, "description")?.Trim();
+        if (string.IsNullOrEmpty(description) || description.Length > MaximumDescriptionLength || BlockIndicator.IsMatch(description))
+        {
+            return null;
+        }
+
+        var frontmatterTitle = DocumentationMetadata.Unique(lines, "title")?.Trim();
+        var displayTitle = !string.IsNullOrEmpty(frontmatterTitle) && frontmatterTitle.Length <= MaximumTitleLength && !BlockIndicator.IsMatch(frontmatterTitle)
+            ? frontmatterTitle
+            : title;
+        var headingPath = $"{title} > Summary";
+        var content = $"{displayTitle}\n\n{description}";
+
+        return new(
+            new ChunkId($"{page.Value}#summary"),
+            page,
+            title,
+            headingPath,
+            content,
+            ContentHash.For(global::Cratis.Prompter.Ingestion.Chunk.EmbeddingInputFor(title, headingPath, content)));
     }
 
     static string PageTitleFrom(PageUrl page)

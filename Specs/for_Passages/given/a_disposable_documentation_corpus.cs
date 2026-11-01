@@ -3,6 +3,7 @@
 
 using System.Numerics;
 using Cratis.Prompter.Answering;
+using Cratis.Prompter.Ingestion;
 using Cratis.Prompter.Retrieval;
 using Cratis.Prompter.Storage;
 using Microsoft.Extensions.AI;
@@ -19,6 +20,7 @@ public class a_disposable_documentation_corpus : Specification
     protected const string NegativeQuestion = "Cratis Chronicle guaranteed lottery numbers?";
     protected const string WeakQuestion = "Cratis Chronicle guaranteed lottery numbers terms?";
     protected const string LexicalOnlyQuestion = "Cratis Chronicle guaranteed lottery numbers glossary?";
+    protected const string CrowdedQuestion = "Which zephyr quasar widgets does Cratis ship?";
     protected const string ChronicleContent = "Chronicle stores immutable facts and builds read models from events.";
     static readonly SemaphoreSlim _extensionCreation = new(1, 1);
     readonly string _schema = $"retrieval_{Guid.NewGuid():N}";
@@ -38,8 +40,30 @@ public class a_disposable_documentation_corpus : Specification
         PositiveQuestion => Vector(new(1, 0, 0, 0)),
         NegativeQuestion => Vector(new(0, 0, 0, 1)),
         WeakQuestion => Vector(new(0, 0, 0.2f, MathF.Sqrt(0.96f))),
+        CrowdedQuestion => Axes((4, 1f)),
         _ => Vector(new(0, 0, -1, 0))
     };
+
+    /// <summary>Builds a vector with the given components set on arbitrary axes.</summary>
+    protected static float[] Axes(params (int Index, float Value)[] values)
+    {
+        var vector = new float[1024];
+        foreach (var (index, value) in values)
+        {
+            vector[index] = value;
+        }
+
+        return vector;
+    }
+
+    /// <summary>Adds a chunk to the disposable corpus; does nothing without a database.</summary>
+    protected async Task Seed(Chunk chunk, float[] vector)
+    {
+        if (_database is not null)
+        {
+            await new Chunks(_database).Upsert(chunk, vector);
+        }
+    }
 
     static float[] Vector(Vector4 components)
     {
