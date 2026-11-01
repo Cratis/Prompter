@@ -66,6 +66,10 @@ public static partial class MarkdownChunker
     /// <summary>
     /// Builds the short summary chunk for a page from its frontmatter description, when it is a plain single-line scalar.
     /// </summary>
+    /// <param name="page">The URL of the page.</param>
+    /// <param name="markdown">The markdown content of the page, including frontmatter.</param>
+    /// <param name="title">The title of the page.</param>
+    /// <returns>The summary chunk, or <see langword="null"/> when the page has no usable description.</returns>
     static global::Cratis.Prompter.Ingestion.Chunk? Summary(PageUrl page, string markdown, string title)
     {
         var (lines, _) = DocumentationMetadata.Split(markdown);

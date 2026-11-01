@@ -54,6 +54,9 @@ public partial record DocumentationMetadata(PageUrl Page, DateTimeOffset? PageLa
         return new(page, modified, version);
     }
 
+    /// <summary>Splits a page into its frontmatter lines and body; the lines are empty without well-formed frontmatter.</summary>
+    /// <param name="markdown">The markdown of the page.</param>
+    /// <returns>The frontmatter lines and the body.</returns>
     internal static (List<string> Lines, string Body) Split(string markdown)
     {
         if (!markdown.StartsWith("---", StringComparison.Ordinal))
@@ -71,6 +74,10 @@ public partial record DocumentationMetadata(PageUrl Page, DateTimeOffset? PageLa
         return (lines, markdown[(end + 4)..]);
     }
 
+    /// <summary>Gets the unquoted value of a top-level scalar key that occurs exactly once.</summary>
+    /// <param name="lines">The frontmatter lines.</param>
+    /// <param name="key">The key to look up.</param>
+    /// <returns>The value, or <see langword="null"/> when the key is absent or repeated.</returns>
     internal static string? Unique(List<string> lines, string key)
     {
         var values = lines

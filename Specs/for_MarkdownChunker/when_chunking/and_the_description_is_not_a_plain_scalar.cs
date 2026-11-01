@@ -14,6 +14,8 @@ public class and_the_description_is_not_a_plain_scalar : Specification
     bool _tooLong;
     bool _noFrontmatter;
 
+    static bool HasSummary(string markdown) => MarkdownChunker.Chunk(_page, markdown).Any(chunk => chunk.Id.Value.EndsWith("#summary", StringComparison.Ordinal));
+
     void Because()
     {
         _folded = HasSummary("---\ndescription: >\n  A folded description.\n---\n\n# Page\n\nBody.");
@@ -21,8 +23,6 @@ public class and_the_description_is_not_a_plain_scalar : Specification
         _tooLong = HasSummary($"---\ndescription: {new string('a', 1001)}\n---\n\n# Page\n\nBody.");
         _noFrontmatter = HasSummary("# Page\n\nBody.");
     }
-
-    static bool HasSummary(string markdown) => MarkdownChunker.Chunk(_page, markdown).Any(chunk => chunk.Id.Value.EndsWith("#summary", StringComparison.Ordinal));
 
     [Fact] void should_skip_a_folded_block_scalar() => _folded.ShouldBeFalse();
     [Fact] void should_skip_an_empty_description() => _empty.ShouldBeFalse();

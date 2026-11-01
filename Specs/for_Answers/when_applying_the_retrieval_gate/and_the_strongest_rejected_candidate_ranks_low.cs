@@ -19,7 +19,7 @@ public class and_the_strongest_rejected_candidate_ranks_low : given.a_grounded_a
     async Task Because() => result = await answers.For(new("What is the weather today?"), "cli");
 
     [Fact] void should_refuse() => result.IsRefusal.ShouldBeTrue();
-    [Fact] void should_not_call_the_chat_client() => chat.DidNotReceiveWithAnyArgs().GetResponseAsync(default!, default, default);
+    [Fact] void should_not_call_the_chat_client() => chat.ReceivedCalls().Count().ShouldEqual(0);
     [Fact] void should_report_the_highest_similarity_across_the_pool() => result.Confidence.ShouldEqual(0.45);
     [Fact] void should_keep_the_rrf_top_passages_as_diagnostics() => result.Passages.SequenceEqual(_all.Take(8)).ShouldBeTrue();
 }
