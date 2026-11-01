@@ -7,7 +7,8 @@ import { pathToFileURL } from 'node:url';
 export function due(event, runs, currentRunId, now = new Date()) {
     if (event !== 'schedule') return true;
     const today = now.toISOString().slice(0, 10);
-    return !runs.some(run => String(run.id) !== String(currentRunId) &&
+    // Only an earlier run suppresses this one, so two queued runs never skip each other.
+    return !runs.some(run => Number(run.id) < Number(currentRunId) &&
         new Date(run.created_at).toISOString().slice(0, 10) === today &&
         !['cancelled', 'skipped', 'startup_failure', 'stale'].includes(run.conclusion));
 }

@@ -126,6 +126,11 @@ test('catch-up ignores yesterday and itself, and admits an empty day', () => {
     assert.equal(due('schedule', [{ id: 1, created_at: '2026-05-19T03:52:00Z', conclusion: 'success' }], '2', today), true);
     assert.equal(due('schedule', [{ id: 2, created_at: '2026-05-20T06:41:00Z', conclusion: null }], '2', today), true);
 });
+test('the earlier of two queued scheduled runs proceeds and the later one skips', () => {
+    const runs = [{ id: 1, created_at: '2026-05-20T05:00:00Z', conclusion: null }, { id: 2, created_at: '2026-05-20T06:41:00Z', conclusion: null }];
+    assert.equal(due('schedule', runs, '1', today), true);
+    assert.equal(due('schedule', runs, '2', today), false);
+});
 test('manual runs always proceed', () => assert.equal(due('workflow_dispatch', [{ id: 1, created_at: today, conclusion: 'success' }], '2', today), true));
 test('API failures fail open to the database daily guard', async () => {
     assert.equal(await check({ EVENT: 'schedule', GITHUB_REPOSITORY: 'Cratis/Prompter' }, async () => { throw new Error('offline'); }), true);
