@@ -14,7 +14,10 @@ public class SitesOptions
     /// <summary>Gets or sets the Studio source.</summary>
     public SiteOptions Studio { get; set; } = new()
     {
-        BaseUrl = "https://cratis.studio", Sitemap = "sitemap.xml", LlmsTxt = true, MarkdownMirrors = true,
+        BaseUrl = "https://cratis.studio",
+        Sitemap = "sitemap.xml",
+        LlmsTxt = true,
+        MarkdownMirrors = true,
         ExcludedPaths = ["/privacy-policy", "/terms-and-conditions"]
     };
 

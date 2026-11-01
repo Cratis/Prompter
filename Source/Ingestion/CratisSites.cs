@@ -23,30 +23,9 @@ public partial class CratisSites(HttpClient httpClient, ILogger<CratisSites> log
     /// <returns>Public pages using their human-facing URLs.</returns>
     public async IAsyncEnumerable<DocsPage> GetPages(SiteOptions site, int maxPageBytes, [EnumeratorCancellation] CancellationToken cancellationToken = default)
     {
-        var root = new Uri(site.BaseUrl);
-        var urls = site.Pages.Select(path => new Uri(root, path)).ToList();
-        if (site.LlmsTxt) urls.Add(new(root, "/llms.txt"));
-        if (site.Sitemap.Length > 0)
-        {
-            var sitemap = await Fetch(new(root, site.Sitemap), root.Host, maxPageBytes, false, ["application/xml", "text/xml"], cancellationToken);
-            foreach (var location in Locations(sitemap!))
-            {
-                if (Uri.TryCreate(location, UriKind.Absolute, out var url)) urls.Add(url);
-            }
-        }
-
-        var safe = new List<Uri>();
-        foreach (var url in urls)
-        {
-            if (!SourceHosts.IsFetchable(url, root.Host) || url.Query.Length > 0 || url.Fragment.Length > 0 ||
-                site.ExcludedPaths.Any(path => url.AbsolutePath.StartsWith(path, StringComparison.OrdinalIgnoreCase)))
-            {
-                logger.SitePageSkipped(new($"{url.Scheme}://{url.Host}{url.AbsolutePath}"));
-                continue;
-            }
-            safe.Add(url);
-        }
-        foreach (var url in safe.Distinct().Take(site.MaxPages))
+        var urls = await Discover(site, maxPageBytes, cancellationToken);
+        var included = Included(urls, site).ToArray();
+        foreach (var url in included.Distinct().Take(site.MaxPages))
         {
             yield return new(new(url.AbsoluteUri), await ReadPage(url, site.MarkdownMirrors, maxPageBytes, cancellationToken));
         }
@@ -64,29 +43,62 @@ public partial class CratisSites(HttpClient httpClient, ILogger<CratisSites> log
         }
     }
 
+    static bool IsIncluded(Uri url, string host, IList<string> excludedPaths)
+    {
+        if (!SourceHosts.IsFetchable(url, host)) return false;
+        if (url.Query.Length > 0 || url.Fragment.Length > 0) return false;
+        return !excludedPaths.Any(path => url.AbsolutePath.StartsWith(path, StringComparison.OrdinalIgnoreCase));
+    }
+
+    async Task<List<Uri>> Discover(SiteOptions site, int maxBytes, CancellationToken cancellationToken)
+    {
+        var root = new Uri(site.BaseUrl);
+        var urls = site.Pages.Select(path => new Uri(root, path)).ToList();
+        if (site.LlmsTxt) urls.Add(new(root, "/llms.txt"));
+        if (site.Sitemap.Length == 0) return urls;
+
+        var policy = new FetchPolicy(root.Host, maxBytes, false, ["application/xml", "text/xml"]);
+        var sitemap = await Fetch(new(root, site.Sitemap), policy, cancellationToken);
+        foreach (var location in Locations(sitemap!))
+        {
+            if (Uri.TryCreate(location, UriKind.Absolute, out var url)) urls.Add(url);
+        }
+        return urls;
+    }
+
+    IEnumerable<Uri> Included(IEnumerable<Uri> urls, SiteOptions site)
+    {
+        var host = new Uri(site.BaseUrl).Host;
+        foreach (var url in urls)
+        {
+            if (IsIncluded(url, host, site.ExcludedPaths)) yield return url;
+            else logger.SitePageSkipped(new($"{url.Scheme}://{url.Host}{url.AbsolutePath}"));
+        }
+    }
+
     async Task<string> ReadPage(Uri url, bool mirrors, int maxBytes, CancellationToken cancellationToken)
     {
-        if (url.AbsolutePath == "/llms.txt") return (await Fetch(url, url.Host, maxBytes, false, ["text/plain", "text/markdown"], cancellationToken))!;
+        if (url.AbsolutePath == "/llms.txt") return (await Fetch(url, new(url.Host, maxBytes, false, ["text/plain", "text/markdown"]), cancellationToken))!;
         if (mirrors)
         {
             var path = url.AbsolutePath;
             path = path.EndsWith(".html", StringComparison.OrdinalIgnoreCase) ? path[..^5] + ".md" : path.TrimEnd('/') + "/index.md";
-            var markdown = await Fetch(new(url, path), url.Host, maxBytes, true, ["text/markdown"], cancellationToken);
+            var markdown = await Fetch(new(url, path), new(url.Host, maxBytes, true, ["text/markdown"]), cancellationToken);
             if (markdown is not null) return markdown;
         }
-        var content = await Fetch(url, url.Host, maxBytes, false, ["text/html"], cancellationToken);
+        var content = await Fetch(url, new(url.Host, maxBytes, false, ["text/html"]), cancellationToken);
         return HtmlText.ToMarkdown(content!);
     }
 
-    async Task<string?> Fetch(Uri url, string host, int maxBytes, bool optional, string[] mediaTypes, CancellationToken cancellationToken)
+    async Task<string?> Fetch(Uri url, FetchPolicy policy, CancellationToken cancellationToken)
     {
-        if (!SourceHosts.IsFetchable(url, host)) throw new IncompleteCrawl();
+        if (!SourceHosts.IsFetchable(url, policy.Host)) throw new IncompleteCrawl();
         try
         {
             using var response = await httpClient.GetAsync(url, HttpCompletionOption.ResponseHeadersRead, cancellationToken);
-            if (optional && response.StatusCode == HttpStatusCode.NotFound) return null;
-            if (response.StatusCode != HttpStatusCode.OK || !BoundedContent.MediaType(response, mediaTypes)) throw new IncompleteCrawl();
-            return await BoundedContent.Read(response, maxBytes, cancellationToken);
+            if (policy.Optional && response.StatusCode == HttpStatusCode.NotFound) return null;
+            if (response.StatusCode != HttpStatusCode.OK || !BoundedContent.MediaType(response, policy.MediaTypes)) throw new IncompleteCrawl();
+            return await BoundedContent.Read(response, policy.MaxBytes, cancellationToken);
         }
         catch (Exception error) when (error is HttpRequestException or IncompleteCrawl)
         {
@@ -94,4 +106,6 @@ public partial class CratisSites(HttpClient httpClient, ILogger<CratisSites> log
             throw new IncompleteCrawl();
         }
     }
+
+    record FetchPolicy(string Host, int MaxBytes, bool Optional, string[] MediaTypes);
 }

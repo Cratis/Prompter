@@ -23,32 +23,15 @@ public class RepositoryReadmes(HttpClient httpClient, IOptions<PrompterOptions> 
     public async IAsyncEnumerable<DocsPage> GetPages([EnumeratorCancellation] CancellationToken cancellationToken = default)
     {
         var config = options.Value.Ingestion.Readmes;
-        if (config.IncludeProfile)
-        {
-            var profile = await Read(".github", "main", "profile/README.md", "Cratis organization profile", config.MaxReadmeCharacters, cancellationToken);
-            if (profile is not null) yield return profile;
-        }
+        var profile = await ReadProfile(config, cancellationToken);
+        if (profile is not null) yield return profile;
         var seen = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
-        var inspected = 0;
-        for (var page = 1; inspected < config.MaxRepositories; page++)
+        await foreach (var repository in Entries(config.MaxRepositories, cancellationToken))
         {
-            var listing = await List(page, cancellationToken);
-            foreach (var repository in listing.EnumerateArray())
-            {
-                if (inspected++ >= config.MaxRepositories) break;
-                var name = repository.GetProperty("name").GetString() ?? string.Empty;
-                var branch = repository.GetProperty("default_branch").GetString() ?? string.Empty;
-                if (!Safe(name) || !Safe(branch) || !seen.Add(name) || !Public(repository) ||
-                    config.ExcludedRepositories.Contains(name, StringComparer.OrdinalIgnoreCase) ||
-                    (options.Value.Ingestion.Samples.Enabled && name.Equals(options.Value.Ingestion.Samples.Repository.Split('/')[^1], StringComparison.OrdinalIgnoreCase)))
-                {
-                    continue;
-                }
-                var description = repository.TryGetProperty("description", out var value) ? value.GetString() ?? string.Empty : string.Empty;
-                var readme = await Read(name, branch, "README.md", description, config.MaxReadmeCharacters, cancellationToken);
-                if (readme is not null) yield return readme;
-            }
-            if (listing.GetArrayLength() < 100) break;
+            var candidate = Select(repository, seen, config);
+            if (candidate is null) continue;
+            var readme = await Read(candidate, "README.md", config.MaxReadmeCharacters, cancellationToken);
+            if (readme is not null) yield return readme;
         }
     }
 
@@ -58,6 +41,44 @@ public class RepositoryReadmes(HttpClient httpClient, IOptions<PrompterOptions> 
 
     static bool Safe(string value) => value.Length is > 0 and <= 100 && value is not "." and not ".." &&
         value.All(character => char.IsAsciiLetterOrDigit(character) || character is '-' or '_' or '.');
+
+    static string Description(JsonElement repository) => repository.TryGetProperty("description", out var value) ? value.GetString() ?? string.Empty : string.Empty;
+
+    Task<DocsPage?> ReadProfile(ReadmesOptions config, CancellationToken cancellationToken) => config.IncludeProfile
+        ? Read(new(".github", "main", "Cratis organization profile"), "profile/README.md", config.MaxReadmeCharacters, cancellationToken)
+        : Task.FromResult<DocsPage?>(null);
+
+    Repository? Select(JsonElement repository, HashSet<string> seen, ReadmesOptions config)
+    {
+        var name = repository.GetProperty("name").GetString() ?? string.Empty;
+        var branch = repository.GetProperty("default_branch").GetString() ?? string.Empty;
+        if (!Safe(name) || !Safe(branch)) return null;
+        if (!seen.Add(name) || !Public(repository)) return null;
+        if (IsExcluded(name, config)) return null;
+        return new(name, branch, Description(repository));
+    }
+
+    bool IsExcluded(string name, ReadmesOptions config)
+    {
+        if (config.ExcludedRepositories.Contains(name, StringComparer.OrdinalIgnoreCase)) return true;
+        var samples = options.Value.Ingestion.Samples;
+        return samples.Enabled && name.Equals(samples.Repository.Split('/')[^1], StringComparison.OrdinalIgnoreCase);
+    }
+
+    async IAsyncEnumerable<JsonElement> Entries(int maxRepositories, [EnumeratorCancellation] CancellationToken cancellationToken)
+    {
+        var inspected = 0;
+        for (var page = 1; inspected < maxRepositories; page++)
+        {
+            var listing = await List(page, cancellationToken);
+            foreach (var repository in listing.EnumerateArray())
+            {
+                if (inspected++ >= maxRepositories) break;
+                yield return repository;
+            }
+            if (listing.GetArrayLength() < 100) break;
+        }
+    }
 
     async Task<JsonElement> List(int page, CancellationToken cancellationToken)
     {
@@ -75,9 +96,9 @@ public class RepositoryReadmes(HttpClient httpClient, IOptions<PrompterOptions> 
         }
     }
 
-    async Task<DocsPage?> Read(string repository, string branch, string file, string description, int maxCharacters, CancellationToken cancellationToken)
+    async Task<DocsPage?> Read(Repository repository, string file, int maxCharacters, CancellationToken cancellationToken)
     {
-        var url = new Uri($"https://raw.githubusercontent.com/Cratis/{Uri.EscapeDataString(repository)}/{Uri.EscapeDataString(branch)}/{file}");
+        var url = new Uri($"https://raw.githubusercontent.com/Cratis/{Uri.EscapeDataString(repository.Name)}/{Uri.EscapeDataString(repository.Branch)}/{file}");
         using var response = await Send(url, cancellationToken);
         if (response.StatusCode == HttpStatusCode.NotFound)
         {
@@ -85,7 +106,7 @@ public class RepositoryReadmes(HttpClient httpClient, IOptions<PrompterOptions> 
             return null;
         }
         var markdown = await BoundedContent.Read(response, options.Value.Ingestion.Sites.MaxPageBytes, cancellationToken);
-        return new(new($"https://github.com/Cratis/{repository}/blob/{branch}/{file}"), ReadmeMarkdown.Clean(markdown, $"Cratis/{repository}", description, maxCharacters));
+        return new(new($"https://github.com/Cratis/{repository.Name}/blob/{repository.Branch}/{file}"), ReadmeMarkdown.Clean(markdown, $"Cratis/{repository.Name}", repository.Description, maxCharacters));
     }
 
     async Task<HttpResponseMessage> Send(Uri url, CancellationToken cancellationToken)
@@ -101,4 +122,6 @@ public class RepositoryReadmes(HttpClient httpClient, IOptions<PrompterOptions> 
         }
         return response;
     }
+
+    record Repository(string Name, string Branch, string Description);
 }
