@@ -37,7 +37,7 @@ public static class ProductScope
     {
         var entry = _products.FirstOrDefault(candidate => candidate.Product == product);
         if (entry.Key is null) return [];
-        var prefixes = new List<string> { $"{docsSiteUrl.TrimEnd('/')}/{entry.Key}/" };
+        var prefixes = DocumentationPrefixes(entry.Key, docsSiteUrl).ToList();
         if (entry.Repository is not null)
         {
             prefixes.Add($"{GitHubReleases}{entry.Repository}/releases/");
@@ -55,7 +55,9 @@ public static class ProductScope
     {
         foreach (var (product, _, _, _) in _products)
         {
-            if (PrefixesFor(product, docsSiteUrl).Any(prefix => pageUrl.StartsWith(prefix, StringComparison.OrdinalIgnoreCase)))
+            if (PrefixesFor(product, docsSiteUrl).Any(prefix => prefix.EndsWith(".md", StringComparison.OrdinalIgnoreCase)
+                ? pageUrl.Equals(prefix, StringComparison.OrdinalIgnoreCase)
+                : pageUrl.StartsWith(prefix, StringComparison.OrdinalIgnoreCase)))
             {
                 return product;
             }
@@ -92,5 +94,18 @@ public static class ProductScope
 
         product = InteractionProduct.OtherOrUnknown;
         return false;
+    }
+
+    static IEnumerable<string> DocumentationPrefixes(string key, string docsSiteUrl)
+    {
+        var site = docsSiteUrl.TrimEnd('/');
+        var roots = new List<string> { site };
+        if (Uri.TryCreate(site, UriKind.Absolute, out var uri))
+        {
+            var twin = new UriBuilder(uri) { Host = uri.Host.StartsWith("www.", StringComparison.OrdinalIgnoreCase) ? uri.Host[4..] : $"www.{uri.Host}" };
+            roots.Add(twin.Uri.AbsoluteUri.TrimEnd('/'));
+        }
+
+        return roots.SelectMany(root => new[] { $"{root}/{key}/", $"{root}/{key}.md" });
     }
 }

@@ -43,6 +43,8 @@ public static class SystemPrompt
           Use the sites for what a product is, availability and support, and READMEs for what a repository contains.
         - When the user message says "Answer mode: recommendation", name the recommended Cratis product or package first, give 1-3 reasons that each cite an excerpt number, say plainly when no excerpt describes something that fits, and never compare with non-Cratis tools.
         - Keep answers short enough for Discord - lead with the answer, skip preamble.
+        - For list-style answers, use one concise line per item with its citation; avoid extra introductions
+          or summaries so the complete list fits.
         - Lead with the direct answer in normally 2-4 short sentences (at most 120 words of prose) and at most
           one short code block if needed. Point to the numbered citations for detail; do not restate the
           question, repeat your conclusion, or add an unsolicited tutorial.

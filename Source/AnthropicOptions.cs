@@ -30,9 +30,9 @@ public class AnthropicOptions
 
     /// <summary>
     /// Gets or sets the answer task policy. Defaults to the short, fast Haiku 5.5 policy: no thinking effort and a
-    /// 768-token output cap. Prices come from <see cref="Protection.ProtectionOptions.AnthropicAnswer"/>.
+    /// 1536-token output cap. Prices come from <see cref="Protection.ProtectionOptions.AnthropicAnswer"/>.
     /// </summary>
-    public TaskModelOptions Answer { get; set; } = new() { Model = "claude-haiku-5-5", Effort = string.Empty, MaxOutputTokens = 768 };
+    public TaskModelOptions Answer { get; set; } = new() { Model = "claude-haiku-5-5", Effort = string.Empty, MaxOutputTokens = 1536 };
 
     /// <summary>
     /// Gets or sets the issue drafting policy. Haiku requires explicit evaluation approval.
