@@ -48,6 +48,9 @@ public class the_production_projection : Specification
     [Fact] void should_price_the_answer_model_without_any_deployment_settings() => new PrompterOptions().Protection.AnthropicAnswer.Covers(new PrompterOptions().Anthropic.Answer.Model!, true).ShouldBeTrue();
     [Fact] void should_bind_the_short_answer_output_cap() => _defaults.Anthropic.Answer.MaxOutputTokens.ShouldEqual(768);
     [Fact] void should_price_the_verified_embedding_model() => _defaults.Protection.Voyage.Covers(_defaults.Voyage.Model, false).ShouldBeTrue();
+    [Fact] void should_bind_the_job_index_run_ceiling() => _defaults.Ingestion.MaxRunDollars.ShouldEqual(0.25m);
+    [Fact] void should_bind_the_job_index_daily_ceiling() => _defaults.Ingestion.MaxDailyDollars.ShouldEqual(0.50m);
+    [Fact] void should_leave_confirmed_full_reindexing_to_the_job() => _defaults.Ingestion.MaxFullRunDollars.ShouldEqual(0m);
     [Fact] void should_bound_the_global_ceiling_at_five_dollars() => _defaults.Protection.DailyUsd.ShouldEqual(5m);
     [Fact] void should_enforce_a_local_input_ceiling_below_both_vendor_limits() => _defaults.Protection.Anthropic.MaxInputTokens.ShouldEqual(32000);
     [Fact] void should_bind_the_explicit_initial_semantic_policy() => _defaults.Answering.MinSemanticSimilarity.ShouldEqual(0.5);

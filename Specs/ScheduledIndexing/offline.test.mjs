@@ -60,7 +60,8 @@ test('authorized schedule has bounded configuration and restricted security', ()
     assert.deepEqual(references.map(item => item.name), ['Cratis__Prompter__ConnectionString', 'Cratis__Prompter__Voyage__ApiKey']);
     for (const item of references) assert.deepEqual(item.valueFrom.secretKeyRef, { name: 'prompter-secrets', key: item.name });
     const deployment = readFileSync('Deployment/Services/AnsweringReadinessEnvironment.cs', 'utf8');
-    for (const key of Object.keys(expected).filter(key => /^(Protection__Daily|Protection__Voyage|Voyage__(Model|Dimensions))/.test(key))) {
+    assert.ok(!deployment.includes('Ingestion__MaxFullRunDollars'));
+    for (const key of Object.keys(expected).filter(key => /^(Protection__Daily|Protection__Voyage|Voyage__(Model|Dimensions)|Ingestion__(PricePerMillionTokens|MaxRunDollars|MaxDailyDollars)$)/.test(key))) {
         assert.ok(deployment.includes(`["${key}"] = "${expected[key]}"`), key);
     }
 });
