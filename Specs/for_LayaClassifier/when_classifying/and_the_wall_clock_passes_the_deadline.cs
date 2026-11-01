@@ -9,7 +9,7 @@ public class and_the_wall_clock_passes_the_deadline : given.a_classifier
 {
     Task Because()
     {
-        transport.Delay = _ => Task.Delay(TimeSpan.FromMilliseconds(1200));
+        transport.Delay = _ => Task.Delay(TimeSpan.FromMilliseconds(1200), TimeProvider.System);
         return Classify();
     }
 

@@ -11,7 +11,7 @@ public class and_a_table_is_inside_a_code_fence : Specification
 
     void Because()
     {
-        var rows = string.Join("\n", Enumerable.Range(1, 30).Select(index => $"| Item {index:00} | A description of item {index:00} that runs on a while |"));
+        var rows = string.Join('\n', Enumerable.Range(1, 30).Select(index => $"| Item {index:00} | A description of item {index:00} that runs on a while |"));
         var markdown = $"# Fence\n\n## Sample\n\n```markdown\n| Name | Description |\n| --- | --- |\n{rows}\n```\n";
         _chunks = [.. MarkdownChunker.Chunk(new PageUrl("https://cratis.io/fence.md"), markdown)];
     }

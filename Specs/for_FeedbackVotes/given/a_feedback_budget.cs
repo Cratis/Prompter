@@ -13,12 +13,12 @@ public class a_feedback_budget : Specification
     protected PrompterOptions Options { get; private set; } = null!;
     protected ControlledTime Clock { get; private set; } = null!;
 
+    protected void Create() => Votes = new(Microsoft.Extensions.Options.Options.Create(Options), Clock);
+
     void Establish()
     {
         Options = new();
         Options.Protection.FeedbackClicksPerUser = 3;
         Clock = new(new(2026, 1, 1, 0, 0, 0, TimeSpan.Zero));
     }
-
-    protected void Create() => Votes = new(Microsoft.Extensions.Options.Options.Create(Options), Clock);
 }

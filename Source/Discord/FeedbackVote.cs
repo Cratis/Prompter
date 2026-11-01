@@ -9,11 +9,11 @@ namespace Cratis.Prompter.Discord;
 public enum FeedbackVote
 {
     /// <summary>The verdict is new or changed: acknowledge it and write it.</summary>
-    Record,
+    Record = 0,
 
     /// <summary>The same verdict is already the latest: send nothing and write nothing.</summary>
-    Repeat,
+    Repeat = 1,
 
     /// <summary>Local memory is full: fail closed without writing.</summary>
-    Refused
+    Refused = 2
 }

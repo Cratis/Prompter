@@ -67,9 +67,11 @@ public class Feedback(IInteractionLog interactionLog, FeedbackVotes votes, Admis
         await Record(click);
     }
 
-    // Acknowledge first so the click never surfaces Discord's "interaction failed", even if the write
-    // fails - feedback is best-effort. The ephemeral reply is visible only to the clicking user. This
-    // runs well inside the 3-second interaction window.
+    /// <summary>
+    /// Acknowledges first so the click never surfaces Discord's "interaction failed", even if the write
+    /// fails - feedback is best-effort. The ephemeral reply is visible only to the clicking user. This
+    /// runs well inside the 3-second interaction window.
+    /// </summary>
     async Task Acknowledge() => await Context.Interaction.SendResponseAsync(
         InteractionCallback.Message(new()
         {

@@ -12,7 +12,7 @@ namespace Cratis.Prompter.Ingestion;
 /// </summary>
 internal static partial class ChunkPieces
 {
-    [GeneratedRegex(@"^\s*\|?\s*:?-{3,}:?\s*(\|\s*:?-{3,}:?\s*)*\|?\s*$", RegexOptions.None, 1000)]
+    [GeneratedRegex(@"^\s*\|?\s*:?-{3,}:?\s*(\|\s*:?-{3,}:?\s*)*\|?\s*$", RegexOptions.ExplicitCapture, 1000)]
     private static partial Regex TableSeparator { get; }
 
     /// <summary>
@@ -26,7 +26,7 @@ internal static partial class ChunkPieces
     {
         var tableLimit = Math.Min(maxTableLength, maxChunkLength);
         var segments = Scan(part.Split('\n'), tableLimit);
-        if (part.Length <= maxChunkLength && segments.All(segment => !segment.IsTable))
+        if (part.Length <= maxChunkLength && segments.TrueForAll(segment => !segment.IsTable))
         {
             return [part];
         }
