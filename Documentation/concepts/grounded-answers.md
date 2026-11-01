@@ -20,7 +20,8 @@ used. Passages from the same page share one citation number. Discord shows numbe
 and the `ask` CLI lists numbered source URLs: `[1]` in the answer always points to source `[1]`.
 Only referenced pages are listed, in page order, with numbers compacted if the answer skips pages.
 For example, citing only the second and fifth retrieved pages produces sources `[1]` and `[2]`,
-and the answer's original `[2]` and `[5]` markers are rewritten to match. Invalid page markers are removed.
+and the answer's original `[2]` and `[5]` markers are rewritten to match. Invalid prose markers are removed;
+fenced code, inline code, escaped brackets, and attached indexing expressions such as `items[0]` stay unchanged.
 If the answer has no valid references, Prompter offers up to four retrieved pages instead.
 Verbose CLI diagnostics label individual excerpts as `passage 1`, `passage 2`, and so on; these are not citation numbers.
 

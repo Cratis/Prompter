@@ -13,8 +13,8 @@ public class and_the_asker_clicks_again : given.a_hand_off
     async Task Because()
     {
         Options.Discord.MaintainerRoleId = 9;
-        _first = await HandOffs.Request(Click, CancellationToken.None);
-        _second = await HandOffs.Request(Click with { CustomId = AnswerActionButton.CustomId(AnswerActionButton.HumanPrefix, new(2, 6)) }, CancellationToken.None);
+        _first = await HandOffs.Request(Click with { ParentChannelId = 7 }, CancellationToken.None);
+        _second = await HandOffs.Request(Click with { ParentChannelId = 7, CustomId = AnswerActionButton.CustomId(AnswerActionButton.HumanPrefix, new(2, 6)) }, CancellationToken.None);
     }
 
     [Fact] void should_accept_the_first_click() => _first.ShouldEqual(HumanHandOffs.RequestedReply);

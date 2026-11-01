@@ -1,10 +1,8 @@
 // Copyright (c) Cratis. All rights reserved.
 // Licensed under the MIT license. See LICENSE file in the project root for full license information.
 
-using System.Globalization;
 using System.Text;
 using System.Text.Json;
-using System.Text.RegularExpressions;
 using Anthropic.Models.Messages;
 using Cratis.Prompter.Ingestion;
 using Cratis.Prompter.Retrieval;
@@ -23,7 +21,7 @@ namespace Cratis.Prompter.Answering;
 /// <param name="interactionLog">The log interactions are recorded in.</param>
 /// <param name="options">The Prompter options.</param>
 /// <param name="logger">Logger for diagnostics.</param>
-public partial class Answers(
+public class Answers(
     IPassages passages,
     IChatClient chatClient,
     IInteractionLog interactionLog,
@@ -31,9 +29,6 @@ public partial class Answers(
     ILogger<Answers> logger) : IAnswers
 {
     const int MaximumClarifiedQuestionLength = 1500;
-
-    [GeneratedRegex(@"\[(?<index>[0-9]+)\]", RegexOptions.ExplicitCapture, 100)]
-    private static partial Regex CitationIndex { get; }
 
     /// <inheritdoc/>
     public async Task<Answer> For(Question question, string source, CancellationToken cancellationToken = default)
@@ -127,15 +122,12 @@ public partial class Answers(
     static (string Text, PageUrl[] Citations) CitedPages(string text, Passage[] qualified)
     {
         var ranked = qualified.Select(passage => passage.Page).Distinct().ToArray();
-        var referenced = CitationIndex.Matches(text).Select(CitationNumber)
+        var referenced = ProseCitations.Numbers(text)
             .Where(number => number > 0 && number <= ranked.Length).Distinct().Order().ToArray();
         var numbers = referenced.Select((number, index) => (number, index)).ToDictionary(pair => pair.number, pair => pair.index + 1);
-        var normalized = CitationIndex.Replace(text, match => numbers.TryGetValue(CitationNumber(match), out var number)
-            ? $"[{number}]" : string.Empty);
+        var normalized = ProseCitations.Remap(text, numbers);
         return (normalized, referenced.Length > 0 ? [.. referenced.Select(number => ranked[number - 1])] : [.. ranked.Take(4)]);
     }
-
-    static int CitationNumber(Match match) => int.TryParse(match.Groups["index"].Value, NumberStyles.None, CultureInfo.InvariantCulture, out var number) ? number : 0;
 
     static CitationProvenance[] Provenance(IEnumerable<PageUrl> citations, IEnumerable<Passage> passages) =>
         [.. citations.Select(page => Consistent(page, passages.Where(passage => passage.Page == page).ToArray()))];

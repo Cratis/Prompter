@@ -13,6 +13,9 @@ public sealed class FakeDiscordMessages : HttpMessageHandler
     /// <summary>Gets or sets the question author, or null when the message is gone.</summary>
     public ulong? Author { get; set; }
 
+    /// <summary>Gets the number of message reads.</summary>
+    public int Reads { get; private set; }
+
     /// <summary>Gets the number of requests that were not message reads.</summary>
     public int Writes { get; private set; }
 
@@ -26,7 +29,11 @@ public sealed class FakeDiscordMessages : HttpMessageHandler
     /// <inheritdoc/>
     protected override Task<HttpResponseMessage> SendAsync(HttpRequestMessage request, CancellationToken cancellationToken)
     {
-        if (request.Method != HttpMethod.Get)
+        if (request.Method == HttpMethod.Get)
+        {
+            Reads++;
+        }
+        else
         {
             Writes++;
         }

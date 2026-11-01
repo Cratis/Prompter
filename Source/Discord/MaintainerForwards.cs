@@ -60,7 +60,7 @@ public class MaintainerForwards(RestClient rest, IMaintainerChannel channel, Adm
         {
             return UnavailableReply;
         }
-        if (!admission.TryEnter(click.Actor, click.CustomId).Allowed)
+        if (!ChannelAdmission.TryEnter(admission, click.Actor, click.ParentChannelId, click.CustomId).Allowed)
         {
             return options.Value.Discord.RateLimitedReply;
         }

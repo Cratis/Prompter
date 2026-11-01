@@ -11,4 +11,8 @@ namespace Cratis.Prompter.Discord;
 /// <param name="Conversation">The conversation cooldown key.</param>
 /// <param name="ClickedMessageId">The bot answer message.</param>
 /// <param name="CommandAsker">The original slash-command user, if available.</param>
-public sealed record HandOffClick(DiscordActor Actor, string CustomId, ulong Conversation, ulong ClickedMessageId, ulong? CommandAsker);
+public sealed record HandOffClick(DiscordActor Actor, string CustomId, ulong Conversation, ulong ClickedMessageId, ulong? CommandAsker)
+{
+    /// <summary>Gets the thread parent from the interaction channel, or null for a non-thread channel.</summary>
+    public ulong? ParentChannelId { get; init; }
+}

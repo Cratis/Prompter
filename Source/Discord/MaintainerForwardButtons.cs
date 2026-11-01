@@ -39,7 +39,10 @@ public class MaintainerForwardButtons(MaintainerForwards forwards, IOptions<Prom
         }
         await RespondAsync(InteractionCallback.DeferredMessage(MessageFlags.Ephemeral));
         using var timeout = new CancellationTokenSource(TimeSpan.FromSeconds(options.Value.Discord.AnswerTimeoutSeconds));
-        var click = new ForwardClick(kind, new(Context.Guild.Id, Context.Channel.Id, Context.User.Id), customId);
+        var click = new ForwardClick(kind, new(Context.Guild.Id, Context.Channel.Id, Context.User.Id), customId)
+        {
+            ParentChannelId = Context.Channel is GuildThread thread ? thread.ParentId : null
+        };
         var reply = await forwards.Forward(click, timeout.Token);
         await Context.Interaction.SendFollowupMessageAsync(new() { Content = reply, Flags = MessageFlags.Ephemeral, AllowedMentions = AllowedMentionsProperties.None });
     }

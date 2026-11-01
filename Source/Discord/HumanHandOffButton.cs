@@ -33,7 +33,10 @@ public class HumanHandOffButton(HumanHandOffs handOffs, IOptions<PrompterOptions
             AnswerActionButton.CustomId(AnswerActionButton.HumanPrefix, question),
             Conversation(question),
             Context.Message.Id,
-            Context.Message.InteractionMetadata?.User.Id);
+            Context.Message.InteractionMetadata?.User.Id)
+        {
+            ParentChannelId = Context.Channel is GuildThread thread ? thread.ParentId : null
+        };
         var reply = await handOffs.Request(click, timeout.Token);
         await Context.Interaction.SendFollowupMessageAsync(new() { Content = reply, Flags = MessageFlags.Ephemeral, AllowedMentions = AllowedMentionsProperties.None });
     }
