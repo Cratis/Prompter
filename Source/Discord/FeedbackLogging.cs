@@ -15,4 +15,10 @@ internal static partial class FeedbackLogging
 
     [LoggerMessage(LogLevel.Warning, "Failed to record {Verdict} feedback on interaction {InteractionId}")]
     internal static partial void FeedbackWriteFailed(this ILogger<Feedback> logger, Exception exception, string verdict, long interactionId);
+
+    [LoggerMessage(LogLevel.Debug, "Ignoring repeated feedback click on interaction {InteractionId}")]
+    internal static partial void FeedbackRepeated(this ILogger<Feedback> logger, long interactionId);
+
+    [LoggerMessage(LogLevel.Information, "Refused a feedback click over its budget or memory bound")]
+    internal static partial void FeedbackClickRefused(this ILogger<Feedback> logger);
 }

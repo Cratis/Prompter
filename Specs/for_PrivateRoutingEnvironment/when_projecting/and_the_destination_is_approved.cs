@@ -34,7 +34,7 @@ public class and_the_destination_is_approved : given.an_approved_destination
     {
         using var transport = new for_LayaClassifier.given.a_classifier.fake_decisions();
         using var client = new HttpClient(transport);
-        var classifier = new LayaClassifier(client, _options, ["arc"], new NoOpClassificationSink());
+        var classifier = new LayaClassifier(client, _options, ["arc"], new NoOpClassificationSink(), TimeProvider.System);
         await classifier.Classify("Arc is broken", [], TestContext.Current.CancellationToken);
         transport.Calls.ShouldEqual(1);
     }

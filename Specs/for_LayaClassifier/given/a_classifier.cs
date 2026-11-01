@@ -5,6 +5,7 @@ using System.Net;
 using System.Text;
 using System.Text.Json;
 using Cratis.Prompter.Routing;
+using Cratis.Prompter.Specs.Fakes;
 
 namespace Cratis.Prompter.Specs.for_LayaClassifier.given;
 
@@ -17,6 +18,7 @@ public class a_classifier : Specification
         Endpoint = new("http://laya.internal:8080"),
         AllowedHost = "laya.internal"
     };
+    protected ManualClock clock { get; } = new(new(2026, 1, 1, 0, 0, 0, TimeSpan.Zero));
     protected LayaClassifier classifier { get; private set; } = null!;
     protected Classification result { get; set; } = null!;
     private protected recording_sink sink { get; } = new();
@@ -27,7 +29,7 @@ public class a_classifier : Specification
     void Establish()
     {
         _client = new(transport);
-        classifier = new(_client, options, ["arc", "chronicle"], sink);
+        classifier = new(_client, options, ["arc", "chronicle"], sink, clock);
     }
 
     void Destroy() => _client.Dispose();

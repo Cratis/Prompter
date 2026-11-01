@@ -1,7 +1,6 @@
 // Copyright (c) Cratis. All rights reserved.
 // Licensed under the MIT license. See LICENSE file in the project root for full license information.
 
-using System.Diagnostics;
 using System.Text.Json;
 
 namespace Cratis.Prompter.Routing;
@@ -11,7 +10,8 @@ namespace Cratis.Prompter.Routing;
 /// <param name="options">Operator-owned private endpoint and uncalibrated thresholds.</param>
 /// <param name="products">Keys from the configured routing map, never repositories.</param>
 /// <param name="sink">Synchronous, nonthrowing metadata-only sink.</param>
-public sealed class LayaClassifier(HttpClient client, RoutingOptions options, IReadOnlyList<string> products, IClassificationSink sink) : IRequestClassifier
+/// <param name="time">Clock that drives the one-second deadline and the elapsed bucket.</param>
+public sealed class LayaClassifier(HttpClient client, RoutingOptions options, IReadOnlyList<string> products, IClassificationSink sink, TimeProvider time) : IRequestClassifier
 {
     readonly RoutingProducts _products = new(products);
     readonly DecisionApi _api = new(client, options);
@@ -27,14 +27,14 @@ public sealed class LayaClassifier(HttpClient client, RoutingOptions options, IR
         if (!PrivateDecisionEndpoint.IsAllowed(options)) return baseline with { Fallback = ClassificationFallback.EndpointRejected };
         if (options.Mode == ClassificationMode.Shadow && !ShouldSample()) return baseline with { Fallback = ClassificationFallback.Shadow };
         if (Interlocked.CompareExchange(ref _inFlight, 1, 0) != 0) return baseline with { Fallback = ClassificationFallback.Busy };
-        var started = Stopwatch.GetTimestamp();
+        var started = time.GetTimestamp();
         var observed = await WithinDeadline(ClassifierExcerpt.Build(currentRequest, olderRequests), baseline, cancellationToken);
         cancellationToken.ThrowIfCancellationRequested();
         sink.Record(new(options.Mode, observed.Intent, observed.Action, baseline.Action, observed.Confidence, observed.Fallback, Elapsed(started)));
         return options.Mode == ClassificationMode.Shadow ? baseline with { Fallback = ClassificationFallback.Shadow } : observed;
     }
 
-    static ElapsedBucket Elapsed(long started) => Stopwatch.GetElapsedTime(started).TotalMilliseconds switch
+    ElapsedBucket Elapsed(long started) => time.GetElapsedTime(started).TotalMilliseconds switch
     {
         < 100 => ElapsedBucket.Under100Milliseconds,
         < 500 => ElapsedBucket.Under500Milliseconds,
@@ -44,8 +44,8 @@ public sealed class LayaClassifier(HttpClient client, RoutingOptions options, IR
 
     async Task<Classification> WithinDeadline(string excerpt, Classification baseline, CancellationToken cancellationToken)
     {
-        using var deadline = CancellationTokenSource.CreateLinkedTokenSource(cancellationToken);
-        deadline.CancelAfter(TimeSpan.FromSeconds(1));
+        using var timeout = new CancellationTokenSource(TimeSpan.FromSeconds(1), time);
+        using var deadline = CancellationTokenSource.CreateLinkedTokenSource(cancellationToken, timeout.Token);
         try
         {
             // Keep ownership until even a noncooperative transport completes: later requests fall back,

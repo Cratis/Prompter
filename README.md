@@ -96,7 +96,8 @@ flowchart LR
 
 - **Ingest** — walk cratis.io's sitemap, fetch each page's markdown mirror, strip the MDX noise, and split
   into heading-aware chunks, plus a short summary chunk from each page's frontmatter description. Published GitHub release notes and curated Cratis samples join the same
-  corpus. Only changed chunks are re-embedded, so re-indexing is cheap.
+  corpus. Tables longer than 1,500 characters are split into row groups that repeat bounded headers, and long blocks
+  without blank lines are split at line boundaries so no chunk exceeds 4,000 characters. Oversized rows are fragmented with the header included in each fragment's limit. Headers over 500 characters (or a quarter of the chunk limit) are not repeated; repeated header bytes and groups also have input-proportional budgets. Titles and heading components are capped at 200 characters before paths are built. Composite embedding output is limited to the larger of 8,192 characters or 64 times the page's markdown length; pathological pages stop at the affordable prefix. Only changed chunks are re-embedded, so re-indexing is cheap.
 - **Retrieve** — one SQL query fuses lexical (BM25 via `tsvector`) and semantic (cosine over pgvector) hits
   with Reciprocal Rank Fusion (RRF), used only for ordering.
 - **Answer** — only passages meeting an independent cosine-similarity cutoff reach Claude and citation
@@ -339,6 +340,8 @@ Defaults: 3 simultaneous paid answers (no queue), 60 admissions/hour globally, 2
 channel/thread, and the existing 5/user/10 minutes. Current questions are capped at 4,000 characters;
 normalized duplicates from the same user/channel are suppressed for 2 minutes. Limit replies are
 restricted to one/user/10 minutes and one/channel/minute; excess requests are ignored silently.
+Feedback buttons allow 10 clicks per user per 10 minutes (`FeedbackClicksPerUser`, `FeedbackWindowSeconds`).
+Repeating the current persisted vote is acknowledged silently without a write, and excess clicks fail closed under the same reply limits. Each user's and answer's acknowledgement/write lifecycle is serialized; waits are bounded to two seconds and cache capacity is reserved atomically before a write and the verdict is cached only after persistence succeeds. Pending writes count toward capacity; failed writes or acknowledgements release their reservation.
 Only keyed hashes are kept in bounded expiring memory caches; rate limits reset on restart.
 The existing 60-second answer deadline also covers drafting, reservation and forum starter fetching.
 

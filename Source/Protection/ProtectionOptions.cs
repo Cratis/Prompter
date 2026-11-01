@@ -39,6 +39,12 @@ public class ProtectionOptions
     /// <summary>Gets or sets the per-user refusal reply interval.</summary>
     public int UserRefusalSeconds { get; set; } = 600;
 
+    /// <summary>Gets or sets the feedback button clicks one user may make per window.</summary>
+    public int FeedbackClicksPerUser { get; set; } = 10;
+
+    /// <summary>Gets or sets the feedback click window, and how long the latest verdict per answer is remembered.</summary>
+    public int FeedbackWindowSeconds { get; set; } = 600;
+
     /// <summary>Gets or sets the per-channel refusal reply interval.</summary>
     public int ChannelRefusalSeconds { get; set; } = 60;
 
@@ -72,5 +78,5 @@ public class ProtectionOptions
     /// <summary>Gets a value indicating whether local bounds are usable.</summary>
     public bool IsValid => Concurrency > 0 && GlobalPerHour >= 0 && ChannelPerHour >= 0 &&
         MaxQuestionCharacters > 0 && DuplicateSeconds > 0 && UserRefusalSeconds > 0 &&
-        ChannelRefusalSeconds > 0 && LocalCapacity > 0 && DailyUsd >= 0 && WebhookBytes > 0;
+        ChannelRefusalSeconds > 0 && FeedbackClicksPerUser > 0 && FeedbackWindowSeconds > 0 && LocalCapacity > 0 && DailyUsd >= 0 && WebhookBytes > 0;
 }
