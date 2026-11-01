@@ -15,5 +15,5 @@ public class and_the_run_is_scheduled : for_Indexer.given.an_indexer
         await indexer.Run(new IndexRequest(Scheduled: true));
     }
 
-    [Fact] void should_reserve_the_daily_scheduled_slot() => Lease.Received(1).Reserve(new IndexExposure(0, 0), Options.Ingestion.MaxDailyDollars, scheduled: true, full: false, Arg.Any<CancellationToken>());
+    [Fact] void should_reserve_the_daily_scheduled_slot() => Lease.Received(1).Reserve(new(new(0, 0), Options.Ingestion.MaxDailyDollars, Scheduled: true, Full: false), Arg.Any<CancellationToken>());
 }

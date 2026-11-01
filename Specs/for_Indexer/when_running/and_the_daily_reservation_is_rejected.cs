@@ -8,7 +8,7 @@ namespace Cratis.Prompter.Specs.for_Indexer.when_running;
 
 public class and_the_daily_reservation_is_rejected : given.an_indexer
 {
-    void Establish() => Lease.Reserve(Arg.Any<IndexExposure>(), Arg.Any<decimal>(), scheduled: true, full: false, Arg.Any<CancellationToken>()).Returns(_ => throw new IndexBudgetExceeded());
+    void Establish() => Lease.Reserve(Arg.Is<IndexReservation>(reservation => reservation.Scheduled && !reservation.Full), Arg.Any<CancellationToken>()).Returns(_ => throw new IndexBudgetExceeded());
     async Task Because() => Error = await Catch.Exception(async () => await Indexer.Run(new IndexRequest(Scheduled: true)));
 
     [Fact] void should_fail_closed() => Error.ShouldBeOfExactType<IndexBudgetExceeded>();

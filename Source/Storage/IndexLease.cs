@@ -62,8 +62,9 @@ public sealed class IndexLease(NpgsqlConnection connection) : IIndexLease
     }
 
     /// <inheritdoc/>
-    public async Task Reserve(IndexExposure exposure, decimal dailyLimit, bool scheduled, bool full, CancellationToken cancellationToken)
+    public async Task Reserve(IndexReservation reservation, CancellationToken cancellationToken)
     {
+        var exposure = reservation.Exposure;
         await using var command = connection.CreateCommand();
         command.CommandText =
             """
@@ -80,9 +81,9 @@ public sealed class IndexLease(NpgsqlConnection connection) : IIndexLease
             """;
         command.Parameters.AddWithValue(exposure.Tokens);
         command.Parameters.AddWithValue(exposure.Dollars);
-        command.Parameters.AddWithValue(scheduled);
-        command.Parameters.AddWithValue(dailyLimit);
-        command.Parameters.AddWithValue(full);
+        command.Parameters.AddWithValue(reservation.Scheduled);
+        command.Parameters.AddWithValue(reservation.DailyLimit);
+        command.Parameters.AddWithValue(reservation.Full);
         await using var reader = await command.ExecuteReaderAsync(cancellationToken);
         if (!await reader.ReadAsync(cancellationToken)) throw new IndexBudgetExceeded();
         var day = await reader.GetFieldValueAsync<DateOnly>(0, cancellationToken);

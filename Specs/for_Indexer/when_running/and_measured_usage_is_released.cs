@@ -13,7 +13,7 @@ public class and_measured_usage_is_released : given.an_indexer
         Options.Voyage.BatchSize = 1;
         Embeddings.Attempts = 1;
         Embeddings.UsageFor = inputs => 1;
-        Embeddings.BeforeGenerate = batch => Lease.Received(batch).Reserve(Arg.Any<IndexExposure>(), 10, scheduled: false, full: false, Arg.Any<CancellationToken>());
+        Embeddings.BeforeGenerate = batch => Lease.Received(batch).Reserve(Arg.Is<IndexReservation>(reservation => reservation.DailyLimit == 10 && !reservation.Scheduled && !reservation.Full), Arg.Any<CancellationToken>());
     }
 
     async Task Because() => await Indexer.Run();

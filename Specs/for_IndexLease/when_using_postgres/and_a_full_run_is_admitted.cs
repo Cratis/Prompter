@@ -17,11 +17,11 @@ public class and_a_full_run_is_admitted : given.a_database
     async Task Because()
     {
         await using var lease = await IndexLease.Acquire(Database, CancellationToken.None);
-        await lease.Reserve(new(100, 0.1m), 0.5m, scheduled: false, full: false, CancellationToken.None);
+        await lease.Reserve(new(new(100, 0.1m), 0.5m, Scheduled: false, Full: false), CancellationToken.None);
         await using var read = Database.CreateCommand("SELECT full_ceiling FROM index_reservations");
         _incrementalCeiling = (decimal)(await read.ExecuteScalarAsync())!;
-        await lease.Reserve(new(500, 0.5m), 1m, scheduled: false, full: true, CancellationToken.None);
-        _overCeiling = await Catch.Exception(() => lease.Reserve(new(500, 0.5m), 1m, scheduled: false, full: true, CancellationToken.None));
+        await lease.Reserve(new(new(500, 0.5m), 1m, Scheduled: false, Full: true), CancellationToken.None);
+        _overCeiling = await Catch.Exception(() => lease.Reserve(new(new(500, 0.5m), 1m, Scheduled: false, Full: true), CancellationToken.None));
         _fullCeiling = (decimal)(await read.ExecuteScalarAsync())!;
     }
 

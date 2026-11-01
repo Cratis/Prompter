@@ -27,7 +27,7 @@ public class and_usage_is_measured : Specification
 
     [Fact] void should_reserve_before_settling() => Received.InOrder(() =>
     {
-        _lease.Reserve(_batch, 2, scheduled: false, full: false, CancellationToken.None);
+        _lease.Reserve(new(_batch, 2, Scheduled: false, Full: false), CancellationToken.None);
         _lease.Release(new(406, 0.000406m), Arg.Any<CancellationToken>());
     });
     [Fact] void should_count_measured_usage() => _meter.Spent.ShouldEqual(new IndexExposure(2, 0.000002m));
