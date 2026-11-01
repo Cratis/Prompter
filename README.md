@@ -340,6 +340,8 @@ Defaults: 3 simultaneous paid answers (no queue), 60 admissions/hour globally, 2
 channel/thread, and the existing 5/user/10 minutes. Current questions are capped at 4,000 characters;
 normalized duplicates from the same user/channel are suppressed for 2 minutes. Limit replies are
 restricted to one/user/10 minutes and one/channel/minute; excess requests are ignored silently.
+Feedback buttons allow 10 clicks per user per 10 minutes (`FeedbackClicksPerUser`, `FeedbackWindowSeconds`).
+Repeating the current vote is acknowledged silently without a write, and excess clicks fail closed under the same reply limits.
 Only keyed hashes are kept in bounded expiring memory caches; rate limits reset on restart.
 The existing 60-second answer deadline also covers drafting, reservation and forum starter fetching.
 

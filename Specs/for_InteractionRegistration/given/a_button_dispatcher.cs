@@ -66,6 +66,7 @@ public class a_button_dispatcher : for_ActionButtons.given.an_action_interaction
         var config = Microsoft.Extensions.Options.Options.Create(Options);
         services.AddSingleton(config);
         services.AddSingleton(Work);
+        services.AddSingleton(new FeedbackVotes(config, Clock));
         services.AddSingleton(new ConversationContextReader(History, Clock));
         services.AddTransient(_ =>
         {

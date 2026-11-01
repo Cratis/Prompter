@@ -110,6 +110,7 @@ public static class HostBuilderExtensions
         builder.Services.AddSingleton<Discord.IConversationHistory, Discord.DiscordConversationHistory>();
         builder.Services.AddSingleton<Discord.ConversationContextReader>();
         builder.Services.AddSingleton<Discord.ForumFollowUps>();
+        builder.Services.AddSingleton<Discord.FeedbackVotes>();
         AddAnswerActions(builder);
     }
 
