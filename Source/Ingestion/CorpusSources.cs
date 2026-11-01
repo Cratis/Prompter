@@ -12,9 +12,11 @@ namespace Cratis.Prompter.Ingestion;
 /// <param name="docs">The published documentation.</param>
 /// <param name="releaseNotes">The published release notes.</param>
 /// <param name="samples">The curated samples.</param>
+/// <param name="sites">The company and product site reader.</param>
+/// <param name="readmes">The public repository README reader.</param>
 /// <param name="options">The source configuration.</param>
 /// <param name="logger">Logger for source failures.</param>
-public class CorpusSources(DocsSite docs, ReleaseNotes releaseNotes, SampleFiles samples, IOptions<PrompterOptions> options, ILogger<CorpusSources>? logger = null) : IDocsSite
+public class CorpusSources(DocsSite docs, ReleaseNotes releaseNotes, SampleFiles samples, CratisSites sites, RepositoryReadmes readmes, IOptions<PrompterOptions> options, ILogger<CorpusSources>? logger = null) : IDocsSite
 {
     readonly List<string> _failed = [];
 
@@ -27,6 +29,12 @@ public class CorpusSources(DocsSite docs, ReleaseNotes releaseNotes, SampleFiles
         _failed.Clear();
         await foreach (var page in docs.GetPages(cancellationToken)) yield return page;
         var sources = new List<RepositorySource>();
+        var config = options.Value.Ingestion.Sites;
+        foreach (var site in new[] { config.Company, config.Studio, config.Direct }.Where(site => site.Enabled))
+        {
+            var host = new Uri(site.BaseUrl).Host;
+            sources.Add(new($"site {host}", [$"https://{host}/"], sites.GetPages(site, config.MaxPageBytes, cancellationToken)));
+        }
         if (options.Value.Ingestion.ReleaseNotes.Enabled)
         {
             sources.Add(new("release notes", options.Value.Ingestion.ReleaseNotes.Repositories.Select(repository => $"https://github.com/Cratis/{repository}/releases/").ToArray(), releaseNotes.GetPages(cancellationToken)));
@@ -34,6 +42,10 @@ public class CorpusSources(DocsSite docs, ReleaseNotes releaseNotes, SampleFiles
         if (options.Value.Ingestion.Samples.Enabled)
         {
             sources.Add(new("samples", [$"https://github.com/{options.Value.Ingestion.Samples.Repository}/blob/"], samples.GetPages(cancellationToken)));
+        }
+        if (options.Value.Ingestion.Readmes.Enabled)
+        {
+            sources.Add(new("public READMEs", ["https://github.com/Cratis/"], readmes.GetPages(cancellationToken)));
         }
         foreach (var source in sources)
         {

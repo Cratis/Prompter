@@ -43,6 +43,11 @@ public partial class DocsSite(HttpClient httpClient, IOptions<PrompterOptions> o
 
         foreach (var url in ParsePageUrls(sitemap, options.Value.Ingestion.ExcludedPathSegments))
         {
+            if (!IsAllowed(url))
+            {
+                logger.FailedFetchingPage(url, new IncompleteCrawl());
+                continue;
+            }
             string markdown;
             try
             {
@@ -65,5 +70,13 @@ public partial class DocsSite(HttpClient httpClient, IOptions<PrompterOptions> o
         return new Uri(trimmed, UriKind.RelativeOrAbsolute) is { IsAbsoluteUri: true } absolute && absolute.AbsolutePath.Length <= 1
             ? $"{trimmed}/index.md"
             : $"{trimmed}.md";
+    }
+
+    bool IsAllowed(PageUrl url)
+    {
+        var host = new Uri(options.Value.DocsSiteUrl).Host;
+        var twin = host.StartsWith("www.", StringComparison.OrdinalIgnoreCase) ? host[4..] : $"www.{host}";
+        if (!Uri.TryCreate(url.Value, UriKind.Absolute, out var page)) return false;
+        return SourceHosts.IsFetchable(page, host) || SourceHosts.IsFetchable(page, twin);
     }
 }

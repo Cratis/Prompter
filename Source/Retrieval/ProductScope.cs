@@ -10,13 +10,20 @@ public static class ProductScope
 {
     const string GitHubReleases = "https://github.com/Cratis/";
 
-    static readonly (InteractionProduct Product, string Key, string Repository)[] _products =
+    static readonly (InteractionProduct Product, string Key, string? Repository, string[] ExtraPrefixes)[] _products =
     [
-        (InteractionProduct.Chronicle, "chronicle", "Chronicle"),
-        (InteractionProduct.Arc, "arc", "Arc"),
-        (InteractionProduct.Fundamentals, "fundamentals", "Fundamentals"),
-        (InteractionProduct.Components, "components", "Components"),
-        (InteractionProduct.Cli, "cli", "cli")
+        (InteractionProduct.Chronicle, "chronicle", "Chronicle", []),
+        (InteractionProduct.Arc, "arc", "Arc", []),
+        (InteractionProduct.Fundamentals, "fundamentals", "Fundamentals", []),
+        (InteractionProduct.Components, "components", "Components", []),
+        (InteractionProduct.Cli, "cli", "cli", []),
+        (InteractionProduct.Specifications, "specifications", "Specifications", []),
+        (InteractionProduct.Stage, "stage", "Stage", []),
+        (InteractionProduct.Screenplay, "screenplay", "Screenplay", []),
+        (InteractionProduct.Prologue, "prologue", "Prologue", []),
+        (InteractionProduct.Studio, "studio", null, ["https://cratis.studio/", "https://cratis.no/studio/"]),
+        (InteractionProduct.Direct, "direct", null, ["https://cratis.direct/"]),
+        (InteractionProduct.Assurance, "assurance", null, ["https://cratis.no/support/"])
     ];
 
     /// <summary>Gets the products a question can be scoped to, in display order.</summary>
@@ -29,9 +36,15 @@ public static class ProductScope
     public static IReadOnlyList<string> PrefixesFor(InteractionProduct product, string docsSiteUrl)
     {
         var entry = _products.FirstOrDefault(candidate => candidate.Product == product);
-        return entry.Key is null
-            ? []
-            : [$"{docsSiteUrl.TrimEnd('/')}/{entry.Key}/", $"{GitHubReleases}{entry.Repository}/releases/"];
+        if (entry.Key is null) return [];
+        var prefixes = new List<string> { $"{docsSiteUrl.TrimEnd('/')}/{entry.Key}/" };
+        if (entry.Repository is not null)
+        {
+            prefixes.Add($"{GitHubReleases}{entry.Repository}/releases/");
+            prefixes.Add($"{GitHubReleases}{entry.Repository}/blob/");
+        }
+        prefixes.AddRange(entry.ExtraPrefixes);
+        return prefixes;
     }
 
     /// <summary>Finds the product a page belongs to.</summary>
@@ -40,7 +53,7 @@ public static class ProductScope
     /// <returns>The product, or <see langword="null"/> for pages (such as samples) that belong to none.</returns>
     public static InteractionProduct? ProductOf(string pageUrl, string docsSiteUrl)
     {
-        foreach (var (product, _, _) in _products)
+        foreach (var (product, _, _, _) in _products)
         {
             if (PrefixesFor(product, docsSiteUrl).Any(prefix => pageUrl.StartsWith(prefix, StringComparison.OrdinalIgnoreCase)))
             {

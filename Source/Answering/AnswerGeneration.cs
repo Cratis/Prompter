@@ -14,6 +14,22 @@ public static class AnswerGeneration
 {
     const int MaximumSignalLength = 32;
 
+    static readonly Dictionary<string, InteractionProduct> _products = new(StringComparer.Ordinal)
+    {
+        ["Chronicle"] = InteractionProduct.Chronicle,
+        ["Arc"] = InteractionProduct.Arc,
+        ["Fundamentals"] = InteractionProduct.Fundamentals,
+        ["Components"] = InteractionProduct.Components,
+        ["CLI"] = InteractionProduct.Cli,
+        ["Specifications"] = InteractionProduct.Specifications,
+        ["Stage"] = InteractionProduct.Stage,
+        ["Screenplay"] = InteractionProduct.Screenplay,
+        ["Prologue"] = InteractionProduct.Prologue,
+        ["Studio"] = InteractionProduct.Studio,
+        ["Direct"] = InteractionProduct.Direct,
+        ["Assurance"] = InteractionProduct.Assurance
+    };
+
     static readonly JsonElement _schema = JsonDocument.Parse(
         """
         {
@@ -21,7 +37,7 @@ public static class AnswerGeneration
           "properties": {
             "text": { "type": "string" },
             "category": { "type": "string", "enum": ["answered", "docs-gap", "missing-capability", "likely-bug", "out-of-scope", "unknown"] },
-            "product": { "type": "string", "enum": ["Chronicle", "Arc", "Fundamentals", "Components", "CLI", "other/unknown"] },
+            "product": { "type": "string", "enum": ["Chronicle", "Arc", "Fundamentals", "Components", "CLI", "Specifications", "Stage", "Screenplay", "Prologue", "Studio", "Direct", "Assurance", "other/unknown"] },
             "suggestions": { "type": "array", "items": { "type": "string" } }
           },
           "required": ["text", "category", "product", "suggestions"],
@@ -113,15 +129,7 @@ public static class AnswerGeneration
         _ => InteractionCategory.Unknown
     };
 
-    static InteractionProduct Product(string? wire) => Bounded(wire) switch
-    {
-        "Chronicle" => InteractionProduct.Chronicle,
-        "Arc" => InteractionProduct.Arc,
-        "Fundamentals" => InteractionProduct.Fundamentals,
-        "Components" => InteractionProduct.Components,
-        "CLI" => InteractionProduct.Cli,
-        _ => InteractionProduct.OtherOrUnknown
-    };
+    static InteractionProduct Product(string? wire) => _products.GetValueOrDefault(Bounded(wire) ?? string.Empty, InteractionProduct.OtherOrUnknown);
 
     static string? Bounded(string? wire) => wire is { Length: <= MaximumSignalLength } ? wire : null;
 }

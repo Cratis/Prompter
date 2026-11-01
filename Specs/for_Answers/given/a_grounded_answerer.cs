@@ -18,7 +18,8 @@ public class a_grounded_answerer : Specification
     protected IChatClient chat { get; private set; } = null!;
     protected IInteractionLog interactions { get; private set; } = null!;
     protected Answers answers { get; private set; } = null!;
-    protected IReadOnlyList<ChatMessage> sent { get; private set; } = [];
+    protected PrompterOptions options { get; private set; } = null!;
+    protected IReadOnlyList<ChatMessage> sent { get; set; } = [];
     protected Answer result { get; set; } = null!;
 
     protected static Passage Passage(double similarity, double rank = 1.0 / 61) => new(
@@ -38,6 +39,7 @@ public class a_grounded_answerer : Specification
             sent = call.Arg<IEnumerable<ChatMessage>>().ToArray();
             return Task.FromResult(new ChatResponse(new ChatMessage(ChatRole.Assistant, "Chronicle stores facts [1].")));
         });
-        answers = new(passages, chat, interactions, Options.Create(new PrompterOptions()), NullLogger<Answers>.Instance);
+        options = new();
+        answers = new(passages, chat, interactions, Options.Create(options), NullLogger<Answers>.Instance);
     }
 }

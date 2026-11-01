@@ -23,6 +23,10 @@ public class and_an_enabled_repository_is_incomplete : given.an_indexer
     public async Task should_publish_healthy_sources_and_retain_failed_snapshots(string outcome)
     {
         Options.Ingestion.ReleaseNotes.Repositories = ["Arc", "Chronicle"];
+        Options.Ingestion.Sites.Company.Enabled = false;
+        Options.Ingestion.Sites.Studio.Enabled = false;
+        Options.Ingestion.Sites.Direct.Enabled = false;
+        Options.Ingestion.Readmes.Enabled = false;
         Options.Ingestion.Samples.Enabled = outcome.StartsWith("samples-", StringComparison.Ordinal) || outcome == "failed-with-samples";
         Options.Ingestion.Samples.Repository = "Cratis/Samples";
         var retained = new ChunkId(outcome.StartsWith("samples-", StringComparison.Ordinal)
@@ -33,7 +37,7 @@ public class and_an_enabled_repository_is_incomplete : given.an_indexer
         using var responses = new Responses(outcome);
         using var client = new HttpClient(responses) { BaseAddress = new("https://cratis.io/") };
         var config = Microsoft.Extensions.Options.Options.Create(Options);
-        var source = new CorpusSources(new(client, config, NullLogger<DocsSite>.Instance), new(client, config, NullLogger<ReleaseNotes>.Instance), new(client, config, NullLogger<SampleFiles>.Instance), config);
+        var source = new CorpusSources(new(client, config, NullLogger<DocsSite>.Instance), new(client, config, NullLogger<ReleaseNotes>.Instance), new(client, config, NullLogger<SampleFiles>.Instance), new(client, NullLogger<CratisSites>.Instance), new(client, config, NullLogger<RepositoryReadmes>.Instance), config);
         Indexer = Create(source);
         var error = await Catch.Exception(async () => await Indexer.Run(TestContext.Current.CancellationToken));
         if (outcome == "complete" || outcome == "empty" || outcome == "skipped")

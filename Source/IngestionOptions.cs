@@ -38,4 +38,10 @@ public class IngestionOptions
 
     /// <summary>Gets or sets the shared UTC-day dollar ceiling. Zero disables paid indexing.</summary>
     public decimal MaxDailyDollars { get; set; }
+
+    /// <summary>Gets or sets the company and product site source options.</summary>
+    public SitesOptions Sites { get; set; } = new();
+
+    /// <summary>Gets or sets the public README source options.</summary>
+    public ReadmesOptions Readmes { get; set; } = new();
 }
