@@ -13,7 +13,7 @@ public class and_the_asker_requests_it : given.a_forward
     async Task Because()
     {
         Channel.Post(Arg.Any<ulong>(), Arg.Do<string>(content => _content = content), Arg.Any<CancellationToken>()).Returns(Task.CompletedTask);
-        Reply = await Forwards.Forward(Requested with { ParentChannelId = 7 }, TestContext.Current.CancellationToken);
+        Reply = await Forwards.Forward(Requested with { Channel = ThreadChannel(7) }, TestContext.Current.CancellationToken);
     }
 
     [Fact] void should_confirm() => Reply.ShouldEqual(MaintainerForwards.ForwardedReply);

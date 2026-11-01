@@ -14,8 +14,8 @@ public class and_the_thread_parent_is_now_excluded : given.a_forward
     async Task Because()
     {
         Options.Protection.DeniedChannels = [7];
-        _deniedDocumentation = await Forwards.Forward(Documented with { ParentChannelId = 7 }, TestContext.Current.CancellationToken);
-        _deniedRequest = await Forwards.Forward(Requested with { ParentChannelId = 7 }, TestContext.Current.CancellationToken);
+        _deniedDocumentation = await Forwards.Forward(Documented with { Channel = ThreadChannel(7) }, TestContext.Current.CancellationToken);
+        _deniedRequest = await Forwards.Forward(Requested with { Channel = ThreadChannel(7) }, TestContext.Current.CancellationToken);
     }
 
     [Fact] void should_reject_documentation_forwards_from_the_denied_parent() => _deniedDocumentation.ShouldEqual(Options.Discord.RateLimitedReply);

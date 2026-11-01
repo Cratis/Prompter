@@ -130,7 +130,7 @@ public class FileIssue(
             return false;
         }
 
-        var decision = admission.TryEnter(new(Context.Interaction.GuildId, Context.Channel.Id, Context.User.Id), description);
+        var decision = ChannelAdmission.TryEnter(admission, new(Context.Interaction.GuildId, Context.Channel.Id, Context.User.Id), Context.Channel, description);
         if (!decision.Allowed)
         {
             await Refuse(decision.Reply, false);
@@ -146,7 +146,7 @@ public class FileIssue(
         return true;
     }
 
-    bool CanDraft() => Context.Interaction.GuildId is not null && admission.InScope(Context.Interaction.GuildId, Context.Channel.Id) && options.Value.Protection.GitHubWritesEnabled;
+    bool CanDraft() => Context.Interaction.GuildId is not null && ChannelAdmission.InScope(admission, new(Context.Interaction.GuildId, Context.Channel.Id, Context.User.Id), Context.Channel) && options.Value.Protection.GitHubWritesEnabled;
 
     async Task Refuse(bool reply, bool deferred)
     {

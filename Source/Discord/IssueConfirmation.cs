@@ -62,7 +62,7 @@ public class IssueConfirmation(
         }
 
         var customId = Context.Interaction.Data.CustomId;
-        var decision = admission.TryEnter(new(Context.Interaction.GuildId, Context.Channel.Id, Context.User.Id), customId);
+        var decision = ChannelAdmission.TryEnter(admission, new(Context.Interaction.GuildId, Context.Channel.Id, Context.User.Id), Context.Channel, customId);
         if (!decision.Allowed)
         {
             if (decision.Reply)

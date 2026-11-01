@@ -7,26 +7,25 @@ using NetCord;
 
 namespace Cratis.Prompter.Discord;
 
-/// <summary>Applies parent-channel scope before consuming interactive admission.</summary>
+/// <summary>Applies channel and thread-parent scope before any interaction work.</summary>
 public static class ChannelAdmission
 {
-    /// <summary>Admits a question only if both its channel and any thread parent are in scope.</summary>
+    /// <summary>Checks trusted channel metadata without consuming an admission slot.</summary>
     /// <param name="admission">The shared admission guard.</param>
     /// <param name="actor">The requesting member and location.</param>
-    /// <param name="channel">The interaction channel.</param>
-    /// <param name="question">The transient question.</param>
-    /// <returns>The admission decision, silent for an excluded parent.</returns>
-    public static AdmissionDecision TryEnter(Admission admission, DiscordActor actor, TextChannel channel, Question question) =>
-        TryEnter(admission, actor, channel is GuildThread thread ? thread.ParentId : null, question);
+    /// <param name="channel">The actual interaction channel, not a copied nullable parent ID.</param>
+    /// <returns>Whether the channel and any required thread parent are known and in scope.</returns>
+    public static bool InScope(Admission admission, DiscordActor actor, TextChannel? channel) =>
+        channel is not null and not IUnknownTextChannel && channel.Id != 0 && channel.Id == actor.ChannelId &&
+        admission.InScope(actor.GuildId, channel.Id) &&
+        (channel is not GuildThread thread || (thread.ParentId != 0 && admission.InScope(actor.GuildId, thread.ParentId)));
 
-    /// <summary>Admits an action only if its channel and trusted interaction parent are in scope.</summary>
+    /// <summary>Admits work only after checking the channel and any required thread parent.</summary>
     /// <param name="admission">The shared admission guard.</param>
     /// <param name="actor">The requesting member and location.</param>
-    /// <param name="parentChannelId">The parent from the interaction channel, or null for a non-thread.</param>
+    /// <param name="channel">The actual interaction channel; missing metadata is rejected.</param>
     /// <param name="question">The transient admission key.</param>
-    /// <returns>The admission decision, silent for an excluded parent.</returns>
-    public static AdmissionDecision TryEnter(Admission admission, DiscordActor actor, ulong? parentChannelId, Question question) =>
-        parentChannelId is { } parent && !admission.InScope(actor.GuildId, parent)
-            ? new(false, false)
-            : admission.TryEnter(actor, question);
+    /// <returns>The admission decision, silent for missing or excluded channel scope.</returns>
+    public static AdmissionDecision TryEnter(Admission admission, DiscordActor actor, TextChannel? channel, Question question) =>
+        InScope(admission, actor, channel) ? admission.TryEnter(actor, question) : new(false, false);
 }
