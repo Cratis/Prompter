@@ -11,7 +11,7 @@ public class a_feedback_budget : Specification
 {
     protected FeedbackVotes Votes { get; private set; } = null!;
     protected PrompterOptions Options { get; private set; } = null!;
-    protected ControlledTime Clock { get; private set; } = null!;
+    protected ManualClock Clock { get; private set; } = null!;
 
     protected void Create() => Votes = new(Microsoft.Extensions.Options.Options.Create(Options), Clock);
 

@@ -8,10 +8,10 @@ namespace Cratis.Prompter.Discord;
 /// </summary>
 public enum FeedbackVote
 {
-    /// <summary>The verdict is new or changed: acknowledge it and write it.</summary>
+    /// <summary>The verdict is new or changed: acknowledge it, write it and commit it once persisted.</summary>
     Record = 0,
 
-    /// <summary>The same verdict is already the latest: send nothing and write nothing.</summary>
+    /// <summary>The same verdict is already the latest persisted one: send nothing and write nothing.</summary>
     Repeat = 1,
 
     /// <summary>Local memory is full: fail closed without writing.</summary>

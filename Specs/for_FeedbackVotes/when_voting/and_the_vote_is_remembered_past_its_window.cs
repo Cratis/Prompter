@@ -13,9 +13,9 @@ public class and_the_vote_is_remembered_past_its_window : given.a_feedback_budge
     void Because()
     {
         Create();
-        Votes.Remember(new(FeedbackVerdict.Up, 42));
+        Votes.Commit(new(FeedbackVerdict.Up, 42));
         Clock.Advance(TimeSpan.FromSeconds(600));
-        _result = Votes.Remember(new(FeedbackVerdict.Up, 42));
+        _result = Votes.Check(new(FeedbackVerdict.Up, 42));
     }
 
     [Fact] void should_record_it_again_after_the_window() => _result.ShouldEqual(FeedbackVote.Record);

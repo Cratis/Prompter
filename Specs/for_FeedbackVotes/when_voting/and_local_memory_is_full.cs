@@ -16,9 +16,9 @@ public class and_local_memory_is_full : given.a_feedback_budget
         Options.Protection.LocalCapacity = 1;
         Create();
         Votes.TrySpend(7);
-        Votes.Remember(new(FeedbackVerdict.Up, 42));
+        Votes.Commit(new(FeedbackVerdict.Up, 42));
         _otherUser = Votes.TrySpend(8);
-        _otherAnswer = Votes.Remember(new(FeedbackVerdict.Up, 43));
+        _otherAnswer = Votes.Check(new(FeedbackVerdict.Up, 43));
     }
 
     [Fact] void should_refuse_a_new_user() => _otherUser.ShouldBeFalse();

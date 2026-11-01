@@ -13,7 +13,7 @@ public class and_the_first_vote_arrives : given.a_feedback_budget
     void Because()
     {
         Create();
-        _result = Votes.Remember(new(FeedbackVerdict.Up, 42));
+        _result = Votes.Check(new(FeedbackVerdict.Up, 42));
     }
 
     [Fact] void should_record_it() => _result.ShouldEqual(FeedbackVote.Record);

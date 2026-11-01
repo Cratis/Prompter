@@ -13,8 +13,9 @@ public class and_the_same_vote_repeats : given.a_feedback_budget
     void Because()
     {
         Create();
-        Votes.Remember(new(FeedbackVerdict.Up, 42));
-        _result = Votes.Remember(new(FeedbackVerdict.Up, 42));
+        var click = new FeedbackClick(FeedbackVerdict.Up, 42);
+        Votes.Commit(click);
+        _result = Votes.Check(click);
     }
 
     [Fact] void should_not_record_it_again() => _result.ShouldEqual(FeedbackVote.Repeat);

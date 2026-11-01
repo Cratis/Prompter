@@ -43,16 +43,11 @@ public static partial class MarkdownChunker
 
         foreach (var section in sections)
         {
-            foreach (var part in SplitOnParagraphs(section.Content, maxChunkLength))
+            var fence = new FenceState();
+            foreach (var trimmed in SplitOnParagraphs(section.Content, maxChunkLength).Select(part => part.Trim()).Where(part => part.Length > 0))
             {
-                var trimmed = part.Trim();
-                if (trimmed.Length == 0)
-                {
-                    continue;
-                }
-
                 var piece = 0;
-                foreach (var text in ChunkPieces.Split(trimmed, maxChunkLength, maxTableLength).Select(text => text.Trim()).Where(text => text.Length > 0))
+                foreach (var text in ChunkPieces.Split(trimmed, maxChunkLength, maxTableLength, fence).Select(text => text.Trim()).Where(text => text.Length > 0))
                 {
                     var id = piece == 0 ? $"{page.Value}#{index}" : $"{page.Value}#{index}.{piece}";
                     yield return new(
@@ -237,20 +232,29 @@ public static partial class MarkdownChunker
     /// <returns>The line with complete inline comments removed.</returns>
     static string RemoveInlineComments(string line, ref bool inComment)
     {
-        int open;
-        while ((open = line.IndexOf("{/*", StringComparison.Ordinal)) >= 0)
+        var open = line.IndexOf("{/*", StringComparison.Ordinal);
+        if (open < 0)
         {
+            return line;
+        }
+
+        var result = new StringBuilder(line.Length);
+        var position = 0;
+        while (open >= 0)
+        {
+            result.Append(line, position, open - position);
             var close = line.IndexOf("*/}", open + 3, StringComparison.Ordinal);
             if (close < 0)
             {
                 inComment = true;
-                return line[..open];
+                return result.ToString();
             }
 
-            line = line[..open] + line[(close + 3)..];
+            position = close + 3;
+            open = line.IndexOf("{/*", position, StringComparison.Ordinal);
         }
 
-        return line;
+        return result.Append(line, position, line.Length - position).ToString();
     }
 
     /// <summary>

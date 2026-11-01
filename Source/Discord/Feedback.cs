@@ -52,7 +52,14 @@ public class Feedback(IInteractionLog interactionLog, FeedbackVotes votes, Admis
             return;
         }
 
-        switch (votes.Remember(click))
+        using var turn = await votes.Enter(click.InteractionId, Context.User.Id);
+        if (turn is null)
+        {
+            await Refuse();
+            return;
+        }
+
+        switch (votes.Check(click))
         {
             case FeedbackVote.Repeat:
                 await Context.Interaction.SendResponseAsync(InteractionCallback.DeferredModifyMessage);
@@ -97,14 +104,14 @@ public class Feedback(IInteractionLog interactionLog, FeedbackVotes votes, Admis
             // vote, and this is best-effort community signal, not an authored judgement, so no author check
             // is needed (Discord only dispatches interactions for custom ids on messages the user can see).
             await interactionLog.RecordFeedback(click.InteractionId, click.Verdict);
+            votes.Commit(click);
             logger.RecordedFeedback(click.Verdict.ToText(), click.InteractionId);
         }
         catch (Exception exception)
         {
             // The user was already told "thanks"; a blip writing the vote is best-effort, so log and move on
-            // rather than letting the exception escape the handler after a successful acknowledgement. The
-            // remembered verdict is forgotten so that a retry is written.
-            votes.Forget(click);
+            // rather than letting the exception escape the handler after a successful acknowledgement. Nothing
+            // is remembered, so a retry is written.
             logger.FeedbackWriteFailed(exception, click.Verdict.ToText(), click.InteractionId);
         }
     }

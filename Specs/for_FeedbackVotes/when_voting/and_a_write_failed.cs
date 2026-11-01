@@ -14,10 +14,9 @@ public class and_a_write_failed : given.a_feedback_budget
     {
         Create();
         var click = new FeedbackClick(FeedbackVerdict.Up, 42);
-        Votes.Remember(click);
-        Votes.Forget(click);
-        _result = Votes.Remember(click);
+        Votes.Check(click);
+        _result = Votes.Check(click);
     }
 
-    [Fact] void should_record_the_retry() => _result.ShouldEqual(FeedbackVote.Record);
+    [Fact] void should_record_the_retry_because_nothing_was_committed() => _result.ShouldEqual(FeedbackVote.Record);
 }

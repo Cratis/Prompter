@@ -13,7 +13,15 @@ public class and_the_vote_changes : given.a_feedback_budget
     void Because()
     {
         Create();
-        _results = [Votes.Remember(new(FeedbackVerdict.Up, 42)), Votes.Remember(new(FeedbackVerdict.Down, 42)), Votes.Remember(new(FeedbackVerdict.Up, 42))];
+        _results = [Persist(FeedbackVerdict.Up), Persist(FeedbackVerdict.Down), Persist(FeedbackVerdict.Up)];
+    }
+
+    FeedbackVote Persist(FeedbackVerdict verdict)
+    {
+        var click = new FeedbackClick(verdict, 42);
+        var vote = Votes.Check(click);
+        Votes.Commit(click);
+        return vote;
     }
 
     [Fact] void should_record_the_latest_verdict_each_time() => _results.All(result => result == FeedbackVote.Record).ShouldBeTrue();
