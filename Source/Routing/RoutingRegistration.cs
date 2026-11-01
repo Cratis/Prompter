@@ -17,6 +17,7 @@ public static class RoutingRegistration
     public static IServiceCollection AddRequestRouting(this IServiceCollection services, RoutingOptions options, IReadOnlyList<string> products)
     {
         services.TryAddSingleton<IClassificationSink, NoOpClassificationSink>();
+        services.TryAddSingleton(TimeProvider.System);
         services.AddHttpClient("private-laya", client => client.Timeout = Timeout.InfiniteTimeSpan)
             .ConfigurePrimaryHttpMessageHandler(() => new SocketsHttpHandler
             {
@@ -28,7 +29,8 @@ public static class RoutingRegistration
             provider.GetRequiredService<IHttpClientFactory>().CreateClient("private-laya"),
             options,
             products.ToArray(),
-            provider.GetRequiredService<IClassificationSink>()));
+            provider.GetRequiredService<IClassificationSink>(),
+            provider.GetRequiredService<TimeProvider>()));
         return services;
     }
 }

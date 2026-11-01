@@ -13,7 +13,9 @@ public class and_transport_ignores_cancellation : given.a_classifier
     async Task Because()
     {
         transport.Delay = _ => _release.Task;
-        await Classify();
+        var pending = classifier.Classify("Arc is broken", []);
+        clock.Advance(TimeSpan.FromSeconds(1));
+        result = await pending;
         _second = await classifier.Classify("Arc", []);
         _release.SetResult();
     }
