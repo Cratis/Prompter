@@ -29,6 +29,15 @@ public static class SourceKinds
 
     static bool IsRelease(string[] segments) => segments[2] == "releases" && segments[3] == "tag";
 
+    static bool IsProfile(string[] segments) => segments.Length == 6 && segments[1] == ".github" && segments[4] == "profile";
+
+    static bool IsReadme(string[] segments)
+    {
+        if (segments[2] != "blob") return false;
+        if (!segments[^1].Equals("README.md", StringComparison.OrdinalIgnoreCase)) return false;
+        return segments.Length == 5 || IsProfile(segments);
+    }
+
     static SourceKind Kind(string[] segments)
     {
         if (segments.Length > 4 && IsRelease(segments))
@@ -37,8 +46,6 @@ public static class SourceKinds
         }
 
         if (segments[1].Equals("Samples", StringComparison.OrdinalIgnoreCase) && segments[2] == "blob") return SourceKind.Sample;
-        return segments[2] == "blob" && segments[^1].Equals("README.md", StringComparison.OrdinalIgnoreCase) &&
-            (segments.Length == 5 || (segments.Length == 6 && segments[1] == ".github" && segments[4] == "profile"))
-            ? SourceKind.Readme : SourceKind.Documentation;
+        return IsReadme(segments) ? SourceKind.Readme : SourceKind.Documentation;
     }
 }
