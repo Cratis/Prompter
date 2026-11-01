@@ -110,7 +110,7 @@ public static class DiscordAnswers
             return string.Empty;
         }
 
-        var links = citations.Select(page => $"<{(Ingestion.SourceKinds.Of(page) == Ingestion.SourceKind.Documentation ? page.Value.Replace(".md", string.Empty, StringComparison.OrdinalIgnoreCase) : page.Value)}>{Note(answer, page)}");
+        var links = citations.Select((page, index) => $"[{index + 1}] <{(Ingestion.SourceKinds.Of(page) == Ingestion.SourceKind.Documentation ? page.Value.Replace(".md", string.Empty, StringComparison.OrdinalIgnoreCase) : page.Value)}>{Note(answer, page)}");
         return $"Sources: {string.Join(" · ", links)}";
     }
 

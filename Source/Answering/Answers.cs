@@ -3,7 +3,6 @@
 
 using System.Text;
 using System.Text.Json;
-using System.Text.RegularExpressions;
 using Anthropic.Models.Messages;
 using Cratis.Prompter.Ingestion;
 using Cratis.Prompter.Retrieval;
@@ -22,7 +21,7 @@ namespace Cratis.Prompter.Answering;
 /// <param name="interactionLog">The log interactions are recorded in.</param>
 /// <param name="options">The Prompter options.</param>
 /// <param name="logger">Logger for diagnostics.</param>
-public partial class Answers(
+public class Answers(
     IPassages passages,
     IChatClient chatClient,
     IInteractionLog interactionLog,
@@ -30,9 +29,6 @@ public partial class Answers(
     ILogger<Answers> logger) : IAnswers
 {
     const int MaximumClarifiedQuestionLength = 1500;
-
-    [GeneratedRegex(@"\[(?<index>\d{1,2})\]", RegexOptions.ExplicitCapture, 100)]
-    private static partial Regex CitationIndex { get; }
 
     /// <inheritdoc/>
     public async Task<Answer> For(Question question, string source, CancellationToken cancellationToken = default)
@@ -73,8 +69,8 @@ public partial class Answers(
                 "I found relevant pages but couldn't compose an answer. These pages may help.",
                 InteractionCategory.Unknown,
                 InteractionProduct.OtherOrUnknown);
-            var citations = CitedPages(generated.Text, qualified);
-            answer = new(generated.Text, citations, confidence, IsRefusal: false, qualified) { Category = generated.Category, Product = generated.Product, CitationProvenance = Provenance(citations, qualified), Suggestions = Suggest(generated, question) };
+            var (text, citations) = CitedPages(generated.Text, qualified);
+            answer = new(text, citations, confidence, IsRefusal: false, qualified) { Category = generated.Category, Product = generated.Product, CitationProvenance = Provenance(citations, qualified), Suggestions = Suggest(generated, question) };
         }
 
         var interactionId = await interactionLog.Record(
@@ -89,12 +85,15 @@ public partial class Answers(
         var message = new StringBuilder("Documentation excerpts:\n\n<untrusted_excerpts>\n");
         var index = 1;
 
-        foreach (var passage in found)
+        foreach (var page in found.GroupBy(passage => passage.Page))
         {
-            message
-                .AppendLine($"[{index}] {Evidence(passage.Page.Value)} — {Evidence(passage.HeadingPath)}")
-                .AppendLine(Evidence(passage.Content))
-                .AppendLine();
+            message.AppendLine($"[{index}] {Evidence(page.Key.Value)}");
+            foreach (var passage in page)
+            {
+                message.AppendLine($"— {Evidence(passage.HeadingPath)}")
+                    .AppendLine(Evidence(passage.Content))
+                    .AppendLine();
+            }
             index++;
         }
 
@@ -120,15 +119,14 @@ public partial class Answers(
 
     static string Evidence(string text) => text.Replace("untrusted_excerpts", "untrusted-excerpts", StringComparison.OrdinalIgnoreCase);
 
-    static PageUrl[] CitedPages(string? text, Passage[] qualified)
+    static (string Text, PageUrl[] Citations) CitedPages(string text, Passage[] qualified)
     {
         var ranked = qualified.Select(passage => passage.Page).Distinct().ToArray();
-        var referenced = CitationIndex.Matches(text ?? string.Empty)
-            .Select(match => int.Parse(match.Groups["index"].Value, System.Globalization.CultureInfo.InvariantCulture))
-            .Where(index => index >= 1 && index <= qualified.Length)
-            .Select(index => qualified[index - 1].Page);
-        var selected = referenced.Concat(ranked).Distinct().Take(4).ToHashSet();
-        return [.. ranked.Where(selected.Contains)];
+        var referenced = ProseCitations.Numbers(text)
+            .Where(number => number > 0 && number <= ranked.Length).Distinct().Order().ToArray();
+        var numbers = referenced.Select((number, index) => (number, index)).ToDictionary(pair => pair.number, pair => pair.index + 1);
+        var normalized = ProseCitations.Remap(text, numbers);
+        return (normalized, referenced.Length > 0 ? [.. referenced.Select(number => ranked[number - 1])] : [.. ranked.Take(4)]);
     }
 
     static CitationProvenance[] Provenance(IEnumerable<PageUrl> citations, IEnumerable<Passage> passages) =>
@@ -153,9 +151,20 @@ public partial class Answers(
         var answering = options.Value.Answering;
         var candidates = (await passages.Search(new(question.Value) { Scope = question.Scope }, Math.Max(answering.MaxPassages, Passages.MaximumCandidates), cancellationToken))
             .Where(passage => SourceHosts.IsCitable(passage.Page, options.Value)).ToArray();
-        var qualified = candidates.Where(passage => double.IsFinite(passage.SemanticSimilarity) &&
-            passage.SemanticSimilarity is >= -1 and <= 1 && passage.SemanticSimilarity >= answering.MinSemanticSimilarity).Take(answering.MaxPassages).ToArray();
-        return (candidates, qualified);
+        var eligible = candidates.Where(passage => double.IsFinite(passage.SemanticSimilarity) &&
+            passage.SemanticSimilarity is >= -1 and <= 1 && passage.SemanticSimilarity >= answering.MinSemanticSimilarity).ToArray();
+        var qualified = eligible.Where(passage => !passage.IsPageExpansion).Take(answering.MaxPassages).ToList();
+        var summaryPages = qualified.Where(passage => passage.IsSummary).Select(passage => passage.Page).ToHashSet();
+        var expansion = eligible.Where(passage => passage.IsPageExpansion && !passage.IsSummary && summaryPages.Contains(passage.Page))
+            .OrderByDescending(passage => passage.SemanticSimilarity)
+            .DistinctBy(passage => (passage.Page, passage.HeadingPath, passage.Content))
+            .Where(passage => !qualified.Exists(existing => existing.Page == passage.Page && existing.HeadingPath == passage.HeadingPath && existing.Content == passage.Content))
+            .Take(Math.Min(2, answering.MaxPassages - qualified.Count(passage => passage.IsSummary))).ToArray();
+        while (qualified.Count + expansion.Length > answering.MaxPassages)
+        {
+            qualified.RemoveAt(qualified.FindLastIndex(passage => !passage.IsSummary));
+        }
+        return (candidates, [.. qualified, .. expansion]);
     }
 
     async Task<GeneratedAnswer?> Generate(Question question, Passage[] qualified, AnswerMode mode, CancellationToken cancellationToken)

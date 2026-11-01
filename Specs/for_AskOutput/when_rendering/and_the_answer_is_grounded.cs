@@ -22,7 +22,7 @@ public class and_the_answer_is_grounded : Specification
     void Because() => _lines = AskOutput.Lines(_answer, verbose: false);
 
     [Fact] void should_start_with_the_answer_text() => _lines[0].ShouldEqual("Append events through the event log.");
-    [Fact] void should_list_the_citation() => string.Join('\n', _lines).ShouldContain("  - https://cratis.io/chronicle/events.md");
+    [Fact] void should_list_the_citation() => string.Join('\n', _lines).ShouldContain("  [1] https://cratis.io/chronicle/events.md");
     [Fact] void should_not_list_passages() => string.Join('\n', _lines).ShouldNotContain("Retrieved");
     [Fact] void should_exit_zero() => AskOutput.ExitCode(_answer).ShouldEqual(0);
 }

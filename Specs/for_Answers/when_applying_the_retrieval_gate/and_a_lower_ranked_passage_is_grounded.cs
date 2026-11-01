@@ -27,8 +27,8 @@ public class and_a_lower_ranked_passage_is_grounded : given.a_grounded_answerer
     [Fact] void should_preserve_rrf_order_rather_than_sort_by_similarity() => result.Passages.SequenceEqual([_first, _second]).ShouldBeTrue();
     [Fact] void should_exclude_weak_context() => sent[1].Text.ShouldNotContain("LEXICAL_ONLY_UNRELATED");
     [Fact] void should_exclude_invalid_context() => sent[1].Text.ShouldNotContain("INVALID_SIMILARITY");
-    [Fact] void should_include_the_first_qualified_excerpt() => sent[1].Text.ShouldContain("[1] https://cratis.io/chronicle/ — Overview");
+    [Fact] void should_include_the_first_qualified_excerpt() => sent[1].Text.ShouldContain("[1] https://cratis.io/chronicle/\n— Overview");
     [Fact] void should_include_the_second_qualified_excerpt() => sent[1].Text.ShouldContain("Immutable events are facts.");
-    [Fact] void should_cite_only_qualified_pages() => result.Citations.SequenceEqual([_first.Page, _second.Page]).ShouldBeTrue();
+    [Fact] void should_cite_only_qualified_pages() => result.Citations.SequenceEqual([_first.Page]).ShouldBeTrue();
     [Fact] void should_report_the_rrf_first_admitted_similarity() => result.Confidence.ShouldEqual(0.6);
 }

@@ -27,6 +27,8 @@ public class and_pages_have_metadata : given.a_grounded_answerer
             other,
             Stamp(disputed, _indexed, "1.0.0"),
             Stamp(disputing, _indexed, "2.0.0"));
+        chat.GetResponseAsync(Arg.Any<IEnumerable<ChatMessage>>(), Arg.Any<ChatOptions>(), Arg.Any<CancellationToken>())
+            .Returns(new ChatResponse(new ChatMessage(ChatRole.Assistant, "Grounded answer [1] [2] [3].")));
     }
 
     async Task Because() => result = await answers.For(new("Q?"), "cli", TestContext.Current.CancellationToken);

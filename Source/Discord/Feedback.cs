@@ -16,7 +16,7 @@ namespace Cratis.Prompter.Discord;
 /// <param name="interactionLog">The log the verdict is written to.</param>
 /// <param name="logger">Logger for diagnostics.</param>
 public class Feedback(IInteractionLog interactionLog, ILogger<Feedback> logger)
-    : ComponentInteractionModule<ComponentInteractionContext>
+    : ComponentInteractionModule<ButtonInteractionContext>
 {
     /// <summary>
     /// The ephemeral acknowledgement shown to a user after they click a feedback button.

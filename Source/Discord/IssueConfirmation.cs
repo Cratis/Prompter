@@ -24,7 +24,7 @@ public class IssueConfirmation(
     PendingIssues pending,
     Admission admission,
     IOptions<PrompterOptions> options,
-    ILogger<IssueConfirmation> logger) : ComponentInteractionModule<ComponentInteractionContext>
+    ILogger<IssueConfirmation> logger) : ComponentInteractionModule<ButtonInteractionContext>
 {
     /// <summary>
     /// The reply when the draft is no longer available to file.
@@ -62,7 +62,7 @@ public class IssueConfirmation(
         }
 
         var customId = Context.Interaction.Data.CustomId;
-        var decision = admission.TryEnter(new(Context.Interaction.GuildId, Context.Channel.Id, Context.User.Id), customId);
+        var decision = ChannelAdmission.TryEnter(admission, new(Context.Interaction.GuildId, Context.Channel.Id, Context.User.Id), Context.Channel, customId);
         if (!decision.Allowed)
         {
             if (decision.Reply)

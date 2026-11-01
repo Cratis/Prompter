@@ -18,5 +18,5 @@ public class and_answer_has_citations : Specification
         []));
 
     [Fact] void should_start_with_the_answer() => _result.StartsWith("Append events").ShouldBeTrue();
-    [Fact] void should_link_sources_without_markdown_extension() => _result.ShouldContain("<https://cratis.io/chronicle/events>");
+    [Fact] void should_link_sources_without_markdown_extension() => _result.ShouldContain("Sources: [1] <https://cratis.io/chronicle/events>");
 }

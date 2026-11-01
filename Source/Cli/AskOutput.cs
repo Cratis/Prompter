@@ -32,7 +32,7 @@ public static class AskOutput
             lines.Add(string.Empty);
 
             lines.AddRange(passages.Select((passage, index) =>
-                $"  [{index + 1}] rrf {passage.Score.ToString("F5", CultureInfo.InvariantCulture)}, semantic similarity {Score(passage.SemanticSimilarity)}  {passage.Page.Value}{Heading(passage)}"));
+                $"  passage {index + 1}: rrf {passage.Score.ToString("F5", CultureInfo.InvariantCulture)}, semantic similarity {Score(passage.SemanticSimilarity)}  {passage.Page.Value}{Heading(passage)}"));
 
             if (passages.Count > 0)
             {
@@ -41,7 +41,7 @@ public static class AskOutput
         }
 
         lines.Add(answer.Text);
-        lines.AddRange(answer.Citations.Select(citation => $"  - {citation.Value}{Note(answer, citation)}"));
+        lines.AddRange(answer.Citations.Select((citation, index) => $"  [{index + 1}] {citation.Value}{Note(answer, citation)}"));
 
         return lines;
     }

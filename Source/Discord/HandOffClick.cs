@@ -2,6 +2,7 @@
 // Licensed under the MIT license. See LICENSE file in the project root for full license information.
 
 using Cratis.Prompter.Protection;
+using NetCord;
 
 namespace Cratis.Prompter.Discord;
 
@@ -11,4 +12,8 @@ namespace Cratis.Prompter.Discord;
 /// <param name="Conversation">The conversation cooldown key.</param>
 /// <param name="ClickedMessageId">The bot answer message.</param>
 /// <param name="CommandAsker">The original slash-command user, if available.</param>
-public sealed record HandOffClick(DiscordActor Actor, string CustomId, ulong Conversation, ulong ClickedMessageId, ulong? CommandAsker);
+public sealed record HandOffClick(DiscordActor Actor, string CustomId, ulong Conversation, ulong ClickedMessageId, ulong? CommandAsker)
+{
+    /// <summary>Gets the actual interaction channel, preserving thread type and missing-parent metadata.</summary>
+    public required TextChannel Channel { get; init; }
+}

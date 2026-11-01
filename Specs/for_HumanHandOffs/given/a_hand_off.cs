@@ -6,6 +6,7 @@ using Cratis.Prompter.Protection;
 using Cratis.Prompter.Specs.Fakes;
 using Microsoft.Extensions.Logging.Abstractions;
 using Microsoft.Extensions.Options;
+using NetCord;
 using NetCord.Rest;
 
 namespace Cratis.Prompter.Specs.for_HumanHandOffs.given;
@@ -19,6 +20,10 @@ public class a_hand_off : Specification
     protected PrompterOptions Options { get; private set; } = null!;
     protected HumanHandOffs HandOffs { get; private set; } = null!;
     protected HandOffClick Click { get; set; } = null!;
+    protected TextChannel RegularChannel(ulong id) => TextChannel.CreateFromJson(new() { Id = id, GuildId = 1, Type = ChannelType.TextGuildChannel }, _rest);
+
+    protected TextChannel ThreadChannel(ulong? parent) => TextChannel.CreateFromJson(new() { Id = 2, GuildId = 1, Type = ChannelType.PublicGuildThread, ParentId = parent }, _rest);
+
     void Destroy() => _rest.Dispose();
 
     void Establish()
@@ -38,6 +43,9 @@ public class a_hand_off : Specification
             config,
             clock,
             NullLogger<HumanHandOffs>.Instance);
-        Click = new(new(1, 2, 3), AnswerActionButton.CustomId(AnswerActionButton.HumanPrefix, new(2, 4)), 4, 5, null);
+        Click = new(new(1, 2, 3), AnswerActionButton.CustomId(AnswerActionButton.HumanPrefix, new(2, 4)), 4, 5, null)
+        {
+            Channel = RegularChannel(2)
+        };
     }
 }

@@ -1,6 +1,7 @@
 // Copyright (c) Cratis. All rights reserved.
 // Licensed under the MIT license. See LICENSE file in the project root for full license information.
 
+using Cratis.Prompter.Protection;
 using Microsoft.Extensions.Options;
 using NetCord;
 using NetCord.Rest;
@@ -10,8 +11,9 @@ namespace Cratis.Prompter.Discord;
 
 /// <summary>The thin interaction adapter for explicit human hand-offs.</summary>
 /// <param name="handOffs">Hand-off authorization and delivery.</param>
+/// <param name="admission">The shared channel-scope guard.</param>
 /// <param name="options">The answer timeout.</param>
-public class HumanHandOffButton(HumanHandOffs handOffs, IOptions<PrompterOptions> options) : ComponentInteractionModule<ButtonInteractionContext>
+public class HumanHandOffButton(HumanHandOffs handOffs, Admission admission, IOptions<PrompterOptions> options) : ComponentInteractionModule<ButtonInteractionContext>
 {
     /// <summary>Defers before any REST access, then requests a human.</summary>
     /// <param name="channelId">Question channel.</param>
@@ -20,6 +22,10 @@ public class HumanHandOffButton(HumanHandOffs handOffs, IOptions<PrompterOptions
     [ComponentInteraction(AnswerActionButton.HumanPrefix)]
     public async Task Handle(ulong channelId, ulong messageId)
     {
+        if (!ChannelAdmission.InScope(admission, new(Context.Interaction.GuildId, Context.Channel.Id, Context.User.Id), Context.Channel))
+        {
+            return;
+        }
         if (Context.Guild is null)
         {
             await RespondAsync(InteractionCallback.Message(new() { Content = HumanHandOffs.UnavailableReply, Flags = MessageFlags.Ephemeral, AllowedMentions = AllowedMentionsProperties.None }));
@@ -33,7 +39,10 @@ public class HumanHandOffButton(HumanHandOffs handOffs, IOptions<PrompterOptions
             AnswerActionButton.CustomId(AnswerActionButton.HumanPrefix, question),
             Conversation(question),
             Context.Message.Id,
-            Context.Message.InteractionMetadata?.User.Id);
+            Context.Message.InteractionMetadata?.User.Id)
+        {
+            Channel = Context.Channel
+        };
         var reply = await handOffs.Request(click, timeout.Token);
         await Context.Interaction.SendFollowupMessageAsync(new() { Content = reply, Flags = MessageFlags.Ephemeral, AllowedMentions = AllowedMentionsProperties.None });
     }

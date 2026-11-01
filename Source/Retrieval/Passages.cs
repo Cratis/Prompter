@@ -2,6 +2,7 @@
 // Licensed under the MIT license. See LICENSE file in the project root for full license information.
 
 using Cratis.Prompter.Answering;
+using Cratis.Prompter.Ingestion;
 using Microsoft.Extensions.AI;
 using Microsoft.Extensions.Options;
 using Npgsql;
@@ -10,8 +11,8 @@ using Pgvector;
 namespace Cratis.Prompter.Retrieval;
 
 /// <summary>
-/// Represents an implementation of <see cref="IPassages"/> doing hybrid retrieval in a single
-/// Postgres query - full-text and vector ranks fused with reciprocal rank fusion (RRF).
+/// Represents an implementation of <see cref="IPassages"/> doing hybrid retrieval with full-text
+/// and vector ranks fused with reciprocal rank fusion (RRF), then bounded summary-page expansion.
 /// </summary>
 /// <param name="dataSource">The Postgres data source.</param>
 /// <param name="embeddings">The generator used to embed the question.</param>
@@ -58,7 +59,7 @@ public class Passages(
                    COALESCE(1.0 / ({RrfConstant} + semantic.rank), 0) +
                    COALESCE(1.0 / ({RrfConstant} + lexical.rank), 0) AS score,
                    1.0 - (c.embedding <=> $1) AS semantic_similarity,
-                   p.indexed_at, p.page_last_modified, p.product_version
+                   p.indexed_at, p.page_last_modified, p.product_version, c.id = c.page_url || '#summary' AS is_summary
             FROM chunks c
             LEFT JOIN semantic ON c.id = semantic.id
             LEFT JOIN lexical ON c.id = lexical.id
@@ -80,6 +81,16 @@ public class Passages(
             passages.Add(await ReadPassage(reader, cancellationToken));
         }
 
+        await reader.CloseAsync();
+        var summaryPages = passages
+            .Where(passage => SourceHosts.IsCitable(passage.Page, options.Value) && double.IsFinite(passage.SemanticSimilarity) &&
+                passage.SemanticSimilarity is >= -1 and <= 1 && passage.SemanticSimilarity >= options.Value.Answering.MinSemanticSimilarity)
+            .Take(options.Value.Answering.MaxPassages).Where(passage => passage.IsSummary)
+            .Select(passage => passage.Page.Value).Distinct().ToArray();
+        if (summaryPages.Length > 0)
+        {
+            passages.AddRange(await ExpandSummaries(questionEmbedding, summaryPages, cancellationToken));
+        }
         return passages;
     }
 
@@ -93,7 +104,8 @@ public class Passages(
     {
         IndexedAt = await NullableField<DateTimeOffset>(reader, 6, cancellationToken),
         PageLastModifiedAt = await NullableField<DateTimeOffset>(reader, 7, cancellationToken),
-        ProductVersion = await reader.IsDBNullAsync(8, cancellationToken) ? null : reader.GetString(8)
+        ProductVersion = await reader.IsDBNullAsync(8, cancellationToken) ? null : reader.GetString(8),
+        IsSummary = reader.GetBoolean(9)
     };
 
     /// <summary>
@@ -108,6 +120,35 @@ public class Passages(
     static async Task<T?> NullableField<T>(NpgsqlDataReader reader, int ordinal, CancellationToken cancellationToken)
         where T : struct =>
         await reader.IsDBNullAsync(ordinal, cancellationToken) ? null : await reader.GetFieldValueAsync<T>(ordinal, cancellationToken);
+
+    async Task<List<Passage>> ExpandSummaries(Vector questionEmbedding, string[] pages, CancellationToken cancellationToken)
+    {
+        // Reuse the question embedding. Only the best two non-summary chunks from admitted pages
+        // compete for reserved slots; the answering layer still enforces grounding and the total cap.
+        await using var command = dataSource.CreateCommand(
+            """
+            SELECT c.page_url, c.title, c.heading_path, c.content, 0.0::double precision AS score,
+                   1.0 - (c.embedding <=> $1) AS semantic_similarity,
+                   p.indexed_at, p.page_last_modified, p.product_version, false AS is_summary
+            FROM chunks c
+            LEFT JOIN documentation_pages p ON p.page_url = c.page_url
+            WHERE c.page_url = ANY($2::text[]) AND c.id <> c.page_url || '#summary'
+              AND 1.0 - (c.embedding <=> $1) >= $3
+              AND 1.0 - (c.embedding <=> $1) <= 1
+            ORDER BY c.embedding <=> $1, c.id
+            LIMIT 2
+            """);
+        command.Parameters.AddWithValue(questionEmbedding);
+        command.Parameters.AddWithValue(pages);
+        command.Parameters.AddWithValue(options.Value.Answering.MinSemanticSimilarity);
+        var expansion = new List<Passage>();
+        await using var reader = await command.ExecuteReaderAsync(cancellationToken);
+        while (await reader.ReadAsync(cancellationToken))
+        {
+            expansion.Add(await ReadPassage(reader, cancellationToken) with { IsPageExpansion = true });
+        }
+        return expansion;
+    }
 
     string[] ScopePrefixes(Question question) => question.Scope is { } product
         ? [.. ProductScope.PrefixesFor(product, options.Value.DocsSiteUrl)]

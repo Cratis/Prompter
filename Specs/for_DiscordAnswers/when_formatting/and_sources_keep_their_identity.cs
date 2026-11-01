@@ -15,7 +15,7 @@ public class and_sources_keep_their_identity : Specification
     public void should_render_the_source_link_and_kind(string url, string link, string note)
     {
         var answer = new Answer("Body.", [new PageUrl(url)], 0.9, false, []);
-        DiscordAnswers.Format(answer).ShouldEqual($"Body.\n\nSources: <{link}>{note}");
+        DiscordAnswers.Format(answer).ShouldEqual($"Body.\n\nSources: [1] <{link}>{note}");
     }
 
     [Fact]

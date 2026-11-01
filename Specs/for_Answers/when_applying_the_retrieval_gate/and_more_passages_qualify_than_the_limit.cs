@@ -19,6 +19,6 @@ public class and_more_passages_qualify_than_the_limit : given.a_grounded_answere
 
     [Fact] void should_answer() => result.IsRefusal.ShouldBeFalse();
     [Fact] void should_admit_the_first_passages_in_rrf_order() => result.Passages.SequenceEqual(_all.Take(8)).ShouldBeTrue();
-    [Fact] void should_keep_at_most_four_citations() => result.Citations.Count().ShouldEqual(4);
+    [Fact] void should_list_only_the_referenced_page() => result.Citations.ShouldEqual([_all[0].Page]);
     [Fact] void should_report_the_first_passage_similarity() => result.Confidence.ShouldEqual(_all[0].SemanticSimilarity);
 }

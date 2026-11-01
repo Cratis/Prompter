@@ -21,7 +21,7 @@ public class and_two_pages_answer_together : given.a_grounded_answerer
     }
     async Task Because() => result = await answers.For(new("Which free tools implement a Studio model?"), "spec");
     [Fact] void should_not_refuse() => result.IsRefusal.ShouldBeFalse();
-    [Fact] void should_cite_every_page_relied_on() => result.Citations.ShouldEqual([new PageUrl("https://cratis.studio/"), new("https://cratis.io/chronicle/"), new("https://cratis.io/arc/"), new("https://cratis.no/about/")]);
+    [Fact] void should_cite_every_page_relied_on() => result.Citations.ShouldEqual([new PageUrl("https://cratis.studio/"), new("https://cratis.no/about/")]);
     [Fact] void should_send_both_excerpts() => sent[1].Text.ShouldContain("[5] https://cratis.no/about/");
     [Fact] void should_keep_the_first_excerpt() => sent[1].Text.ShouldContain("[1] https://cratis.studio/");
 }

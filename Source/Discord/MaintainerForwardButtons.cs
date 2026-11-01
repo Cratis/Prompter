@@ -1,6 +1,7 @@
 // Copyright (c) Cratis. All rights reserved.
 // Licensed under the MIT license. See LICENSE file in the project root for full license information.
 
+using Cratis.Prompter.Protection;
 using Microsoft.Extensions.Options;
 using NetCord;
 using NetCord.Rest;
@@ -10,8 +11,9 @@ namespace Cratis.Prompter.Discord;
 
 /// <summary>The thin interaction adapter for consented forwards to the maintainer channel.</summary>
 /// <param name="forwards">Forward authorization and delivery.</param>
+/// <param name="admission">The shared channel-scope guard.</param>
 /// <param name="options">The answer timeout.</param>
-public class MaintainerForwardButtons(MaintainerForwards forwards, IOptions<PrompterOptions> options) : ComponentInteractionModule<ButtonInteractionContext>
+public class MaintainerForwardButtons(MaintainerForwards forwards, Admission admission, IOptions<PrompterOptions> options) : ComponentInteractionModule<ButtonInteractionContext>
 {
     /// <summary>Forwards a question the documentation could not answer.</summary>
     /// <param name="channelId">Question channel.</param>
@@ -32,6 +34,10 @@ public class MaintainerForwardButtons(MaintainerForwards forwards, IOptions<Prom
 
     async Task Handle(ForwardKind kind, string customId)
     {
+        if (!ChannelAdmission.InScope(admission, new(Context.Interaction.GuildId, Context.Channel.Id, Context.User.Id), Context.Channel))
+        {
+            return;
+        }
         if (Context.Guild is null)
         {
             await RespondAsync(InteractionCallback.Message(new() { Content = MaintainerForwards.UnavailableReply, Flags = MessageFlags.Ephemeral, AllowedMentions = AllowedMentionsProperties.None }));
@@ -39,7 +45,10 @@ public class MaintainerForwardButtons(MaintainerForwards forwards, IOptions<Prom
         }
         await RespondAsync(InteractionCallback.DeferredMessage(MessageFlags.Ephemeral));
         using var timeout = new CancellationTokenSource(TimeSpan.FromSeconds(options.Value.Discord.AnswerTimeoutSeconds));
-        var click = new ForwardClick(kind, new(Context.Guild.Id, Context.Channel.Id, Context.User.Id), customId);
+        var click = new ForwardClick(kind, new(Context.Guild.Id, Context.Channel.Id, Context.User.Id), customId)
+        {
+            Channel = Context.Channel
+        };
         var reply = await forwards.Forward(click, timeout.Token);
         await Context.Interaction.SendFollowupMessageAsync(new() { Content = reply, Flags = MessageFlags.Ephemeral, AllowedMentions = AllowedMentionsProperties.None });
     }

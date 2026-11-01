@@ -7,6 +7,7 @@ using Cratis.Prompter.Protection;
 using Cratis.Prompter.Specs.Fakes;
 using Microsoft.Extensions.Logging.Abstractions;
 using Microsoft.Extensions.Options;
+using NetCord;
 using NetCord.Rest;
 using NSubstitute;
 
@@ -24,6 +25,8 @@ public class a_forward : Specification
     protected ForwardClick Requested { get; private set; } = null!;
     protected ControlledTime Clock { get; private set; } = null!;
     protected string Reply { get; set; } = null!;
+    protected TextChannel ThreadChannel(ulong? parent) => TextChannel.CreateFromJson(new() { Id = 2, GuildId = 1, Type = ChannelType.PublicGuildThread, ParentId = parent }, _rest);
+
     void Destroy() => _rest.Dispose();
 
     void Establish()
@@ -39,7 +42,8 @@ public class a_forward : Specification
         Channel = Substitute.For<IMaintainerChannel>();
         Forwards = new(_rest, Channel, new(config, new RateLimiter(config), clock), config, clock, NullLogger<MaintainerForwards>.Instance);
         var question = new QuestionLink(2, 4);
-        Documented = new(ForwardKind.Documentation, new(1, 2, 3), AnswerActionButton.CustomId(AnswerActionButton.DocumentedPrefix, question));
-        Requested = new(ForwardKind.FeatureRequest, new(1, 2, 3), AnswerActionButton.RequestCustomId(question, "chronicle"));
+        var channel = TextChannel.CreateFromJson(new() { Id = 2, GuildId = 1, Type = ChannelType.TextGuildChannel }, _rest);
+        Documented = new(ForwardKind.Documentation, new(1, 2, 3), AnswerActionButton.CustomId(AnswerActionButton.DocumentedPrefix, question)) { Channel = channel };
+        Requested = new(ForwardKind.FeatureRequest, new(1, 2, 3), AnswerActionButton.RequestCustomId(question, "chronicle")) { Channel = channel };
     }
 }
