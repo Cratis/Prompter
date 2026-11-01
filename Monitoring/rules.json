@@ -67,20 +67,6 @@
         "annotations": { "summary": "UTC-day retry-inclusive indexing exposure reaches its incremental ceiling (no confirmed full run today)", "runbook_url": "https://github.com/Cratis/Prompter/blob/main/Documentation/guides/monitoring.md#spend-and-protection" }
       },
       {
-        "alert": "PrompterIndexFullReindexSpend",
-        "expr": "(max(prompter_state_index_usd) / clamp_min(max(prompter_limit_index_daily_usd), 0.001) >= 1) and on() (max(prompter_state_index_full_ceiling_usd) > 0)",
-        "for": "5m",
-        "labels": { "service": "prompter", "severity": "warning" },
-        "annotations": { "summary": "Confirmed full-reindex day: indexing exposure exceeds the incremental daily ceiling within the full-run allowance", "runbook_url": "https://github.com/Cratis/Prompter/blob/main/Documentation/guides/monitoring.md#spend-and-protection" }
-      },
-      {
-        "alert": "PrompterIndexSpendRunaway",
-        "expr": "(max(prompter_state_index_usd) > max(prompter_state_index_full_ceiling_usd)) and on() (max(prompter_state_index_full_ceiling_usd) > 0)",
-        "for": "0s",
-        "labels": { "service": "prompter", "severity": "critical" },
-        "annotations": { "summary": "Indexing exposure exceeds the admitted full-run ceiling", "runbook_url": "https://github.com/Cratis/Prompter/blob/main/Documentation/guides/monitoring.md#spend-and-protection" }
-      },
-      {
         "alert": "PrompterProviderErrors",
         "expr": "(sum(rate(prompter_provider_duration_seconds_count{outcome=~\"provider_failure|auth|quota|capacity|rate_limit\"}[10m])) / clamp_min(sum(rate(prompter_provider_duration_seconds_count[10m])), 0.001) > 0.2) and (sum(increase(prompter_provider_attempts_total[10m])) >= 5)",
         "for": "5m",
@@ -107,6 +93,20 @@
         "for": "5m",
         "labels": { "service": "prompter", "severity": "warning" },
         "annotations": { "summary": "Admission or paid-work guards rejected repeated work", "runbook_url": "https://github.com/Cratis/Prompter/blob/main/Documentation/guides/monitoring.md#spend-and-protection" }
+      },
+      {
+        "alert": "PrompterIndexFullReindexSpend",
+        "expr": "(max(prompter_state_index_usd) / clamp_min(max(prompter_limit_index_daily_usd), 0.001) >= 1) and on() (max(prompter_state_index_full_ceiling_usd) > 0)",
+        "for": "5m",
+        "labels": { "service": "prompter", "severity": "warning" },
+        "annotations": { "summary": "Confirmed full-reindex day: indexing exposure exceeds the incremental daily ceiling within the full-run allowance", "runbook_url": "https://github.com/Cratis/Prompter/blob/main/Documentation/guides/monitoring.md#spend-and-protection" }
+      },
+      {
+        "alert": "PrompterIndexSpendRunaway",
+        "expr": "(max(prompter_state_index_usd) > max(prompter_state_index_full_ceiling_usd)) and on() (max(prompter_state_index_full_ceiling_usd) > 0)",
+        "for": "0s",
+        "labels": { "service": "prompter", "severity": "critical" },
+        "annotations": { "summary": "Indexing exposure exceeds the admitted full-run ceiling", "runbook_url": "https://github.com/Cratis/Prompter/blob/main/Documentation/guides/monitoring.md#spend-and-protection" }
       }
     ]
   }]
