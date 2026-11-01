@@ -120,6 +120,7 @@ public static class DiscordAnswers
         {
             Ingestion.SourceKind.ReleaseNotes => "release notes",
             Ingestion.SourceKind.Sample => "sample",
+            Ingestion.SourceKind.Readme => "README",
             _ => string.Empty
         };
         var provenance = answer.CitationProvenance.FirstOrDefault(provenance => provenance.Page == page)?.Note;

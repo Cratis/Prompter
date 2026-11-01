@@ -4,6 +4,7 @@
 using System.Text;
 using System.Text.Json;
 using Anthropic.Models.Messages;
+using Cratis.Prompter.Ingestion;
 using Cratis.Prompter.Retrieval;
 using Cratis.Prompter.Storage;
 using Microsoft.Extensions.AI;
@@ -33,7 +34,8 @@ public class Answers(
     public async Task<Answer> For(Question question, string source, CancellationToken cancellationToken = default)
     {
         var answering = options.Value.Answering;
-        var candidates = (await passages.Search(new(question.Value) { Scope = question.Scope }, Math.Max(answering.MaxPassages, Passages.MaximumCandidates), cancellationToken)).ToArray();
+        var candidates = (await passages.Search(new(question.Value) { Scope = question.Scope }, Math.Max(answering.MaxPassages, Passages.MaximumCandidates), cancellationToken))
+            .Where(passage => SourceHosts.IsCitable(passage.Page, options.Value)).ToArray();
         var found = candidates.Take(answering.MaxPassages).ToArray();
         var qualified = candidates.Where(passage => double.IsFinite(passage.SemanticSimilarity) &&
             passage.SemanticSimilarity is >= -1 and <= 1 && passage.SemanticSimilarity >= answering.MinSemanticSimilarity).Take(answering.MaxPassages).ToArray();

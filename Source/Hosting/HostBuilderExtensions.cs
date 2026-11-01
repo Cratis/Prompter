@@ -56,6 +56,7 @@ public static class HostBuilderExtensions
             .Validate(
                 options => options.Answering.SimilarityIsValid,
                 "Cratis:Prompter:Answering:MinSemanticSimilarity must be finite and in (0, 1].")
+            .Validate(options => options.Ingestion.Sites.IsValid && options.Ingestion.Readmes.IsValid, "Cratis:Prompter:Ingestion:Sites/Readmes require https Cratis site roots without path, query, user info, port or IP, and positive bounds.")
             .ValidateOnStart();
 
         builder.Services.AddSingleton(sp =>
@@ -71,6 +72,16 @@ public static class HostBuilderExtensions
             client.BaseAddress = new Uri(sp.GetRequiredService<IOptions<PrompterOptions>>().Value.DocsSiteUrl.TrimEnd('/') + "/"));
         builder.Services.AddHttpClient<ReleaseNotes>(client => client.Timeout = TimeSpan.FromSeconds(30));
         builder.Services.AddHttpClient<SampleFiles>(client => client.Timeout = TimeSpan.FromSeconds(30));
+        builder.Services.AddHttpClient<CratisSites>((sp, client) =>
+        {
+            client.Timeout = TimeSpan.FromSeconds(30);
+            client.MaxResponseContentBufferSize = sp.GetRequiredService<IOptions<PrompterOptions>>().Value.Ingestion.Sites.MaxPageBytes;
+        }).ConfigurePrimaryHttpMessageHandler(() => new SocketsHttpHandler { AllowAutoRedirect = false, UseCookies = false, AutomaticDecompression = System.Net.DecompressionMethods.All });
+        builder.Services.AddHttpClient<RepositoryReadmes>((sp, client) =>
+        {
+            client.Timeout = TimeSpan.FromSeconds(30);
+            client.MaxResponseContentBufferSize = sp.GetRequiredService<IOptions<PrompterOptions>>().Value.Ingestion.Sites.MaxPageBytes;
+        }).ConfigurePrimaryHttpMessageHandler(() => new SocketsHttpHandler { AllowAutoRedirect = false, UseCookies = false, AutomaticDecompression = System.Net.DecompressionMethods.All });
         builder.Services.AddTransient<IDocsSite, CorpusSources>();
 
         AddModels(builder);

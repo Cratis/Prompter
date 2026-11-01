@@ -43,6 +43,14 @@ public partial class DocsSite(HttpClient httpClient, IOptions<PrompterOptions> o
 
         foreach (var url in ParsePageUrls(sitemap, options.Value.Ingestion.ExcludedPathSegments))
         {
+            var host = new Uri(options.Value.DocsSiteUrl).Host;
+            var twin = host.StartsWith("www.", StringComparison.OrdinalIgnoreCase) ? host[4..] : $"www.{host}";
+            if (!Uri.TryCreate(url.Value, UriKind.Absolute, out var page) ||
+                !(SourceHosts.IsFetchable(page, host) || SourceHosts.IsFetchable(page, twin)))
+            {
+                logger.FailedFetchingPage(url, new IncompleteCrawl());
+                continue;
+            }
             string markdown;
             try
             {

@@ -36,7 +36,9 @@ public static class SourceKinds
             return SourceKind.ReleaseNotes;
         }
 
-        return segments[1].Equals("Samples", StringComparison.OrdinalIgnoreCase) && segments[2] == "blob"
-            ? SourceKind.Sample : SourceKind.Documentation;
+        if (segments[1].Equals("Samples", StringComparison.OrdinalIgnoreCase) && segments[2] == "blob") return SourceKind.Sample;
+        return segments[2] == "blob" && segments[^1].Equals("README.md", StringComparison.OrdinalIgnoreCase) &&
+            (segments.Length == 5 || (segments.Length == 6 && segments[1] == ".github" && segments[4] == "profile"))
+            ? SourceKind.Readme : SourceKind.Documentation;
     }
 }

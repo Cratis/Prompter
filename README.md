@@ -197,6 +197,29 @@ embedding budgets. These sources use a public User-Agent and GitHub Accept heade
 token. To restore docs-only ingestion, set both `Cratis__Prompter__Ingestion__ReleaseNotes__Enabled=false`
 and `Cratis__Prompter__Ingestion__Samples__Enabled=false`.
 
+## Cratis sites and repository READMEs
+
+Prompter also indexes the company site (`cratis.no`, including people and Assurance support),
+Cratis Studio (`cratis.studio`) and Cratis Direct (`cratis.direct`). Company and Studio use their
+sitemaps and `/llms.txt`; Studio tries Markdown mirrors before extracting HTML. Direct uses its
+configured home page. Studio's privacy policy and terms are excluded by default.
+
+Public, active, non-fork Cratis repository READMEs and the organization profile provide repository
+overviews. READMEs use anonymous GitHub requests: approximately 1–2 API listing calls per run,
+plus raw-file requests without an API token. Samples are excluded while curated samples are enabled.
+README citations retain their GitHub blob URLs and show `README`.
+
+Site requests stay on the exact configured HTTPS host, never follow redirects, and have page and
+response-size caps. Citation hosts include the configured sites, the docs host and its `www.` twin,
+and `github.com/Cratis/`. Each source is buffered independently: a failed source keeps its previous
+snapshot while healthy sources publish. A README-listing failure conservatively retains all Cratis
+GitHub pages for that run. The existing embedding budgets apply to the combined corpus.
+
+Disable any site with `Cratis__Prompter__Ingestion__Sites__Company__Enabled=false` (substitute
+`Studio` or `Direct`), and READMEs with `Cratis__Prompter__Ingestion__Readmes__Enabled=false`.
+Turn off all four plus release notes and samples for docs-only indexing. Change `BaseUrl` if a site
+moves hosts; redirects are not followed. Indexed arrays add to defaults rather than replacing them.
+
 ## ⚙️ Configuration
 
 Configuration binds to the `Cratis:Prompter` section (environment variables use `__` as the delimiter):
@@ -216,6 +239,17 @@ Configuration binds to the `Cratis:Prompter` section (environment variables use 
 | Sample allowlist (indexed array) | `Cratis__Prompter__Ingestion__Samples__Paths__0` (and subsequent indices) | Curated paths above |
 | Maximum sample file bytes | `Cratis__Prompter__Ingestion__Samples__MaxFileBytes` | `16384` |
 | Maximum sample files | `Cratis__Prompter__Ingestion__Samples__MaxFiles` | `300` |
+| Include company / Studio / Direct | `Cratis__Prompter__Ingestion__Sites__Company__Enabled` (or `Studio`, `Direct`) | `true` each |
+| Site root | `Cratis__Prompter__Ingestion__Sites__Company__BaseUrl` (or `Studio`, `Direct`) | `https://cratis.no`, `https://cratis.studio`, `https://cratis.direct` |
+| Site configured pages | `Cratis__Prompter__Ingestion__Sites__Company__Pages__0` (or `Studio`, `Direct`) | Empty; Direct has `/` |
+| Site excluded prefixes | `Cratis__Prompter__Ingestion__Sites__Studio__ExcludedPaths__0` (or `Company`, `Direct`) | Studio: `/privacy-policy`, `/terms-and-conditions` |
+| Maximum pages per site | `Cratis__Prompter__Ingestion__Sites__Company__MaxPages` (or `Studio`, `Direct`) | `50` |
+| Maximum site / README response bytes | `Cratis__Prompter__Ingestion__Sites__MaxPageBytes` | `1048576` |
+| Include public READMEs | `Cratis__Prompter__Ingestion__Readmes__Enabled` | `true` |
+| Include organization profile | `Cratis__Prompter__Ingestion__Readmes__IncludeProfile` | `true` |
+| Maximum repositories inspected | `Cratis__Prompter__Ingestion__Readmes__MaxRepositories` | `200` |
+| Maximum README body characters | `Cratis__Prompter__Ingestion__Readmes__MaxReadmeCharacters` | `32768` |
+| Excluded README repositories | `Cratis__Prompter__Ingestion__Readmes__ExcludedRepositories__0` | `.github` |
 | Incremental estimated-token admission ceiling | `Cratis__Prompter__Ingestion__MaxIncrementalTokens` | `4000000` |
 | Confirmed full estimated-token admission ceiling | `Cratis__Prompter__Ingestion__MaxFullTokens` | `16000000` |
 | Confirmed full run and UTC-day dollar ceiling | `Cratis__Prompter__Ingestion__MaxFullRunDollars` | `0` (full paid indexing disabled) |

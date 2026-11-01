@@ -13,5 +13,8 @@ public enum SourceKind
     ReleaseNotes = 1,
 
     /// <summary>A curated sample file.</summary>
-    Sample = 2
+    Sample = 2,
+
+    /// <summary>A public repository README.</summary>
+    Readme = 3
 }
