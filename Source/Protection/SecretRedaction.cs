@@ -1,7 +1,10 @@
 // Copyright (c) Cratis. All rights reserved.
 // Licensed under the MIT license. See LICENSE file in the project root for full license information.
 
+using System.Runtime.CompilerServices;
 using System.Text.RegularExpressions;
+
+[assembly: InternalsVisibleTo("Prompter.Specs")]
 
 namespace Cratis.Prompter.Protection;
 
@@ -10,7 +13,7 @@ public static partial class SecretRedaction
 {
     /// <summary>The visible replacement; never includes the removed value.</summary>
     public const string Marker = "[REDACTED_SECRET]";
-    const RegexOptions PatternOptions = RegexOptions.IgnoreCase | RegexOptions.CultureInvariant | RegexOptions.ExplicitCapture;
+    const RegexOptions PatternOptions = RegexOptions.IgnoreCase | RegexOptions.CultureInvariant | RegexOptions.ExplicitCapture | RegexOptions.NonBacktracking;
     static readonly HashSet<string> _typeWords = new(StringComparer.OrdinalIgnoreCase)
     {
         "string", "number", "boolean", "bool", "int", "str", "any", "object", "null", "undefined", "true", "false", "CancellationToken"
@@ -22,25 +25,43 @@ public static partial class SecretRedaction
     [GeneratedRegex(@"\b(?<key>api[_-]?key|access[_-]?key|token|pass" + @"word|passwd|pwd|secret|client[_-]?secret|Account" + @"Key|SharedAccess" + @"Key)(?<separator>\s*[:=]\s*)(?<value>""[^""]{4,}""|'[^']{4,}'|[^\s;,'""]{4,})", PatternOptions, 100)]
     private static partial Regex Assignments { get; }
 
-    [GeneratedRegex(@"(?<=:" + @"//)[^\s/:@]+:" + @"[^\s/@]+(?=@)", PatternOptions, 100)]
+    [GeneratedRegex(@"://[^\s/:@]+:[^\s/@]+@", PatternOptions, 100)]
     private static partial Regex UserInfo { get; }
 
     /// <summary>Replaces secret-shaped values, preserving harmless type declarations.</summary>
     /// <param name="text">The untrusted text.</param>
-    /// <returns>The redacted text and removal flag.</returns>
-    public static RedactedText Redact(string text)
+    /// <returns>The redacted text and removal flag, replacing the entire input if matching times out.</returns>
+    public static RedactedText Redact(string text) => Redact(text, RedactRecognizedShapes);
+
+    /// <summary>Determines whether the text contains a recognizable secret.</summary>
+    /// <param name="text">The untrusted text.</param>
+    /// <returns>Whether redaction removes a value.</returns>
+    public static bool ContainsSecret(string text) => Redact(text).Removed;
+
+    /// <summary>Runs redaction with a fail-closed timeout boundary.</summary>
+    /// <param name="text">The untrusted text.</param>
+    /// <param name="redact">The redaction operation.</param>
+    /// <returns>Redacted text, or the removal marker if matching times out.</returns>
+    internal static RedactedText Redact(string text, Func<string, string> redact)
+    {
+        try
+        {
+            var result = redact(text);
+            return new(result, !string.Equals(result, text, StringComparison.Ordinal));
+        }
+        catch (RegexMatchTimeoutException)
+        {
+            return new(Marker, true);
+        }
+    }
+
+    static string RedactRecognizedShapes(string text)
     {
         var result = Tokens.Replace(text, Marker);
         result = Assignments.Replace(result, match =>
             _typeWords.Contains(match.Groups["value"].Value.Trim('"', '\''))
                 ? match.Value
                 : match.Groups["key"].Value + match.Groups["separator"].Value + Marker);
-        result = UserInfo.Replace(result, Marker);
-        return new(result, !string.Equals(result, text, StringComparison.Ordinal));
+        return result.Contains("://", StringComparison.Ordinal) ? UserInfo.Replace(result, "://" + Marker + "@") : result;
     }
-
-    /// <summary>Determines whether the text contains a recognizable secret.</summary>
-    /// <param name="text">The untrusted text.</param>
-    /// <returns>Whether redaction removes a value.</returns>
-    public static bool ContainsSecret(string text) => Redact(text).Removed;
 }
