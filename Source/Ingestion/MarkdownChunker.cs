@@ -12,6 +12,7 @@ namespace Cratis.Prompter.Ingestion;
 public static partial class MarkdownChunker
 {
     const int DefaultMaxChunkLength = 4000;
+    const int DefaultMaxTableLength = 1500;
     const int MaximumDescriptionLength = 1000;
     const int MaximumTitleLength = 200;
 
@@ -20,13 +21,17 @@ public static partial class MarkdownChunker
 
     /// <summary>
     /// Chunks a markdown page into sections split on second and third level headings, keeping the
-    /// heading path for context and splitting oversized sections on paragraph boundaries.
+    /// heading path for context and splitting oversized sections on paragraph boundaries. Tables longer than
+    /// <paramref name="maxTableLength"/> are split into row groups that repeat the header, and blocks without blank lines
+    /// that exceed <paramref name="maxChunkLength"/> are split at line boundaries. The first piece of a part keeps the
+    /// part id; further pieces get a numbered suffix, so unaffected parts keep their id and hash.
     /// </summary>
     /// <param name="page">The URL of the page being chunked.</param>
     /// <param name="markdown">The markdown content of the page.</param>
     /// <param name="maxChunkLength">The maximum length of a single chunk in characters.</param>
+    /// <param name="maxTableLength">The length in characters above which a table is split into row groups.</param>
     /// <returns>The chunks for the page.</returns>
-    public static IEnumerable<Chunk> Chunk(PageUrl page, string markdown, int maxChunkLength = DefaultMaxChunkLength)
+    public static IEnumerable<Chunk> Chunk(PageUrl page, string markdown, int maxChunkLength = DefaultMaxChunkLength, int maxTableLength = DefaultMaxTableLength)
     {
         var content = StripMdxComponents(StripFrontmatter(markdown));
         var lines = content.Split('\n');
@@ -46,13 +51,20 @@ public static partial class MarkdownChunker
                     continue;
                 }
 
-                yield return new(
-                    new ChunkId($"{page.Value}#{index}"),
-                    page,
-                    title,
-                    section.HeadingPath,
-                    trimmed,
-                    ContentHash.For(global::Cratis.Prompter.Ingestion.Chunk.EmbeddingInputFor(title, section.HeadingPath, trimmed)));
+                var piece = 0;
+                foreach (var text in ChunkPieces.Split(trimmed, maxChunkLength, maxTableLength).Select(text => text.Trim()).Where(text => text.Length > 0))
+                {
+                    var id = piece == 0 ? $"{page.Value}#{index}" : $"{page.Value}#{index}.{piece}";
+                    yield return new(
+                        new ChunkId(id),
+                        page,
+                        title,
+                        section.HeadingPath,
+                        text,
+                        ContentHash.For(global::Cratis.Prompter.Ingestion.Chunk.EmbeddingInputFor(title, section.HeadingPath, text)));
+                    piece++;
+                }
+
                 index++;
             }
         }
