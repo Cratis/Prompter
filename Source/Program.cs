@@ -19,8 +19,6 @@ using Microsoft.Extensions.Hosting;
 using NetCord.Gateway;
 using NetCord.Hosting.Gateway;
 using NetCord.Hosting.Services;
-using NetCord.Hosting.Services.ApplicationCommands;
-using NetCord.Hosting.Services.ComponentInteractions;
 
 var mode = args.FirstOrDefault() ?? "bot";
 
@@ -136,8 +134,7 @@ Environment.ExitCode = await BotFailure.Run(
                 options.Intents = GatewayIntents.Guilds | GatewayIntents.GuildMessages | GatewayIntents.MessageContent;
             })
             .AddGatewayHandlers(typeof(Program).Assembly)
-            .AddApplicationCommands()
-            .AddComponentInteractions();
+            .AddPrompterInteractions();
 
         var app = webBuilder.Build();
 

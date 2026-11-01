@@ -747,8 +747,9 @@ questions:
     expected_pages:
       - https://cratis.io/cratis-stack/
       - https://cratis.io/
+      - https://cratis.no/
     tags: [overview, product-list]
-    rationale: "Issue #85 phrasing; the cratis-stack Capability map lists every product and its description says so."
+    rationale: "Issue #85 phrasing; the cratis-stack Capability map lists every product, and the company overview also describes them."
 
   - id: gen-006
     must_mention: [event sourcing]

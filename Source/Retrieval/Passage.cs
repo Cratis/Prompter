@@ -14,6 +14,12 @@ namespace Cratis.Prompter.Retrieval;
 /// <param name="SemanticSimilarity">The cosine similarity to the question, in [-1, 1], not a correctness probability.</param>
 public record Passage(PageUrl Page, string Title, string HeadingPath, string Content, double Score, double SemanticSimilarity)
 {
+    /// <summary>Gets whether this is the page's frontmatter summary chunk.</summary>
+    public bool IsSummary { get; init; }
+
+    /// <summary>Gets whether this passage was looked up to expand an admitted summary.</summary>
+    public bool IsPageExpansion { get; init; }
+
     /// <summary>Gets when the page was last published by a successful index run; <see langword="null"/> when unknown.</summary>
     public DateTimeOffset? IndexedAt { get; init; }
 

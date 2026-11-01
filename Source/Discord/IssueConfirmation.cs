@@ -24,7 +24,7 @@ public class IssueConfirmation(
     PendingIssues pending,
     Admission admission,
     IOptions<PrompterOptions> options,
-    ILogger<IssueConfirmation> logger) : ComponentInteractionModule<ComponentInteractionContext>
+    ILogger<IssueConfirmation> logger) : ComponentInteractionModule<ButtonInteractionContext>
 {
     /// <summary>
     /// The reply when the draft is no longer available to file.

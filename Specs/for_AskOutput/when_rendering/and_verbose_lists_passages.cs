@@ -25,8 +25,8 @@ public class and_verbose_lists_passages : Specification
     void Because() => _lines = AskOutput.Lines(_answer, verbose: true);
 
     [Fact] void should_report_the_passage_count_and_top_score() => _lines[0].ShouldEqual("Retrieved 2 passages, leading semantic similarity 0.800:");
-    [Fact] void should_list_the_first_passage_with_score_page_and_heading() => string.Join('\n', _lines).ShouldContain("  [1] rrf 0.01639, semantic similarity 0.800  https://cratis.io/chronicle/events.md — Appending events");
-    [Fact] void should_list_the_second_passage() => string.Join('\n', _lines).ShouldContain("  [2] rrf 0.01613, semantic similarity 0.700  https://cratis.io/chronicle/concepts.md — Event Store");
+    [Fact] void should_list_the_first_passage_with_score_page_and_heading() => string.Join('\n', _lines).ShouldContain("  passage 1: rrf 0.01639, semantic similarity 0.800  https://cratis.io/chronicle/events.md — Appending events");
+    [Fact] void should_list_the_second_passage() => string.Join('\n', _lines).ShouldContain("  passage 2: rrf 0.01613, semantic similarity 0.700  https://cratis.io/chronicle/concepts.md — Event Store");
     [Fact] void should_still_include_the_answer_text() => string.Join('\n', _lines).ShouldContain("Append events through the event log.");
     [Fact] void should_exit_zero() => AskOutput.ExitCode(_answer).ShouldEqual(0);
 }

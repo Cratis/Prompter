@@ -15,10 +15,24 @@ from [cratis.io](https://cratis.io). There is no retraining or release.
 
 ## Citations are the contract
 
-The language model is instructed to answer *only* from the retrieved passages and to reference which ones it
-used - those pages become the `Sources:` links on every answer. If an answer ever surprises you, follow the
-links: the answer should be recognizable from the source. That's your verification path, and it's why answers
-without sources don't exist.
+The language model is instructed to answer *only* from the retrieved passages and to cite the pages it
+used. Passages from the same page share one citation number. Discord shows numbered `Sources:` links,
+and the `ask` CLI lists numbered source URLs: `[1]` in the answer always points to source `[1]`.
+Only referenced pages are listed, in page order, with numbers compacted if the answer skips pages.
+For example, citing only the second and fifth retrieved pages produces sources `[1]` and `[2]`,
+and the answer's original `[2]` and `[5]` markers are rewritten to match. Invalid page markers are removed.
+If the answer has no valid references, Prompter offers up to four retrieved pages instead.
+Verbose CLI diagnostics label individual excerpts as `passage 1`, `passage 2`, and so on; these are not citation numbers.
+
+If an answer ever surprises you, follow the links: the answer should be recognizable from the source.
+That's your verification path.
+
+## Summaries lead to page details
+
+A retrieved page summary can point to useful detail that ranked below it. Prompter looks up the best-matching
+non-summary excerpts from admitted summary pages, reusing the question embedding. At most two detail excerpts
+receive reserved slots within the existing passage limit. They must meet the same similarity threshold as other
+passages; a weak summary cannot bypass the refusal gate. This lookup uses the existing index and needs no reindex.
 
 ## Refusals are a feature
 

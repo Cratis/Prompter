@@ -22,7 +22,7 @@ public class and_citations_carry_provenance : Specification
 
     void Because() => _chunks = DiscordAnswers.Split(_answer);
 
-    [Fact] void should_note_each_source() => _chunks[^1].ShouldContain("<https://cratis.io/a> (indexed 2026-10-30 · v16.0.0) · <https://cratis.io/b> (index date unknown)");
+    [Fact] void should_note_each_source() => _chunks[^1].ShouldContain("[1] <https://cratis.io/a> (indexed 2026-10-30 · v16.0.0) · [2] <https://cratis.io/b> (index date unknown)");
     [Fact] void should_keep_the_original_link_form() => _chunks[^1].ShouldContain("<https://cratis.io/a>");
     [Fact] void should_not_note_a_refusal() => DiscordAnswers.Format(Answer.Refusal(0.1, [])).ShouldNotContain("indexed");
     [Fact] void should_keep_sources_on_the_last_message_when_long() => DiscordAnswers.Split(_answer with { Text = string.Join("\n\n", Enumerable.Repeat(new string('x', 900), 6)) })[^1].ShouldContain("(indexed 2026-10-30 · v16.0.0)");
