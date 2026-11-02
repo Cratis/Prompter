@@ -15,4 +15,7 @@ internal static partial class AnswersLogging
 
     [LoggerMessage(LogLevel.Warning, "Could not parse answer generation; response length {ResponseLength}, finish reason {FinishReason}")]
     internal static partial void GenerationParseFailed(this ILogger<Answers> logger, int responseLength, string? finishReason);
+
+    [LoggerMessage(LogLevel.Warning, "Answer generation reached the output limit of {MaxOutputTokens} tokens; output tokens {OutputTokens}, salvaged {Salvaged}")]
+    internal static partial void AnswerReachedOutputLimit(this ILogger<Answers> logger, int maxOutputTokens, long? outputTokens, bool salvaged);
 }

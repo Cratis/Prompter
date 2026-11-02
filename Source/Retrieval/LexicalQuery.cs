@@ -13,6 +13,12 @@ public static partial class LexicalQuery
 {
     const int MaximumTerms = 32;
 
+    /// <summary>
+    /// Terms left out of the any-term query. "Cratis" occurs in nearly every chunk, so as an any-term match it ranks
+    /// pages by brand density (llms.txt, organization READMEs) rather than by the question. The strict arm still uses it.
+    /// </summary>
+    static readonly HashSet<string> _ubiquitous = new(["or", "cratis"], StringComparer.OrdinalIgnoreCase);
+
     [GeneratedRegex(@"[\p{L}\p{N}]+", RegexOptions.CultureInvariant, 100)]
     private static partial Regex Word { get; }
 
@@ -20,12 +26,12 @@ public static partial class LexicalQuery
     /// Builds an any-term query text for websearch_to_tsquery, which never raises syntax errors and drops stop words.
     /// </summary>
     /// <param name="question">The question text.</param>
-    /// <returns>The terms joined with "or", or an empty string when the question has no words.</returns>
+    /// <returns>The terms joined with "or", without terms found in nearly every chunk, or an empty string when none remain.</returns>
     public static string Lenient(string question) => string.Join(
         " or ",
         Word.Matches(question)
             .Select(match => match.Value)
-            .Where(word => !word.Equals("or", StringComparison.OrdinalIgnoreCase))
+            .Where(word => !_ubiquitous.Contains(word))
             .DistinctBy(word => word, StringComparer.OrdinalIgnoreCase)
             .Take(MaximumTerms));
 }

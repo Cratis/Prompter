@@ -7,6 +7,7 @@ using Anthropic.Models.Messages;
 using Cratis.Prompter.Ingestion;
 using Cratis.Prompter.Retrieval;
 using Cratis.Prompter.Storage;
+using Cratis.Prompter.Telemetry;
 using Microsoft.Extensions.AI;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
@@ -209,6 +210,12 @@ public class Answers(
             new() { MaxOutputTokens = options.Value.Answering.MaxOutputTokens, ResponseFormat = AnswerGeneration.Format },
             cancellationToken);
         var generated = AnswerGeneration.Parse(response.Text);
+        if (response.FinishReason == ChatFinishReason.Length)
+        {
+            logger.AnswerReachedOutputLimit(options.Value.Answering.MaxOutputTokens, response.Usage?.OutputTokenCount, generated is not null);
+            ProviderMetrics.Event("anthropic", "output_limit");
+        }
+
         if (generated is null)
         {
             logger.GenerationParseFailed(response.Text.Length, response.FinishReason?.ToString());

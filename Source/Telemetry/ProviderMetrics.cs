@@ -79,7 +79,7 @@ public static class ProviderMetrics
     public static void Event(string source, string reason)
     {
         var safeSource = Allow(source, "anthropic", "voyage", "admission", "protection", "index");
-        var safeReason = Allow(reason, "refusal", "cancelled", "capacity", "capacity_exhausted", "rate_limit", "auth", "quota", "provider_failure", "denied", "concurrency", "budget", "pricing", "disabled", "hourly", "retry", "fallback_quota", "cooldown", "paused", "resumed", "refresh_failed", "telemetry_failure");
+        var safeReason = Allow(reason, "refusal", "cancelled", "capacity", "capacity_exhausted", "rate_limit", "auth", "quota", "provider_failure", "denied", "concurrency", "budget", "pricing", "disabled", "hourly", "retry", "fallback_quota", "cooldown", "paused", "resumed", "refresh_failed", "telemetry_failure", "output_limit");
         _events.Add(1, new KeyValuePair<string, object?>("source", safeSource), new KeyValuePair<string, object?>("reason", safeReason));
         lock (_eventLock) _lastEvents[(safeSource, safeReason)] = DateTimeOffset.UtcNow.ToUnixTimeSeconds();
     }

@@ -29,7 +29,8 @@ public class TaskModelOptions
     public int TimeoutSeconds { get; set; } = 60;
 
     /// <summary>
-    /// Gets or sets adaptive thinking effort: low, medium or high. Empty omits thinking.
+    /// Gets or sets adaptive thinking effort: low, medium or high. Empty turns thinking off on Haiku 5.5, which
+    /// otherwise thinks by default, and omits thinking on other models.
     /// </summary>
     public string Effort { get; set; } = "high";
 

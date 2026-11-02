@@ -1,6 +1,7 @@
 // Copyright (c) Cratis. All rights reserved.
 // Licensed under the MIT license. See LICENSE file in the project root for full license information.
 
+using System.Text;
 using System.Text.Json;
 using Microsoft.Extensions.AI;
 
@@ -75,17 +76,19 @@ public static class AnswerGeneration
 
     /// <summary>
     /// A response that hit the output cap is cut mid-envelope. The schema lists <c language="text">text</c> first, so
-    /// when that string is fully closed it is the model's complete answer and is kept with Unknown signals;
-    /// a cut inside the text itself stays unrecoverable, so the caller takes the honest refusal path.
+    /// when that string is fully closed it is the model's complete answer and is kept with Unknown signals.
+    /// When the cut falls inside the text, <see cref="TruncatedText"/> keeps only a cited prefix of complete units,
+    /// marked as shortened; when no such prefix exists the caller takes the honest fallback.
     /// </summary>
     /// <param name="envelope">The trimmed response that failed to parse.</param>
-    /// <returns>The salvaged answer, or <see langword="null"/> when the text is not complete.</returns>
+    /// <returns>The salvaged answer, or <see langword="null"/> when no complete text or safe prefix is recoverable.</returns>
     static GeneratedAnswer? CompleteTextOfTruncatedEnvelope(string envelope)
     {
-        var reader = new Utf8JsonReader(System.Text.Encoding.UTF8.GetBytes(envelope), isFinalBlock: false, default);
+        var bytes = Encoding.UTF8.GetBytes(envelope);
+        var reader = new Utf8JsonReader(bytes, isFinalBlock: false, default);
         try
         {
-            var text = ReadFirstTextProperty(ref reader);
+            var text = ReadFirstTextProperty(ref reader, out var textStart) ?? TruncatedText.Salvage(bytes, textStart);
             return string.IsNullOrWhiteSpace(text) ? null : new(text, InteractionCategory.Unknown, InteractionProduct.OtherOrUnknown);
         }
         catch (JsonException)
@@ -96,8 +99,9 @@ public static class AnswerGeneration
 
     static bool Advance(ref Utf8JsonReader reader, JsonTokenType expected) => reader.Read() && reader.TokenType == expected;
 
-    static string? ReadFirstTextProperty(ref Utf8JsonReader reader)
+    static string? ReadFirstTextProperty(ref Utf8JsonReader reader, out int textStart)
     {
+        textStart = -1;
         if (!Advance(ref reader, JsonTokenType.StartObject) || !Advance(ref reader, JsonTokenType.PropertyName))
         {
             return null;
@@ -108,6 +112,7 @@ public static class AnswerGeneration
             return null;
         }
 
+        textStart = (int)reader.BytesConsumed;
         return Advance(ref reader, JsonTokenType.String) ? reader.GetString() : null;
     }
 
