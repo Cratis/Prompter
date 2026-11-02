@@ -162,6 +162,10 @@ through approved tooling. Quota-confirmed secondary fallback is measured separat
 account authorization; capacity retries never authorize fallback. Do not add retries, switch accounts,
 expose keys or copy provider response bodies while investigating.
 
+An answer that reaches its output-token limit counts as `prompter_events_total{source="anthropic",reason="output_limit"}`
+and logs a warning saying whether a shortened answer was recovered. A rising count means answers need more
+output headroom. Raise `Anthropic:Answer:MaxOutputTokens` and `Answering:MaxOutputTokens` together.
+
 ## Offline checks
 
 ```bash

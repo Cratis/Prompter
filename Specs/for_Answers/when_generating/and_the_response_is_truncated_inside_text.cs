@@ -9,6 +9,7 @@ using NSubstitute;
 
 namespace Cratis.Prompter.Specs.for_Answers.when_generating;
 
+[Collection("Telemetry")]
 public class and_the_response_is_truncated_inside_text : given.a_grounded_answerer
 {
     void Establish()
