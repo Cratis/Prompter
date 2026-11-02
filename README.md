@@ -254,6 +254,11 @@ Configuration binds to the `Cratis:Prompter` section (environment variables use 
 | Maximum repositories inspected | `Cratis__Prompter__Ingestion__Readmes__MaxRepositories` | `200` |
 | Maximum README body characters | `Cratis__Prompter__Ingestion__Readmes__MaxReadmeCharacters` | `32768` |
 | Excluded README repositories | `Cratis__Prompter__Ingestion__Readmes__ExcludedRepositories__0` | `.github` |
+| Maximum sitemap bytes | `Cratis__Prompter__Ingestion__MaxSitemapBytes` | `8388608` |
+| Maximum raw sitemap entries before filtering | `Cratis__Prompter__Ingestion__MaxSitemapEntries` | `10000` |
+| Maximum crawl pages across all sources | `Cratis__Prompter__Ingestion__MaxCrawlPages` | `10000` |
+| Maximum aggregate UTF-8 Markdown bytes | `Cratis__Prompter__Ingestion__MaxCrawlBytes` | `67108864` |
+| Maximum accumulated chunks, including unchanged ones | `Cratis__Prompter__Ingestion__MaxCrawlChunks` | `100000` |
 | Incremental estimated-token admission ceiling | `Cratis__Prompter__Ingestion__MaxIncrementalTokens` | `4000000` |
 | Confirmed full estimated-token admission ceiling | `Cratis__Prompter__Ingestion__MaxFullTokens` | `16000000` |
 | Confirmed full run and UTC-day dollar ceiling | `Cratis__Prompter__Ingestion__MaxFullRunDollars` | `0` (full paid indexing disabled) |
@@ -344,6 +349,12 @@ Feedback buttons allow 10 clicks per user per 10 minutes (`FeedbackClicksPerUser
 Repeating the current persisted vote is acknowledged silently without a write, and excess clicks fail closed under the same reply limits. Each user's and answer's acknowledgement/write lifecycle is serialized; waits are bounded to two seconds and cache capacity is reserved atomically before a write and the verdict is cached only after persistence succeeds. Pending writes count toward capacity; failed writes or acknowledgements release their reservation.
 Only keyed hashes are kept in bounded expiring memory caches; rate limits reset on restart.
 The existing 60-second answer deadline also covers drafting, reservation and forum starter fetching.
+
+Documentation responses are streamed within the configured sitemap and site-page byte limits.
+Crawls stop before embedding or publication if page, aggregate UTF-8 byte, chunk or changed-token
+limits are exceeded; the previous snapshot remains intact. Sitemap entry limits apply before
+filtering. Supported ranges are 65,536–52,428,800 sitemap bytes, 1–50,000 sitemap entries,
+1–100,000 crawl pages, 1,048,576–268,435,456 crawl bytes and 1–1,000,000 crawl chunks.
 
 The **shared $5/UTC-day ceiling is durable**, including CLI indexing, retries and concurrent processes.
 Each answer reserves its worst-case Anthropic input/output and Voyage retry exposure atomically,

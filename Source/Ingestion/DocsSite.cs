@@ -28,38 +28,49 @@ public partial class DocsSite(HttpClient httpClient, IOptions<PrompterOptions> o
     /// <param name="excludedPathSegments">Path segments whose pages are excluded from ingestion.</param>
     /// <returns>The page URLs to ingest.</returns>
     public static IEnumerable<PageUrl> ParsePageUrls(string sitemap, IEnumerable<string> excludedPathSegments) =>
-        SitemapLocation
-            .Matches(sitemap)
-            .Select(match => match.Groups["url"].Value)
-            .Where(url => !excludedPathSegments.Any(segment => url.Contains(segment, StringComparison.OrdinalIgnoreCase)))
-            .Select(ToMarkdownMirror)
-            .Distinct()
-            .Select(url => new PageUrl(url));
+        PageUrls(SitemapEntries(sitemap), excludedPathSegments);
 
     /// <inheritdoc/>
     public async IAsyncEnumerable<DocsPage> GetPages([EnumeratorCancellation] CancellationToken cancellationToken = default)
     {
-        var sitemap = await httpClient.GetStringAsync(new Uri("sitemap-0.xml", UriKind.Relative), cancellationToken);
+        var limits = options.Value.Ingestion;
+        var sitemap = await Fetch(new Uri(new Uri(options.Value.DocsSiteUrl.TrimEnd('/') + "/"), "sitemap-0.xml"), limits.MaxSitemapBytes, cancellationToken);
 
-        foreach (var url in ParsePageUrls(sitemap, options.Value.Ingestion.ExcludedPathSegments))
+        foreach (var url in BoundedPageUrls(sitemap, limits))
         {
             if (!IsAllowed(url))
             {
                 logger.FailedFetchingPage(url, new IncompleteCrawl());
                 continue;
             }
-            string markdown;
-            try
-            {
-                markdown = await httpClient.GetStringAsync(new Uri(url.Value, UriKind.RelativeOrAbsolute), cancellationToken);
-            }
-            catch (HttpRequestException exception)
-            {
-                logger.FailedFetchingPage(url, exception);
-                throw new IncompleteCrawl();
-            }
+            var markdown = await Fetch(new Uri(url.Value, UriKind.Absolute), limits.Sites.MaxPageBytes, cancellationToken);
 
             yield return new(url, markdown);
+        }
+    }
+
+    static IEnumerable<string> SitemapEntries(string sitemap)
+    {
+        for (var match = SitemapLocation.Match(sitemap); match.Success; match = match.NextMatch()) yield return match.Groups["url"].Value;
+    }
+
+    static IEnumerable<PageUrl> PageUrls(IEnumerable<string> urls, IEnumerable<string> excluded) => urls
+        .Where(url => !excluded.Any(segment => url.Contains(segment, StringComparison.OrdinalIgnoreCase)))
+        .Select(ToMarkdownMirror)
+        .Distinct()
+        .Select(url => new PageUrl(url));
+
+    static IEnumerable<PageUrl> BoundedPageUrls(string sitemap, IngestionOptions limits)
+    {
+        try
+        {
+            var entries = SitemapEntries(sitemap).Take(limits.MaxSitemapEntries + 1).ToArray();
+            if (entries.Length > limits.MaxSitemapEntries) throw new IncompleteCrawl();
+            return PageUrls(entries, limits.ExcludedPathSegments);
+        }
+        catch (RegexMatchTimeoutException)
+        {
+            throw new IncompleteCrawl();
         }
     }
 
@@ -67,16 +78,54 @@ public partial class DocsSite(HttpClient httpClient, IOptions<PrompterOptions> o
     {
         var trimmed = url.TrimEnd('/');
 
-        return new Uri(trimmed, UriKind.RelativeOrAbsolute) is { IsAbsoluteUri: true } absolute && absolute.AbsolutePath.Length <= 1
-            ? $"{trimmed}/index.md"
-            : $"{trimmed}.md";
+        if (!Uri.TryCreate(trimmed, UriKind.Absolute, out var absolute)) throw new IncompleteCrawl();
+
+        return absolute.AbsolutePath.Length <= 1 ? $"{trimmed}/index.md" : $"{trimmed}.md";
     }
 
-    bool IsAllowed(PageUrl url)
+    bool IsAllowed(PageUrl url) => Uri.TryCreate(url.Value, UriKind.Absolute, out var page) && IsAllowed(page);
+
+    bool IsAllowed(Uri page)
     {
         var host = new Uri(options.Value.DocsSiteUrl).Host;
         var twin = host.StartsWith("www.", StringComparison.OrdinalIgnoreCase) ? host[4..] : $"www.{host}";
-        if (!Uri.TryCreate(url.Value, UriKind.Absolute, out var page)) return false;
         return SourceHosts.IsFetchable(page, host) || SourceHosts.IsFetchable(page, twin);
+    }
+
+    async Task<string> Fetch(Uri url, int maxBytes, CancellationToken cancellationToken)
+    {
+        using var deadline = CancellationTokenSource.CreateLinkedTokenSource(cancellationToken);
+        deadline.CancelAfter(BoundedContent.ReadTimeout);
+        try
+        {
+            return await ReadResponse(url, maxBytes, deadline.Token);
+        }
+        catch (HttpRequestException)
+        {
+            throw new IncompleteCrawl();
+        }
+        catch (OperationCanceledException) when (!cancellationToken.IsCancellationRequested)
+        {
+            throw new IncompleteCrawl();
+        }
+    }
+
+    async Task<string> ReadResponse(Uri url, int maxBytes, CancellationToken cancellationToken)
+    {
+        if (!IsAllowed(url)) throw new IncompleteCrawl();
+        using var response = await httpClient.GetAsync(url, HttpCompletionOption.ResponseHeadersRead, cancellationToken);
+        if ((int)response.StatusCode is not (301 or 302 or 303 or 307 or 308)) return await BoundedContent.Read(response, maxBytes, cancellationToken);
+
+        var destination = RedirectDestination(url, response.Headers.Location);
+        logger.RedirectedToHost(destination.Host);
+        using var redirected = await httpClient.GetAsync(destination, HttpCompletionOption.ResponseHeadersRead, cancellationToken);
+        return await BoundedContent.Read(redirected, maxBytes, cancellationToken);
+    }
+
+    Uri RedirectDestination(Uri url, Uri? location)
+    {
+        if (location is null || !Uri.TryCreate(url, location, out var destination)) throw new IncompleteCrawl();
+        if (!IsAllowed(destination)) throw new IncompleteCrawl();
+        return destination;
     }
 }

@@ -142,12 +142,13 @@ public static class HostBuilderExtensions
         builder.Services.AddSingleton<Discord.ConversationAssistance>();
     }
 
-    static bool SourcesAreValid(PrompterOptions options) => options.Ingestion.Sites.IsValid && options.Ingestion.Readmes.IsValid;
+    static bool SourcesAreValid(PrompterOptions options) => options.Ingestion.Sites.IsValid && options.Ingestion.Readmes.IsValid && options.Ingestion.CrawlLimitsAreValid;
 
     static void AddCorpusSources(IServiceCollection services)
     {
         services.AddHttpClient<DocsSite>((sp, client) =>
-            client.BaseAddress = new Uri(sp.GetRequiredService<IOptions<PrompterOptions>>().Value.DocsSiteUrl.TrimEnd('/') + "/"));
+            client.BaseAddress = new Uri(sp.GetRequiredService<IOptions<PrompterOptions>>().Value.DocsSiteUrl.TrimEnd('/') + "/"))
+            .ConfigurePrimaryHttpMessageHandler(SourceHttpHandler);
         services.AddHttpClient<ReleaseNotes>(client => client.Timeout = TimeSpan.FromSeconds(30));
         services.AddHttpClient<SampleFiles>(client => client.Timeout = TimeSpan.FromSeconds(30));
         services.AddHttpClient<CratisSites>(ConfigureSourceClient).ConfigurePrimaryHttpMessageHandler(SourceHttpHandler);
