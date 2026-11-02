@@ -1,6 +1,7 @@
 // Copyright (c) Cratis. All rights reserved.
 // Licensed under the MIT license. See LICENSE file in the project root for full license information.
 
+using System.Text;
 using System.Text.Json;
 using Microsoft.Extensions.AI;
 
@@ -13,6 +14,7 @@ namespace Cratis.Prompter.Answering;
 public static class AnswerGeneration
 {
     const int MaximumSignalLength = 32;
+    const string ShortenedMarker = "…";
 
     static readonly Dictionary<string, InteractionProduct> _products = new(StringComparer.Ordinal)
     {
@@ -75,17 +77,19 @@ public static class AnswerGeneration
 
     /// <summary>
     /// A response that hit the output cap is cut mid-envelope. The schema lists <c language="text">text</c> first, so
-    /// when that string is fully closed it is the model's complete answer and is kept with Unknown signals;
-    /// a cut inside the text itself stays unrecoverable, so the caller takes the honest refusal path.
+    /// when that string is fully closed it is the model's complete answer and is kept with Unknown signals.
+    /// When the cut falls inside the text, its complete lines are kept and marked as shortened, so a long list
+    /// still answers; a cut before the first line break stays unrecoverable and the caller offers pages instead.
     /// </summary>
     /// <param name="envelope">The trimmed response that failed to parse.</param>
-    /// <returns>The salvaged answer, or <see langword="null"/> when the text is not complete.</returns>
+    /// <returns>The salvaged answer, or <see langword="null"/> when no complete text or line is recoverable.</returns>
     static GeneratedAnswer? CompleteTextOfTruncatedEnvelope(string envelope)
     {
-        var reader = new Utf8JsonReader(System.Text.Encoding.UTF8.GetBytes(envelope), isFinalBlock: false, default);
+        var bytes = Encoding.UTF8.GetBytes(envelope);
+        var reader = new Utf8JsonReader(bytes, isFinalBlock: false, default);
         try
         {
-            var text = ReadFirstTextProperty(ref reader);
+            var text = ReadFirstTextProperty(ref reader, out var textStart) ?? CompleteLines(bytes, textStart);
             return string.IsNullOrWhiteSpace(text) ? null : new(text, InteractionCategory.Unknown, InteractionProduct.OtherOrUnknown);
         }
         catch (JsonException)
@@ -94,10 +98,47 @@ public static class AnswerGeneration
         }
     }
 
+    /// <summary>Decodes the complete lines of a text string cut by the output cap and marks the answer as shortened.</summary>
+    /// <param name="envelope">The UTF-8 envelope.</param>
+    /// <param name="start">The offset just after the property name of the text, or -1 when there is none.</param>
+    /// <returns>The complete lines with a trailing ellipsis line, or <see langword="null"/> when no line is complete.</returns>
+    static string? CompleteLines(byte[] envelope, int start)
+    {
+        var quote = start < 0 ? -1 : Array.FindIndex(envelope, start, value => value is not ((byte)' ' or (byte)'\t' or (byte)'\r' or (byte)'\n' or (byte)':'));
+        if (quote < 0 || envelope[quote] != (byte)'"')
+        {
+            return null;
+        }
+
+        var lastLineBreak = -1;
+        for (var index = quote + 1; index < envelope.Length; index++)
+        {
+            if (envelope[index] == (byte)'"')
+            {
+                return null;
+            }
+
+            if (envelope[index] == (byte)'\\')
+            {
+                lastLineBreak = index + 1 < envelope.Length && envelope[index + 1] == (byte)'n' ? index : lastLineBreak;
+                index++;
+            }
+        }
+
+        if (lastLineBreak < 0)
+        {
+            return null;
+        }
+
+        var lines = JsonSerializer.Deserialize<string>((byte[])[.. envelope.AsSpan(quote, lastLineBreak - quote), (byte)'"'])?.TrimEnd();
+        return string.IsNullOrWhiteSpace(lines) ? null : $"{lines}\n{ShortenedMarker}";
+    }
+
     static bool Advance(ref Utf8JsonReader reader, JsonTokenType expected) => reader.Read() && reader.TokenType == expected;
 
-    static string? ReadFirstTextProperty(ref Utf8JsonReader reader)
+    static string? ReadFirstTextProperty(ref Utf8JsonReader reader, out int textStart)
     {
+        textStart = -1;
         if (!Advance(ref reader, JsonTokenType.StartObject) || !Advance(ref reader, JsonTokenType.PropertyName))
         {
             return null;
@@ -108,6 +149,7 @@ public static class AnswerGeneration
             return null;
         }
 
+        textStart = (int)reader.BytesConsumed;
         return Advance(ref reader, JsonTokenType.String) ? reader.GetString() : null;
     }
 
