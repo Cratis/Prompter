@@ -12,7 +12,7 @@ public class and_metadata_would_be_repeated_across_many_sections : Specification
 
     void Because()
     {
-        var markdown = $"# {new string('t', 20000)}\n\n## {new string('h', 20000)}\n\n{string.Concat(Enumerable.Range(0, 1000).Select(index => $"### Section {index}\n\nBody.\n\n"))}";
+        var markdown = $"# {new string('t', 20000)}\n\n## {new string('h', 20000)}\n\n{string.Concat(Enumerable.Range(0, 1000).Select(index => $"### Section {index}\n\nBody. {new string('b', 200)}\n\n"))}";
         _inputLength = markdown.Length;
         _chunks = [.. MarkdownChunker.Chunk(new PageUrl("https://cratis.io/metadata.md"), markdown)];
     }

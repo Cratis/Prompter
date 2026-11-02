@@ -23,7 +23,9 @@ public static partial class MarkdownChunker
     /// Chunks a markdown page into sections split on second and third level headings, keeping the
     /// heading path for context and splitting oversized sections on paragraph boundaries. Tables longer than
     /// <paramref name="maxTableLength"/> are split into row groups that repeat the header, and blocks without blank lines
-    /// that exceed <paramref name="maxChunkLength"/> are split at line boundaries. The first piece of a part keeps the
+    /// that exceed <paramref name="maxChunkLength"/> are split at line boundaries. Tiny sections (under 200 characters
+    /// without a code fence) are merged with a neighbor under the same second level heading, keeping their heading
+    /// inline, so a heading is never indexed alone. The first piece of a part keeps the
     /// part id; further pieces get a numbered suffix, so unaffected parts keep their id and hash.
     /// </summary>
     /// <param name="page">The URL of the page being chunked.</param>
@@ -39,7 +41,7 @@ public static partial class MarkdownChunker
         var title = BoundHeading(titleLine is null ? PageTitleFrom(page).AsSpan() : titleLine.AsSpan(2).Trim());
         var output = new EmbeddingOutputBudget(Math.Max(8192L, markdown.Length * 64L));
 
-        var sections = SplitIntoSections(lines, title);
+        var sections = SectionMerger.Merge(SplitIntoSections(lines, title), maxChunkLength);
         var index = 0;
 
         foreach (var section in sections)
@@ -300,11 +302,13 @@ public static partial class MarkdownChunker
         return heading[..end].ToString();
     }
 
-    static List<(string HeadingPath, string Content)> SplitIntoSections(string[] lines, string title)
+    static List<Section> SplitIntoSections(string[] lines, string title)
     {
-        var sections = new List<(string HeadingPath, string Content)>();
+        var sections = new List<Section>();
         var currentSecondLevel = string.Empty;
         var currentPath = title;
+        var currentRoot = title;
+        string? currentHeading = null;
         var current = new StringBuilder();
         var inCodeFence = false;
 
@@ -312,7 +316,7 @@ public static partial class MarkdownChunker
         {
             if (current.Length > 0)
             {
-                sections.Add((currentPath, current.ToString()));
+                sections.Add(new(currentPath, current.ToString(), currentRoot, currentHeading));
                 current.Clear();
             }
         }
@@ -329,6 +333,8 @@ public static partial class MarkdownChunker
                 CloseSection();
                 currentSecondLevel = BoundHeading(line.AsSpan(3).Trim());
                 currentPath = $"{title} > {currentSecondLevel}";
+                currentRoot = currentPath;
+                currentHeading = currentSecondLevel;
                 continue;
             }
 
@@ -339,6 +345,7 @@ public static partial class MarkdownChunker
                 currentPath = currentSecondLevel.Length == 0
                     ? $"{title} > {thirdLevel}"
                     : $"{title} > {currentSecondLevel} > {thirdLevel}";
+                currentHeading = thirdLevel;
                 continue;
             }
 
