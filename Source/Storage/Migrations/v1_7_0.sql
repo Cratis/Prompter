@@ -7,10 +7,10 @@ ALTER TABLE interactions ADD COLUMN IF NOT EXISTS product SMALLINT NOT NULL DEFA
 
 DO $$
 BEGIN
-    IF NOT EXISTS (SELECT 1 FROM pg_constraint WHERE conname = 'interactions_category_check') THEN
+    IF NOT EXISTS (SELECT 1 FROM pg_constraint WHERE conrelid = 'interactions'::regclass AND conname = 'interactions_category_check') THEN
         ALTER TABLE interactions ADD CONSTRAINT interactions_category_check CHECK (category BETWEEN 0 AND 5);
     END IF;
-    IF NOT EXISTS (SELECT 1 FROM pg_constraint WHERE conname = 'interactions_product_check') THEN
+    IF NOT EXISTS (SELECT 1 FROM pg_constraint WHERE conrelid = 'interactions'::regclass AND conname = 'interactions_product_check') THEN
         ALTER TABLE interactions ADD CONSTRAINT interactions_product_check CHECK (product BETWEEN 0 AND 5);
     END IF;
 END
