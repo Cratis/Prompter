@@ -44,7 +44,7 @@ public static class AnswerComponents
         // Button labels are plain text, not Markdown. Unwrap a complete protective fence only for display;
         // leave the underlying protected question unchanged and never truncate an invalid label.
         var label = UnwrapFence(suggestion);
-        if (label.Length is < 1 or > 80) return null;
+        if (label.Length is < 1 or > 80 || string.IsNullOrWhiteSpace(label)) return null;
         return label.Any(char.IsControl) ? null : label;
     }
 

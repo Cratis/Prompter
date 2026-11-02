@@ -41,9 +41,9 @@ public class and_the_preview_contains_protected_generated_markdown : Specificati
     }
 
     [Fact] void should_produce_a_reviewable_preview() => (_preview is not null).ShouldBeTrue();
-    [Fact] void should_keep_the_destination_host_visible_in_the_preview() => _preview.Contains("elsewhere\\.invalid", StringComparison.Ordinal).ShouldBeTrue();
+    [Fact] void should_keep_the_destination_host_visible_in_the_preview() => _preview.Contains("elsewhere\\[\\.\\]invalid", StringComparison.Ordinal).ShouldBeTrue();
     [Fact] void should_file_the_same_immutable_payload() => ReferenceEquals(_filed, _payload).ShouldBeTrue();
     [Fact] void should_keep_the_filed_body_byte_for_byte_equal() => Encoding.UTF8.GetBytes(_filed.Body).ShouldEqual(Encoding.UTF8.GetBytes(_body));
-    [Fact] void should_keep_the_safe_label_and_visible_host() => _filed.Body.Contains("Guide `https://elsewhere.invalid/path`", StringComparison.Ordinal).ShouldBeTrue();
-    [Fact] void should_preserve_the_code_example() => _filed.Body.Contains("```cs\n// @someone\n```", StringComparison.Ordinal).ShouldBeTrue();
+    [Fact] void should_keep_the_safe_label_and_visible_host() => _filed.Body.Contains("Guide (https[:]//elsewhere[.]invalid/path)", StringComparison.Ordinal).ShouldBeTrue();
+    [Fact] void should_preserve_the_code_example() => _filed.Body.Contains("```cs\n// \uFF20someone\n```", StringComparison.Ordinal).ShouldBeTrue();
 }

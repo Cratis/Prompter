@@ -15,6 +15,8 @@ public class and_display_labels_are_validated_after_protection : Specification
     [InlineData("```\n```")]
     [InlineData("```\nQuestion?\nWithout a closing fence")]
     [InlineData("Question?\u0001")]
+    [InlineData("   ")]
+    [InlineData("\u2003")]
     public void should_omit_invalid_labels_without_creating_empty_rows(string suggestion)
     {
         var answer = Answer.Refusal(0.9, []) with { Text = "Grounded [1].", IsRefusal = false, Suggestions = [suggestion] };

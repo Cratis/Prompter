@@ -27,8 +27,8 @@ public class and_links_leave_the_citation_sources : Specification
     void Because() => _results = _inputs.Select(input => PublishedMarkdown.Neutralize(input, new())).ToArray();
 
     [Fact] void should_transform_every_nonapproved_destination() => _results.Where((result, index) => result == _inputs[index]).Count().ShouldEqual(0);
-    [Fact] void should_keep_destinations_visible() => _results.All(result => result.Contains("elsewhere.invalid", StringComparison.Ordinal) || result.Contains("cratis.io", StringComparison.Ordinal) || result.Contains("github.com", StringComparison.Ordinal) || result.Contains("javascript:", StringComparison.Ordinal)).ShouldBeTrue();
+    [Fact] void should_leave_no_active_destination() => _results.Any(result => result.Contains("://elsewhere", StringComparison.Ordinal) || result.Contains("www.elsewhere", StringComparison.Ordinal) || result.Contains("://cratis.io.evil", StringComparison.Ordinal) || result.Contains("javascript:", StringComparison.Ordinal)).ShouldBeFalse();
     [Fact] void should_be_idempotent() => _results.All(result => PublishedMarkdown.Neutralize(result, new()) == result).ShouldBeTrue();
-    [Fact] void should_keep_a_safe_label() => _results[1].ShouldEqual("Guide `https://elsewhere.invalid/path`");
-    [Fact] void should_leave_trailing_sentence_punctuation_outside_code() => _results[0].ShouldEqual("`https://elsewhere.invalid/path`.");
+    [Fact] void should_keep_a_safe_label() => _results[1].ShouldEqual("Guide (https[:]//elsewhere[.]invalid/path)");
+    [Fact] void should_leave_trailing_sentence_punctuation_outside_the_defanged_url() => _results[0].ShouldEqual("https[:]//elsewhere[.]invalid/path.");
 }

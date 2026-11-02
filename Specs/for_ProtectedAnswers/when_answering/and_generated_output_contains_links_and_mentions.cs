@@ -40,7 +40,7 @@ public class and_generated_output_contains_links_and_mentions : for_PaidWork.giv
     [Fact] void should_protect_the_already_leased_path_identically() => _alreadyLeased.Text.ShouldEqual(_result.Text);
     [Fact] void should_protect_already_leased_suggestions() => _alreadyLeased.Suggestions.Single().ShouldEqual(_result.Suggestions.Single());
     [Fact] void should_not_create_another_lease_for_the_admitted_path() => Ledger.Received(2).Reserve(Arg.Any<SpendExposure>(), Arg.Any<CancellationToken>());
-    [Fact] void should_apply_policy_to_the_answer() => _result.Text.ShouldEqual("Ask `@someone` at Guide `https://elsewhere.invalid` [1].");
-    [Fact] void should_apply_policy_to_the_follow_up() => _result.Suggestions.Single().ShouldEqual("Explain Guide `javascript:alert`?");
+    [Fact] void should_apply_policy_to_the_answer() => _result.Text.ShouldEqual("Ask \uFF20someone at Guide (https[:]//elsewhere[.]invalid) [1].");
+    [Fact] void should_apply_policy_to_the_follow_up() => _result.Suggestions.Single().ShouldEqual("Explain Guide (javascript[:]alert)?");
     [Fact] void should_keep_citation_metadata() => _result.Citations.Single().Value.ShouldEqual("https://cratis.io/arc/");
 }

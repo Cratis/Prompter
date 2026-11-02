@@ -32,7 +32,7 @@ public class and_the_generated_payload_has_an_unsafe_destination : for_PaidWork.
 
     [Fact] void should_protect_the_already_leased_payload_identically() => _alreadyLeased.ShouldEqual(_draft);
     [Fact] void should_not_reserve_another_lease_for_the_admitted_path() => Ledger.Received(2).Reserve(Arg.Any<SpendExposure>(), Arg.Any<CancellationToken>());
-    [Fact] void should_protect_the_title_before_preview() => _draft.Title.ShouldEqual("Ask `@someone`");
-    [Fact] void should_protect_the_body_before_preview() => _draft.Body.ShouldEqual("See Guide `https://elsewhere.invalid`");
+    [Fact] void should_protect_the_title_before_preview() => _draft.Title.ShouldEqual("Ask \uFF20someone");
+    [Fact] void should_protect_the_body_before_preview() => _draft.Body.ShouldEqual("See Guide (https[:]//elsewhere[.]invalid)");
     [Fact] void should_keep_the_preview_reviewable() => (_preview is not null).ShouldBeTrue();
 }
