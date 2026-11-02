@@ -28,6 +28,6 @@ public class and_the_task_has_a_model_policy : Specification
     async Task Because() => await _client.GetResponseAsync([new(ChatRole.User, "dummy question")]);
 
     [Fact] void should_pin_haiku() => _sent.ModelId.ShouldEqual("claude-haiku-5-5");
-    [Fact] void should_bound_output() => _sent.MaxOutputTokens.ShouldEqual(1536);
+    [Fact] void should_bound_output() => _sent.MaxOutputTokens.ShouldEqual(3072);
     [Fact] void should_not_set_effort() => _sent.Reasoning.ShouldBeNull();
 }
