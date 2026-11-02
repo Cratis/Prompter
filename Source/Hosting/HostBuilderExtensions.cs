@@ -100,6 +100,7 @@ public static class HostBuilderExtensions
         builder.Services.AddSingleton<ISpendLedger, SpendLedger>();
         builder.Services.AddSingleton<PaidWork>();
         builder.Services.AddSingleton<AnsweringSwitch>();
+        builder.Services.AddSingleton<IAnsweringPauses, AnsweringPauses>();
         builder.Services.AddSingleton<Admission>();
 
         // The per-user question throttle and the clock its refills are measured against. Both are shared

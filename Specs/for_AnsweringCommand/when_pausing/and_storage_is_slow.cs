@@ -8,18 +8,23 @@ namespace Cratis.Prompter.Specs.for_AnsweringCommand.when_pausing;
 public class and_storage_is_slow : given.an_answering_command
 {
     readonly TaskCompletionSource _store = new();
+    readonly TaskCompletionSource _storeEntered = new();
     Task _running = Task.CompletedTask;
     bool _pausedBeforeStore;
     bool _deferredBeforeStore;
     bool _confirmedBeforeStore;
 
-    void Establish() => Pauses.Set(true, Arg.Any<CancellationToken>()).Returns(_ => _store.Task);
+    void Establish() => Pauses.Set(true, Arg.Any<CancellationToken>()).Returns(_ =>
+    {
+        _storeEntered.TrySetResult();
+        return _store.Task;
+    });
 
     async Task Because()
     {
         Invoke(Guild, Role);
         _running = Command.Pause();
-        await Task.Delay(200);
+        await _storeEntered.Task.WaitAsync(TimeSpan.FromSeconds(10), TimeProvider.System);
         _pausedBeforeStore = Switch.Paused;
         _deferredBeforeStore = Replied("\"type\":5");
         _confirmedBeforeStore = Replied("Answering paused.");

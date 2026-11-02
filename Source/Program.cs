@@ -52,6 +52,13 @@ if (mode == "eval")
     using var evalHost = evalBuilder.Build();
     _ = evalHost.Services.GetRequiredService<MetricsExport>();
     await evalHost.Services.GetRequiredService<IChunks>().EnsureSchema();
+    if (await SavedPause.Load(evalHost.Services.GetRequiredService<AnsweringSwitch>(), evalHost.Services.GetRequiredService<IAnsweringPauses>()) is { } evalPaused)
+    {
+        await Console.Error.WriteLineAsync(evalPaused);
+        Environment.ExitCode = 1;
+        return;
+    }
+
     var command = new EvalCommand(evalHost.Services.GetRequiredService<PaidWork>(), evalHost.Services.GetRequiredService<IAnswers>());
     var summary = await command.Run(set, evaluation);
     foreach (var line in summary.Lines()) Console.WriteLine(line);
@@ -118,6 +125,13 @@ if (mode == "index" || mode == "ask")
         else
         {
             var ask = AskArguments.Parse(args.Skip(1));
+            if (await SavedPause.Load(host.Services.GetRequiredService<AnsweringSwitch>(), host.Services.GetRequiredService<IAnsweringPauses>()) is { } askPaused)
+            {
+                await Console.Error.WriteLineAsync(askPaused);
+                Environment.ExitCode = 1;
+                return;
+            }
+
             var answer = await host.Services.GetRequiredService<IAnswers>().For(new(ask.Question), "cli");
             foreach (var line in AskOutput.Lines(answer, ask.Verbose))
             {
@@ -161,7 +175,6 @@ Environment.ExitCode = await BotFailure.Run(
         webBuilder.Services.AddSingleton<ReindexGate>();
         webBuilder.Services.AddSingleton<GitHubWebhook>();
         webBuilder.Services.AddSingleton<IIssueDeliveries, IssueDeliveries>();
-        webBuilder.Services.AddSingleton<IAnsweringPauses, AnsweringPauses>();
         webBuilder.Services.AddHostedService<AnsweringSwitchRefresh>();
         webBuilder.Services.AddSingleton<WebhookProcessing>();
         webBuilder.Services.AddHostedService<RetentionPurge>();
