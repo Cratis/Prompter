@@ -99,6 +99,8 @@ public static partial class PublishedMarkdown
             return AppendProse(markdown[proseStart..]) ? _output.ToString() : null;
         }
 
+        static bool IsLineEnding(char value) => value is '\r' or '\n';
+
         bool AppendBeforeCode(int proseStart, int codeStart, int end) => end >= 0 && AppendProse(markdown[proseStart..codeStart]);
 
         int CodeEnd(CodeRun opening)
@@ -112,8 +114,16 @@ public static partial class PublishedMarkdown
             {
                 return start;
             }
+            return InlineEnd(opening);
+        }
+
+        int InlineEnd(CodeRun opening)
+        {
+            var (start, marker, length) = opening;
             for (var position = start + length; position < markdown.Length; position++)
             {
+                // A newline can begin another Markdown block; only single-line inline spans are unambiguous here.
+                if (IsLineEnding(markdown[position])) return -1;
                 if (markdown[position] != marker)
                 {
                     continue;
