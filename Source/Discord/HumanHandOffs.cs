@@ -57,7 +57,7 @@ public class HumanHandOffs(RestClient rest, Admission admission, ForumFollowUps 
         {
             return UnavailableReply;
         }
-        if (!ChannelAdmission.TryEnter(admission, click.Actor, click.Channel, click.CustomId).Allowed)
+        if (!ChannelAdmission.InScope(admission, click.Actor, click.Channel))
         {
             return options.Value.Discord.RateLimitedReply;
         }

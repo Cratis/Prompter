@@ -21,11 +21,20 @@ public class a_forward : Specification
     protected FakeDiscordMessages Discord { get; private set; } = null!;
     protected IMaintainerChannel Channel { get; private set; } = null!;
     protected MaintainerForwards Forwards { get; private set; } = null!;
+    protected NonpaidActions Actions { get; private set; } = null!;
     protected ForwardClick Documented { get; private set; } = null!;
     protected ForwardClick Requested { get; private set; } = null!;
     protected ControlledTime Clock { get; private set; } = null!;
     protected string Reply { get; set; } = null!;
     protected TextChannel ThreadChannel(ulong? parent) => TextChannel.CreateFromJson(new() { Id = 2, GuildId = 1, Type = ChannelType.PublicGuildThread, ParentId = parent }, _rest);
+
+    protected Task Run(ForwardClick click) => Actions.Run(click.Actor, click.Channel, new(_ => Task.CompletedTask, token => Forwards.Forward(click, token), Capture, Capture), TestContext.Current.CancellationToken);
+
+    Task Capture(string reply, CancellationToken token)
+    {
+        Reply = reply;
+        return Task.CompletedTask;
+    }
 
     void Destroy() => _rest.Dispose();
 
@@ -40,7 +49,9 @@ public class a_forward : Specification
         Discord = new() { Author = 3, Content = "How do I <@123> configure the thing?" };
         _rest = Discord.Client();
         Channel = Substitute.For<IMaintainerChannel>();
-        Forwards = new(_rest, Channel, new(config, new RateLimiter(config), clock), config, clock, NullLogger<MaintainerForwards>.Instance);
+        var admission = new Admission(config, new RateLimiter(config), clock);
+        Forwards = new(_rest, Channel, admission, config, clock, NullLogger<MaintainerForwards>.Instance);
+        Actions = new(admission, config, clock);
         var question = new QuestionLink(2, 4);
         var channel = TextChannel.CreateFromJson(new() { Id = 2, GuildId = 1, Type = ChannelType.TextGuildChannel }, _rest);
         Documented = new(ForwardKind.Documentation, new(1, 2, 3), AnswerActionButton.CustomId(AnswerActionButton.DocumentedPrefix, question)) { Channel = channel };

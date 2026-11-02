@@ -53,10 +53,12 @@ public sealed class FeedbackVotes(IOptions<PrompterOptions> options, TimeProvide
     /// </summary>
     /// <param name="interactionId">The answer being voted on.</param>
     /// <param name="userId">The clicking user, retained only as a keyed hash.</param>
+    /// <param name="cancellationToken">Caller cancellation covering the entire lifecycle.</param>
     /// <returns>The turn to dispose when the click is finished, releasing any uncommitted reservation, or <see langword="null"/> when it must be refused.</returns>
-    public async Task<FeedbackTurn?> Enter(long interactionId, ulong userId)
+    public async Task<FeedbackTurn?> Enter(long interactionId, ulong userId, CancellationToken cancellationToken = default)
     {
-        using var wait = new CancellationTokenSource(_turnTimeout, clock);
+        using var timeout = new CancellationTokenSource(_turnTimeout, clock);
+        using var wait = CancellationTokenSource.CreateLinkedTokenSource(timeout.Token, cancellationToken);
         var user = await EnterGate(_users, Hash(userId), wait.Token);
         if (user is null)
         {

@@ -22,6 +22,8 @@ public sealed class Admission(IOptions<PrompterOptions> options, RateLimiter use
     readonly TransientLimits _windows = new(options.Value.Protection.LocalCapacity);
     readonly TransientLimits _duplicates = new(options.Value.Protection.LocalCapacity);
     readonly TransientLimits _replies = new(options.Value.Protection.LocalCapacity);
+    readonly TransientLimits _daily = new(options.Value.Protection.LocalCapacity);
+    readonly TransientLimits _cooldowns = new(options.Value.Protection.LocalCapacity);
 
     /// <summary>Checks scope without reading history or fetching a forum starter.</summary>
     /// <param name="guild">The event guild, absent for DMs.</param>
@@ -57,12 +59,14 @@ public sealed class Admission(IOptions<PrompterOptions> options, RateLimiter use
             }
 
             var duplicate = Hash($"{userKey.Value}:{channelKey.Value}:{normalized}");
-            if (!_duplicates.Available(duplicate.Value, 1, now) || !UnderRateLimits(userKey, channelKey, now))
+            if (!CanAdmit(duplicate, userKey, channelKey, now))
             {
                 ProviderMetrics.Event("admission", "denied");
                 return Deny(userKey, channelKey, now);
             }
 
+            _daily.Consume(userKey.Value, TimeSpan.FromHours(24), now);
+            _cooldowns.Consume(userKey.Value, TimeSpan.FromSeconds(limits.UserAdmissionCooldownSeconds), now);
             _duplicates.Consume(duplicate.Value, TimeSpan.FromSeconds(limits.DuplicateSeconds), now);
             _windows.Consume("global", TimeSpan.FromHours(1), now);
             _windows.Consume(channelKey.Value, TimeSpan.FromHours(1), now);
@@ -80,6 +84,12 @@ public sealed class Admission(IOptions<PrompterOptions> options, RateLimiter use
             return Deny(Hash(actor.UserId.ToString(CultureInfo.InvariantCulture)), Hash(actor.ChannelId.ToString(CultureInfo.InvariantCulture)), clock.GetUtcNow()).Reply;
         }
     }
+
+    bool CanAdmit(AnonymousKey duplicate, AnonymousKey user, AnonymousKey channel, DateTimeOffset now) =>
+        _duplicates.Available(duplicate.Value, 1, now) && RequesterAvailable(user, now) && UnderRateLimits(user, channel, now);
+
+    bool RequesterAvailable(AnonymousKey user, DateTimeOffset now) =>
+        _daily.Available(user.Value, options.Value.Protection.UserAdmissionsPerDay, now) && _cooldowns.Available(user.Value, 1, now);
 
     AdmissionDecision Deny(AnonymousKey user, AnonymousKey channel, DateTimeOffset now)
     {

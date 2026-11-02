@@ -27,6 +27,12 @@ public class ProtectionOptions
     /// <summary>Gets or sets the global accepted-request allowance per hour.</summary>
     public int GlobalPerHour { get; set; } = 60;
 
+    /// <summary>Gets or sets admissions per requester per rolling 24 hours (0–100); zero denies.</summary>
+    public int UserAdmissionsPerDay { get; set; } = 5;
+
+    /// <summary>Gets or sets minimum seconds between requester admissions (1–86400).</summary>
+    public int UserAdmissionCooldownSeconds { get; set; } = 60;
+
     /// <summary>Gets or sets the channel/thread accepted-request allowance per hour.</summary>
     public int ChannelPerHour { get; set; } = 20;
 
@@ -38,6 +44,30 @@ public class ProtectionOptions
 
     /// <summary>Gets or sets the per-user refusal reply interval.</summary>
     public int UserRefusalSeconds { get; set; } = 600;
+
+    /// <summary>Gets or sets simultaneous nonpaid actions without a waiting queue (1–8).</summary>
+    public int ActionConcurrency { get; set; } = 2;
+
+    /// <summary>Gets or sets accepted actions per rolling minute (0–120); zero denies.</summary>
+    public int ActionPerMinute { get; set; } = 12;
+
+    /// <summary>Gets or sets accepted actions per channel per rolling minute (0–120); zero denies.</summary>
+    public int ActionChannelPerMinute { get; set; } = 6;
+
+    /// <summary>Gets or sets accepted action clicks per user per window (0–100); zero denies.</summary>
+    public int ActionClicksPerUser { get; set; } = 3;
+
+    /// <summary>Gets or sets the action user's window in seconds (1–86400).</summary>
+    public int ActionWindowSeconds { get; set; } = 600;
+
+    /// <summary>Gets or sets simultaneous feedback lifecycles without a waiting queue (1–8).</summary>
+    public int FeedbackConcurrency { get; set; } = 2;
+
+    /// <summary>Gets or sets feedback clicks per rolling minute (0–120); zero denies.</summary>
+    public int FeedbackPerMinute { get; set; } = 30;
+
+    /// <summary>Gets or sets the shared feedback lifecycle deadline in milliseconds (100–2500).</summary>
+    public int FeedbackWriteTimeoutMilliseconds { get; set; } = 2000;
 
     /// <summary>Gets or sets the feedback button clicks one user may make per window.</summary>
     public int FeedbackClicksPerUser { get; set; } = 10;
@@ -72,11 +102,35 @@ public class ProtectionOptions
     /// <summary>Gets or sets verified conservative Voyage prices and limits.</summary>
     public ProviderBudget Voyage { get; set; } = new();
 
+    /// <summary>Gets or sets simultaneous authenticated webhook lifecycles (1–8), without a queue.</summary>
+    public int WebhookConcurrency { get; set; } = 2;
+
+    /// <summary>Gets or sets authenticated webhook starts per minute (0–120); zero denies.</summary>
+    public int WebhookPerMinute { get; set; } = 12;
+
+    /// <summary>Gets or sets maintainer notifications per minute (0–120); zero denies.</summary>
+    public int WebhookNotificationsPerMinute { get; set; } = 6;
+
     /// <summary>Gets or sets the maximum raw webhook body size, including chunked bodies.</summary>
     public int WebhookBytes { get; set; } = 65536;
+
+    /// <summary>Gets a value indicating whether independent action bounds are usable.</summary>
+    public bool ActionLimitsAreValid => ActionConcurrency is >= 1 and <= 8 && ActionPerMinute is >= 0 and <= 120 &&
+        ActionChannelPerMinute is >= 0 and <= 120 && ActionClicksPerUser is >= 0 and <= 100 && ActionWindowSeconds is >= 1 and <= 86400;
+
+    /// <summary>Gets a value indicating whether independent feedback bounds are usable.</summary>
+    public bool FeedbackLimitsAreValid => FeedbackConcurrency is >= 1 and <= 8 && FeedbackPerMinute is >= 0 and <= 120 &&
+        FeedbackWriteTimeoutMilliseconds is >= 100 and <= 2500;
+
+    /// <summary>Gets a value indicating whether requester fairness bounds are usable.</summary>
+    public bool RequesterLimitsAreValid => UserAdmissionsPerDay is >= 0 and <= 100 && UserAdmissionCooldownSeconds is >= 1 and <= 86400;
+
+    /// <summary>Gets a value indicating whether webhook resource bounds are usable.</summary>
+    public bool WebhookLimitsAreValid => WebhookConcurrency is >= 1 and <= 8 && WebhookPerMinute is >= 0 and <= 120 &&
+        WebhookNotificationsPerMinute is >= 0 and <= 120;
 
     /// <summary>Gets a value indicating whether local bounds are usable.</summary>
     public bool IsValid => Concurrency > 0 && GlobalPerHour >= 0 && ChannelPerHour >= 0 &&
         MaxQuestionCharacters > 0 && DuplicateSeconds > 0 && UserRefusalSeconds > 0 &&
-        ChannelRefusalSeconds > 0 && FeedbackClicksPerUser > 0 && FeedbackWindowSeconds > 0 && LocalCapacity > 0 && DailyUsd >= 0 && WebhookBytes > 0;
+        ChannelRefusalSeconds > 0 && ActionLimitsAreValid && FeedbackLimitsAreValid && RequesterLimitsAreValid && WebhookLimitsAreValid && FeedbackClicksPerUser > 0 && FeedbackWindowSeconds > 0 && LocalCapacity > 0 && DailyUsd >= 0 && WebhookBytes > 0;
 }

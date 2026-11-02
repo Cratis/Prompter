@@ -4,6 +4,7 @@
 using System.Reflection;
 using Cratis.Prompter.Digest;
 using Cratis.Prompter.Discord;
+using Cratis.Prompter.Protection;
 using Microsoft.Extensions.Logging.Abstractions;
 using NetCord;
 using NetCord.Gateway;
@@ -73,8 +74,9 @@ public class an_action_interaction : for_AskPrompter.given.an_interaction
         Options.Discord.MaintainerRoleId = 9;
         Options.Discord.MaintainerChannelId = 99;
         var config = Microsoft.Extensions.Options.Options.Create(Options);
-        var human = new HumanHandOffButton(new(Client.Rest, Admission, new(config, Clock), config, Clock, NullLogger<HumanHandOffs>.Instance), Admission, config);
-        var forward = new MaintainerForwardButtons(new(Client.Rest, Channel, Admission, config, Clock, NullLogger<MaintainerForwards>.Instance), Admission, config);
+        var actions = new NonpaidActions(Admission, config, Clock);
+        var human = new HumanHandOffButton(new(Client.Rest, Admission, new(config, Clock), config, Clock, NullLogger<HumanHandOffs>.Instance), actions);
+        var forward = new MaintainerForwardButtons(new(Client.Rest, Channel, Admission, config, Clock, NullLogger<MaintainerForwards>.Instance), actions);
         Bind(human);
         Bind(forward);
         await human.Handle(70, 90);
