@@ -11,6 +11,8 @@ namespace Cratis.Prompter.Answering;
 /// </summary>
 public static class TaskChatPolicy
 {
+    const string ThinkingOffModel = "claude-haiku-5-5";
+
     static readonly HashSet<string> _efforts = new(StringComparer.Ordinal) { string.Empty, "low", "medium", "high" };
 
     /// <summary>
@@ -63,21 +65,28 @@ public static class TaskChatPolicy
 
         request.ModelId = model;
         request.MaxOutputTokens = Math.Min(request.MaxOutputTokens ?? policy.MaxOutputTokens, policy.MaxOutputTokens);
-        request.Reasoning = Reasoning(policy.Effort);
+        request.Reasoning = Reasoning(model, policy.Effort);
         request.Temperature = null;
         request.TopP = null;
         request.TopK = null;
         return request;
     }
 
-    static ReasoningOptions? Reasoning(string effort) => effort.Length == 0 ? null : new()
+    /// <summary>
+    /// Maps the task effort to the request. An empty effort means no thinking: Haiku 5.5 thinks adaptively when the
+    /// request omits thinking, and its hidden thinking tokens count toward the output cap, so it is turned off
+    /// explicitly. Models that reject disabled thinking get no thinking field.
+    /// </summary>
+    /// <param name="model">The effective model.</param>
+    /// <param name="effort">The validated effort.</param>
+    /// <returns>The reasoning options, or <see langword="null"/> to omit thinking.</returns>
+    static ReasoningOptions? Reasoning(string model, string effort) => effort switch
     {
-        Effort = effort switch
-        {
-            "low" => ReasoningEffort.Low,
-            "medium" => ReasoningEffort.Medium,
-            _ => ReasoningEffort.High
-        }
+        "" when model == ThinkingOffModel => new() { Effort = ReasoningEffort.None },
+        "" => null,
+        "low" => new() { Effort = ReasoningEffort.Low },
+        "medium" => new() { Effort = ReasoningEffort.Medium },
+        _ => new() { Effort = ReasoningEffort.High }
     };
 
     static void ValidateModel(AnthropicOptions configuration, TaskModelOptions policy, string model, string task)

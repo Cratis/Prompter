@@ -35,6 +35,6 @@ public class and_haiku_is_approved_for_issue_drafting : Specification
         new() { AdditionalProperties = new() { [AnthropicAccounts.TaskKey] = "issue-draft" } });
 
     [Fact] void should_use_the_evaluated_model() => _sent.ModelId.ShouldEqual("claude-haiku-5-5");
-    [Fact] void should_omit_unsupported_thinking() => _sent.Reasoning.ShouldBeNull();
+    [Fact] void should_turn_thinking_off() => _sent.Reasoning!.Effort.ShouldEqual(ReasoningEffort.None);
     [Fact] void should_keep_a_bounded_output() => _sent.MaxOutputTokens.ShouldEqual(4096);
 }
