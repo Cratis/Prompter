@@ -12,10 +12,11 @@ public static class InteractionAnswers
     /// <param name="interaction">The interaction to follow up on.</param>
     /// <param name="reply">The answer and advice.</param>
     /// <param name="actions">The explicit answer actions.</param>
+    /// <param name="options">The citation source policy.</param>
     /// <returns>A <see cref="Task"/> representing the asynchronous operation.</returns>
-    public static async Task Send(Interaction interaction, ConversationReply reply, AnswerActions actions)
+    public static async Task Send(Interaction interaction, ConversationReply reply, AnswerActions actions, PrompterOptions options)
     {
-        var followup = SafeMessages.Followup(DiscordAnswers.Format(reply.Answer));
+        var followup = SafeMessages.Followup(DiscordAnswers.Format(reply.Answer, options));
         var rows = AnswerComponents.For(reply.Answer, actions);
         if (rows.Count > 0)
         {

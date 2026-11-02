@@ -24,7 +24,8 @@ namespace Cratis.Prompter.Protection;
 /// <c language="text">@here</c>, user, role, channel and command references without hidden characters, so a reviewer still sees the text.</item>
 /// </list>
 /// When text exceeds <see cref="MaximumLength"/> or a match times out, a deterministic fallback defangs every
-/// <c language="text">://</c>, <c language="text">www.</c>, <c language="text">@</c> and <c language="text">&lt;</c>. Uncertainty always defangs more, never less.
+/// <c language="text">.</c> and <c language="text">:</c> (so scheme-less invites are inert too), <c language="text">@</c> and <c language="text">&lt;</c>.
+/// A citable-looking token that embeds another destination (a second <c language="text">://</c>, <c language="text">www.</c> or an invite host after the host) is treated as not citable. Uncertainty always defangs more, never less.
 /// The transformation is idempotent.
 /// </remarks>
 public static partial class PublishedMarkdown
@@ -36,6 +37,8 @@ public static partial class PublishedMarkdown
     const char FullwidthLess = '\uFF1C';
     const string Dots = ".\u3002\uFF0E\uFF61\u2024";
     const string Colons = ":\uFF1A";
+
+    static readonly string[] _embeddedMarkers = ["://", "www.", "discord.gg", "discord.com/invite", "discordapp.com/invite"];
 
     [GeneratedRegex(
         @"(?<link>!?\[(?<label>[^\[\]\r\n]*)\]\((?<destination>(?:[^()\r\n]|\([^()\r\n]*\))*)\))|(?<url>(?:[^\s<>\[\]()""`]*://|[a-z][a-z0-9+.\-]*:|(?<![\w.\-])www\.)[^\s<>\[\]()""`]+|(?<![\w@.\-/])(?:[a-z0-9\-]+\.)+[a-z0-9\-]+/[^\s<>\[\]()""`]*)|(?<at>@)|(?<angle><(?=[@#/]))",
@@ -94,7 +97,13 @@ public static partial class PublishedMarkdown
         if (destination.IndexOfAny(['%', '\\', '&', '`', '@']) >= 0 || destination.Any(char.IsWhiteSpace)) return false;
         var explicitHttps = destination.StartsWith("https://", StringComparison.OrdinalIgnoreCase);
         var bareHost = !destination.Contains(':', StringComparison.Ordinal) && !destination.StartsWith('/');
-        return (explicitHttps || bareHost) && SourceHosts.IsCitable(new(explicitHttps ? destination : "https://" + destination), options);
+        return (explicitHttps || bareHost) && !EmbedsAnotherDestination(destination) && SourceHosts.IsCitable(new(explicitHttps ? destination : "https://" + destination), options);
+    }
+
+    static bool EmbedsAnotherDestination(string destination)
+    {
+        var hostEnd = destination.IndexOf('/', destination.StartsWith("https://", StringComparison.OrdinalIgnoreCase) ? 8 : 0);
+        return hostEnd >= 0 && _embeddedMarkers.Any(marker => destination.AsSpan(hostEnd).Contains(marker, StringComparison.OrdinalIgnoreCase));
     }
 
     static string Defang(string text)
@@ -125,10 +134,13 @@ public static partial class PublishedMarkdown
 
     static string FallbackCharacter(string text, int index)
     {
-        if (IsSchemeSeparator(text, index)) return "[:]";
-        if (IsWwwDot(text, index)) return "[.]";
+        if (IsBracketed(text, index)) return text[index].ToString();
+        if (Dots.Contains(text[index])) return "[.]";
+        if (Colons.Contains(text[index])) return "[:]";
         return text[index] is '<' ? FullwidthLess.ToString() : Mention(text, index);
     }
+
+    static bool IsBracketed(string text, int index) => index > 0 && index + 1 < text.Length && text[index - 1] == '[' && text[index + 1] == ']';
 
     static string Mention(string text, int index) => text[index] switch
     {
@@ -136,8 +148,4 @@ public static partial class PublishedMarkdown
         '<' when index + 1 < text.Length && text[index + 1] is '@' or '#' or '/' => FullwidthLess.ToString(),
         var other => other.ToString()
     };
-
-    static bool IsSchemeSeparator(string text, int index) => Colons.Contains(text[index]) && text.AsSpan(index + 1).StartsWith("//", StringComparison.Ordinal);
-
-    static bool IsWwwDot(string text, int index) => Dots.Contains(text[index]) && index >= 3 && text.AsSpan(index - 3, 3).Equals("www", StringComparison.OrdinalIgnoreCase);
 }

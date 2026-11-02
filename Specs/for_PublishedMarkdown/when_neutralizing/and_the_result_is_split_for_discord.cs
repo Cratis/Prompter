@@ -14,7 +14,7 @@ public class and_the_result_is_split_for_discord : Specification
     void Because()
     {
         var text = PublishedMarkdown.Neutralize("`prefix\n\n```\n\n" + new string('a', 2100) + "\n\n[click](https://evil.invalid) @everyone\n\nsuffix`", new());
-        _messages = DiscordAnswers.Split(Answer.Refusal(0.9, []) with { Text = text, IsRefusal = false });
+        _messages = DiscordAnswers.Split(Answer.Refusal(0.9, []) with { Text = text, IsRefusal = false }, new());
     }
 
     [Fact] void should_split_into_several_messages() => (_messages.Count > 1).ShouldBeTrue();

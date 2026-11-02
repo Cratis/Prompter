@@ -139,7 +139,7 @@ public class ForumAnswerer(
     async Task SendAnswer(ulong thread, ConversationReply reply, QuestionLink link)
     {
         var answer = reply.Answer;
-        var message = SafeMessages.Message(DiscordAnswers.Format(answer));
+        var message = SafeMessages.Message(DiscordAnswers.Format(answer, options.Value));
         var rows = AnswerComponents.For(answer, AnswerActions.For(options.Value.Discord, link, reply));
         if (rows.Count > 0)
         {
