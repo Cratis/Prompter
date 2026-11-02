@@ -24,6 +24,7 @@ public sealed class Admission(IOptions<PrompterOptions> options, RateLimiter use
     readonly TransientLimits _replies = new(options.Value.Protection.LocalCapacity);
     readonly TransientLimits _daily = new(options.Value.Protection.LocalCapacity);
     readonly TransientLimits _cooldowns = new(options.Value.Protection.LocalCapacity);
+    readonly EscalatingCooldowns _escalations = new(options.Value.Protection.LocalCapacity);
 
     /// <summary>Checks scope without reading history or fetching a forum starter.</summary>
     /// <param name="guild">The event guild, absent for DMs.</param>
@@ -34,13 +35,20 @@ public sealed class Admission(IOptions<PrompterOptions> options, RateLimiter use
         options.Value.Protection.AllowedGuilds.Contains(id) &&
         !options.Value.Protection.DeniedChannels.Contains(channel);
 
+    /// <summary>Checks whether the user lists permit a user. Denial wins; an empty allow list permits everyone.</summary>
+    /// <param name="user">The Discord user.</param>
+    /// <returns>Whether the user may use the bot.</returns>
+    public bool Permits(ulong user) =>
+        !options.Value.Protection.DeniedUsers.Contains(user) &&
+        (options.Value.Protection.AllowedUsers.Count == 0 || options.Value.Protection.AllowedUsers.Contains(user));
+
     /// <summary>Attempts cheap admission, retaining only keyed expiring hashes.</summary>
     /// <param name="actor">Transient Discord metadata.</param>
     /// <param name="question">The current question, never retained.</param>
     /// <returns>An admission decision.</returns>
     public AdmissionDecision TryEnter(DiscordActor actor, Question question)
     {
-        if (!InScope(actor.GuildId, actor.ChannelId))
+        if (!InScope(actor.GuildId, actor.ChannelId) || !Permits(actor.UserId))
         {
             ProviderMetrics.Event("admission", "denied");
             return new(false, false);
@@ -52,6 +60,12 @@ public sealed class Admission(IOptions<PrompterOptions> options, RateLimiter use
             var userKey = Hash(actor.UserId.ToString(CultureInfo.InvariantCulture));
             var channelKey = Hash(actor.ChannelId.ToString(CultureInfo.InvariantCulture));
             var limits = options.Value.Protection;
+            if (!actor.Maintainer && _escalations.Remaining(userKey.Value, now) is { } paused)
+            {
+                ProviderMetrics.Event("admission", "denied");
+                return Deny(userKey, channelKey, now, AdmissionLimit.Escalated, paused);
+            }
+
             if (!TryNormalize(question, out var normalized))
             {
                 ProviderMetrics.Event("admission", "denied");
@@ -62,6 +76,11 @@ public sealed class Admission(IOptions<PrompterOptions> options, RateLimiter use
             if (Limit(duplicate, userKey, channelKey, actor.Maintainer, now) is var (limit, wait))
             {
                 ProviderMetrics.Event("admission", "denied");
+                if (!actor.Maintainer && limit is AdmissionLimit.Duplicate or AdmissionLimit.Cooldown or AdmissionLimit.Daily or AdmissionLimit.Burst)
+                {
+                    _escalations.Strike(userKey.Value, now, limits);
+                }
+
                 return Deny(userKey, channelKey, now, limit, wait);
             }
 

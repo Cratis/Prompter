@@ -17,7 +17,7 @@ public static class ChannelAdmission
     /// <returns>Whether the channel and any required thread parent are known and in scope.</returns>
     public static bool InScope(Admission admission, DiscordActor actor, TextChannel? channel) =>
         channel is not null and not IUnknownTextChannel && channel.Id != 0 && channel.Id == actor.ChannelId &&
-        admission.InScope(actor.GuildId, channel.Id) &&
+        admission.Permits(actor.UserId) && admission.InScope(actor.GuildId, channel.Id) &&
         (channel is not GuildThread thread || (thread.ParentId != 0 && admission.InScope(actor.GuildId, thread.ParentId)));
 
     /// <summary>Admits work only after checking the channel and any required thread parent.</summary>

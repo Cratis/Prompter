@@ -21,6 +21,12 @@ public class ProtectionOptions
     /// <summary>Gets or sets channels denied even within an allowed guild.</summary>
     public IReadOnlyList<ulong> DeniedChannels { get; set; } = [];
 
+    /// <summary>Gets or sets the only users permitted to use the bot. Empty permits everyone not denied.</summary>
+    public IReadOnlyList<ulong> AllowedUsers { get; set; } = [];
+
+    /// <summary>Gets or sets users refused silently. Denial wins over the allow list.</summary>
+    public IReadOnlyList<ulong> DeniedUsers { get; set; } = [];
+
     /// <summary>Gets or sets simultaneous interactive paid operations, without a waiting queue.</summary>
     public int Concurrency { get; set; } = 3;
 
@@ -32,6 +38,18 @@ public class ProtectionOptions
 
     /// <summary>Gets or sets minimum seconds between requester admissions (1–86400).</summary>
     public int UserAdmissionCooldownSeconds { get; set; } = 15;
+
+    /// <summary>Gets or sets requester-attributable refusals inside the strike window that start an escalated pause (0–100); zero disables escalation.</summary>
+    public int RefusalStrikes { get; set; } = 5;
+
+    /// <summary>Gets or sets the window in seconds in which refusals count as strikes (1–86400).</summary>
+    public int RefusalStrikeWindowSeconds { get; set; } = 600;
+
+    /// <summary>Gets or sets the first escalated pause in seconds (1–86400); each repeat doubles it.</summary>
+    public int EscalatedCooldownSeconds { get; set; } = 300;
+
+    /// <summary>Gets or sets the longest escalated pause in seconds (at least the first pause, at most 604800).</summary>
+    public int MaxEscalatedCooldownSeconds { get; set; } = 21600;
 
     /// <summary>Gets or sets the channel/thread accepted-request allowance per hour.</summary>
     public int ChannelPerHour { get; set; } = 20;
@@ -123,7 +141,12 @@ public class ProtectionOptions
         FeedbackWriteTimeoutMilliseconds is >= 100 and <= 2500;
 
     /// <summary>Gets a value indicating whether requester fairness bounds are usable.</summary>
-    public bool RequesterLimitsAreValid => UserAdmissionsPerDay is >= 0 and <= 100 && UserAdmissionCooldownSeconds is >= 1 and <= 86400;
+    public bool RequesterLimitsAreValid => UserAdmissionsPerDay is >= 0 and <= 100 && UserAdmissionCooldownSeconds is >= 1 and <= 86400 &&
+        RefusalStrikes is >= 0 and <= 100 && RefusalStrikeWindowSeconds is >= 1 and <= 86400 && EscalatedCooldownSeconds is >= 1 and <= 86400 &&
+        MaxEscalatedCooldownSeconds >= EscalatedCooldownSeconds && MaxEscalatedCooldownSeconds <= 604800;
+
+    /// <summary>Gets a value indicating whether the user lists contain only usable identifiers.</summary>
+    public bool UserListsAreValid => !AllowedUsers.Contains(0UL) && !DeniedUsers.Contains(0UL);
 
     /// <summary>Gets a value indicating whether webhook resource bounds are usable.</summary>
     public bool WebhookLimitsAreValid => WebhookConcurrency is >= 1 and <= 8 && WebhookPerMinute is >= 0 and <= 120 &&
@@ -132,5 +155,5 @@ public class ProtectionOptions
     /// <summary>Gets a value indicating whether local bounds are usable.</summary>
     public bool IsValid => Concurrency > 0 && GlobalPerHour >= 0 && ChannelPerHour >= 0 &&
         MaxQuestionCharacters > 0 && DuplicateSeconds > 0 && UserRefusalSeconds > 0 &&
-        ChannelRefusalSeconds > 0 && ActionLimitsAreValid && FeedbackLimitsAreValid && RequesterLimitsAreValid && WebhookLimitsAreValid && FeedbackClicksPerUser > 0 && FeedbackWindowSeconds > 0 && LocalCapacity > 0 && DailyUsd >= 0 && WebhookBytes > 0;
+        ChannelRefusalSeconds > 0 && ActionLimitsAreValid && FeedbackLimitsAreValid && RequesterLimitsAreValid && UserListsAreValid && WebhookLimitsAreValid && FeedbackClicksPerUser > 0 && FeedbackWindowSeconds > 0 && LocalCapacity > 0 && DailyUsd >= 0 && WebhookBytes > 0;
 }
