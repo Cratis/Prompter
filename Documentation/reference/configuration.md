@@ -20,7 +20,16 @@ Configuration binds to the `Cratis:Prompter` section. Environment variables use 
 | Help forum channel (auto-reply) | `Cratis__Prompter__Discord__HelpForumChannelId` | - |
 | Answer-in-thread channels (off when empty) | `Cratis__Prompter__Discord__AnswerInThreadChannelIds__0`, `__1`, … | - |
 | Delayed forum answers (off when empty) | `Cratis__Prompter__Discord__DelayedForums__0__ChannelId` and `__DelayMinutes` (1 to 1440), repeated per forum with `__1__…` | - / `30` |
-| Maintainer role for Ask a human (off when unset) | `Cratis__Prompter__Discord__MaintainerRoleId` | - |
+| Maintainer role for Ask a human, the per-user limit exemption and `/answering` (off when unset) | `Cratis__Prompter__Discord__MaintainerRoleId` | - |
+| Daily questions per user (UTC day) | `Cratis__Prompter__Protection__UserAdmissionsPerDay` | `30` (0–100) |
+| Minimum seconds between a user's questions | `Cratis__Prompter__Protection__UserAdmissionCooldownSeconds` | `15` (1–86400) |
+| Questions per user per window | `Cratis__Prompter__Discord__RateLimit__MaxQuestions` | `10` |
+| Refusals that start an escalating pause (0 disables) | `Cratis__Prompter__Protection__RefusalStrikes` | `5` (0–100) |
+| Window for counting refusals, seconds | `Cratis__Prompter__Protection__RefusalStrikeWindowSeconds` | `600` (1–86400) |
+| First escalated pause, seconds (doubles per repeat) | `Cratis__Prompter__Protection__EscalatedCooldownSeconds` | `300` (1–86400) |
+| Longest escalated pause, seconds | `Cratis__Prompter__Protection__MaxEscalatedCooldownSeconds` | `21600` (at most 604800) |
+| Only these users may use the bot (off when empty) | `Cratis__Prompter__Protection__AllowedUsers__0`, `__1`, … | - |
+| Users refused silently | `Cratis__Prompter__Protection__DeniedUsers__0`, `__1`, … | - |
 | Anthropic API key | `Cratis__Prompter__Anthropic__ApiKey` (or `ANTHROPIC_API_KEY`) | - |
 | Answer model | `Cratis__Prompter__Anthropic__Model` | `claude-sonnet-5` |
 | Voyage API key | `Cratis__Prompter__Voyage__ApiKey` | - |

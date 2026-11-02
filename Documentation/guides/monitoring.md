@@ -151,6 +151,8 @@ ceiling. A runaway critical means exposure exceeds that admitted ceiling; withou
 run, the incremental tiers remain active. Investigate the reserving process and stop unexpected paid
 work; never raise caps to clear either alert.
 
+When spend looks wrong, the first response is `/answering pause`: it stops every answer, webhook answer and delayed forum sweep immediately without a redeploy (other replicas pick it up within 30 seconds). The transitions are visible as `protection` events with the reasons `paused` and `resumed`. Resume with `/answering resume` once the cause is understood.
+
 ## Provider errors
 
 HTTP 401/403 is `auth`, 402 is `quota`, 429 is `rate_limit`, and verified Anthropic 503/529 overload is `capacity`.

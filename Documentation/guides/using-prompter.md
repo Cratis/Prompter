@@ -71,9 +71,7 @@ See [Grounded answers](../concepts/grounded-answers.md) for why refusals are a f
 
 ## If you ask a lot at once
 
-Prompter allows a handful of questions per user in a short window (about five every ten minutes). Past that it
-replies with a friendly "give me a breather" instead of an answer - just wait a moment and continue. There is
-no penalty; the limit only smooths out bursts.
+Prompter allows each person up to 10 questions in a ten-minute window, at least 15 seconds apart, and 30 questions per UTC day. When you hit a limit the reply names it and tells you how long to wait; the daily limit resets at 00:00 UTC. Keep asking while you are refused and the pauses grow: after five refusals within ten minutes you are paused for about five minutes, and each repeat doubles the pause, up to six hours. Waiting for the time in the reply never triggers a pause.
 
 ## React to make it better
 
