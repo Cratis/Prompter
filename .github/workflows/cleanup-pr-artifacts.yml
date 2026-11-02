@@ -6,7 +6,10 @@ on:
 
 jobs:
   cleanup:
-    uses: Cratis/Workflows/.github/workflows/cleanup-pr-artifacts.yml@main
+    if: github.event.pull_request.user.login != 'dependabot[bot]'
+    uses: Cratis/Workflows/.github/workflows/cleanup-pr-artifacts.yml@3f8a8a7ef75f72b6b089638b68ec2f9af8f593e3 # main
     with:
       pull_request: ${{ github.event.pull_request.number }}
-    secrets: inherit
+    secrets:
+      PAT_WORKFLOWS: ${{ secrets.PAT_WORKFLOWS }}
+      PACKAGE_CLEANUP_TOKEN: ${{ secrets.PACKAGE_CLEANUP_TOKEN }}
