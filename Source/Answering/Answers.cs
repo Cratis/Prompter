@@ -222,6 +222,6 @@ public class Answers(
 
     Clarification? Clarify(Question question, Passage[] qualified, AnswerMode mode) =>
         question.AllowClarification && mode == AnswerMode.Standard && options.Value.Answering.ClarifyAmbiguousProducts && question.Value.Length <= MaximumClarifiedQuestionLength
-            ? Clarifications.Detect(question, qualified, options.Value.DocsSiteUrl, options.Value.Answering.ClarificationMargin)
+            ? Clarifications.Detect(question, [.. qualified.Where(passage => !passage.IsSectionExpansion)], options.Value.DocsSiteUrl, options.Value.Answering.ClarificationMargin)
             : null;
 }

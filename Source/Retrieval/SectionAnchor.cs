@@ -11,7 +11,8 @@ namespace Cratis.Prompter.Retrieval;
 /// <param name="Exact">Whether only chunks with exactly the root heading path belong to the section (the page intro).</param>
 /// <param name="Index">The chunk index of the anchor within its page.</param>
 /// <param name="Neighbors">The ids of the chunks just before and after the anchor.</param>
-record SectionAnchor(string Page, string Root, bool Exact, int Index, string[] Neighbors)
+/// <param name="ChunkId">The id of the anchor chunk itself.</param>
+record SectionAnchor(string Page, string Root, bool Exact, int Index, string[] Neighbors, string ChunkId)
 {
     /// <summary>
     /// Creates the anchor of an admitted passage.
@@ -28,7 +29,7 @@ record SectionAnchor(string Page, string Root, bool Exact, int Index, string[] N
         string[] neighbors = index is >= 0 and < int.MaxValue
             ? [$"{passage.Page.Value}#{index - 1}", $"{passage.Page.Value}#{index + 1}"]
             : [];
-        return new(passage.Page.Value, root, exact, index, neighbors);
+        return new(passage.Page.Value, root, exact, index, neighbors, passage.ChunkId ?? string.Empty);
     }
 
     /// <summary>Gets the rank of the first anchor of the row's page that the row belongs to, falling back to the first anchor of the page.</summary>

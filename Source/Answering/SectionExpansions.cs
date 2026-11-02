@@ -41,5 +41,5 @@ public static class SectionExpansions
     }
 
     static bool Contains(IEnumerable<Passage> passages, Passage candidate) =>
-        passages.Any(passage => passage.Page == candidate.Page && passage.HeadingPath == candidate.HeadingPath && passage.Content == candidate.Content);
+        passages.Any(passage => (candidate.ChunkId is not null && passage.ChunkId == candidate.ChunkId) || (passage.Page == candidate.Page && passage.HeadingPath == candidate.HeadingPath && passage.Content == candidate.Content));
 }

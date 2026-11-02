@@ -102,7 +102,7 @@ public class Passages(
         var anchors = SectionAnchors(passages);
         if (anchors.Length > 0)
         {
-            passages.AddRange(await ExpandSections(questionEmbedding, anchors, passages, cancellationToken));
+            passages.AddRange(await ExpandSections(questionEmbedding, anchors, cancellationToken));
         }
 
         return passages;
@@ -179,9 +179,11 @@ public class Passages(
         .DistinctBy(anchor => (anchor.Page, anchor.Root))
         .Take(MaximumSectionAnchors)];
 
-    async Task<List<Passage>> ExpandSections(Vector questionEmbedding, SectionAnchor[] anchors, List<Passage> returned, CancellationToken cancellationToken)
+    async Task<List<Passage>> ExpandSections(Vector questionEmbedding, SectionAnchor[] anchors, CancellationToken cancellationToken)
     {
-        // A chunk joins when it is in the anchor's section, next to the anchor, or on a small page. No similarity
+        // Only the anchors are excluded. Other already retrieved chunks may return: one below the similarity threshold was
+        // not admitted, and SectionExpansions removes the admitted ones. Rows are ranked before the limit, so the cut drops the
+        // least relevant section. A chunk joins when it is in the anchor's section, next to the anchor, or on a small page. No similarity
         // threshold applies: the rows only ever attach to an admitted anchor, and the answering layer bounds the bytes.
         await using var command = dataSource.CreateCommand(
             $"""
@@ -205,7 +207,13 @@ public class Passages(
                    OR c.id = ANY($5::text[])
                    OR EXISTS (SELECT 1 FROM anchors a WHERE a.page = c.page_url
                               AND (c.heading_path = a.root OR (NOT a.exact AND starts_with(c.heading_path, a.root || ' > ')))))
-            ORDER BY c.page_url, c.id
+            ORDER BY array_position($2::text[], c.page_url),
+                     (c.id = ANY($5::text[]) OR EXISTS (SELECT 1 FROM anchors a WHERE a.page = c.page_url
+                         AND (c.heading_path = a.root OR (NOT a.exact AND starts_with(c.heading_path, a.root || ' > '))))) DESC,
+                     (c.id = ANY($5::text[])) DESC,
+                     COALESCE(substring(c.id from '#([0-9]+)(?:\.[0-9]+)?$')::int, 2147483647),
+                     COALESCE(substring(c.id from '#[0-9]+\.([0-9]+)$')::int, 0),
+                     c.id
             LIMIT {MaximumSectionRows}
             """);
         command.Parameters.AddWithValue(questionEmbedding);
@@ -213,7 +221,7 @@ public class Passages(
         command.Parameters.AddWithValue(anchors.Select(anchor => anchor.Root).ToArray());
         command.Parameters.AddWithValue(anchors.Select(anchor => anchor.Exact).ToArray());
         command.Parameters.AddWithValue(anchors.SelectMany(anchor => anchor.Neighbors).ToArray());
-        command.Parameters.AddWithValue(returned.Select(passage => passage.ChunkId).OfType<string>().ToArray());
+        command.Parameters.AddWithValue(anchors.Select(anchor => anchor.ChunkId).ToArray());
         var rows = new List<Passage>();
         await using var reader = await command.ExecuteReaderAsync(cancellationToken);
         while (await reader.ReadAsync(cancellationToken))
