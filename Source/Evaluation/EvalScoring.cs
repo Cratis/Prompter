@@ -27,5 +27,11 @@ public static class EvalScoring
         return new(item.Id, expectsAnswer, retrieval, citation, refusal, terms, refusal && (!expectsAnswer || (citation && terms)), cost, [.. answer.Citations.Select(page => page.Value)]);
     }
 
-    static bool Mentions(Answer answer, string term) => answer.Text.Contains(term, StringComparison.OrdinalIgnoreCase);
+    /// <summary>Checks a mention where hyphens and whitespace are equivalent, so "event-sourcing" mentions "event sourcing".</summary>
+    /// <param name="answer">The answer to search.</param>
+    /// <param name="term">The term to find, ignoring case.</param>
+    /// <returns><see langword="true"/> when the answer mentions the term.</returns>
+    static bool Mentions(Answer answer, string term) => Words(answer.Text).Contains(Words(term), StringComparison.OrdinalIgnoreCase);
+
+    static string Words(string text) => string.Join(' ', text.Split([' ', '-', '\t', '\r', '\n'], StringSplitOptions.RemoveEmptyEntries));
 }
