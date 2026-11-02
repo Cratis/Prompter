@@ -145,6 +145,15 @@ jobs:
             echo "::error::version must be a SemVer such as 0.2.7 or 1.0.0-rc.1 (required for deploy)."
             exit 1
           fi
+          # The stack is built from main, whose workload runs a 'migrate' init container. Images published
+          # before 0.13.0 do not know that command, so the pod would never start. Compare the numeric core;
+          # a prerelease or local tag of 0.13.0 or later passes.
+          minimum="0.13.0"
+          core="${VERSION%%-*}"
+          if [ "$(printf '%s\n%s\n' "${minimum}" "${core}" | sort -V | head -n 1)" != "${minimum}" ]; then
+            echo "::error::version ${VERSION} is older than ${minimum}; images before ${minimum} do not support the database migrate step. Roll back by reverting the Deployment code as well."
+            exit 1
+          fi
 
       - name: Checkout main
         uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1

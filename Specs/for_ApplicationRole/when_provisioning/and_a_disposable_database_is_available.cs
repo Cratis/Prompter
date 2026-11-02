@@ -33,6 +33,7 @@ public class and_a_disposable_database_is_available : a_provisioned_application_
         await Refuse("create role", "CREATE ROLE spec_forbidden");
         await Refuse("create database", "CREATE DATABASE spec_forbidden");
         await Refuse("create table", $"CREATE TABLE {Schema}.spec_forbidden(i int)");
+        await Refuse("create temp table", "CREATE TEMP TABLE spec_forbidden(i int)");
         await Refuse("run program", "COPY (SELECT 1) TO PROGRAM 'true'");
         await Refuse("write history", "INSERT INTO schema_migrations(version) VALUES ('9.9.9')");
         try
@@ -76,7 +77,7 @@ public class and_a_disposable_database_is_available : a_provisioned_application_
     void should_refuse_everything_else_for_lack_of_privilege()
     {
         Assert.SkipUnless(HasDatabase, "Requires an isolated local Postgres port in PROMPTER_LEDGER_TEST_PORT.");
-        _refusals.Count.ShouldEqual(6);
+        _refusals.Count.ShouldEqual(7);
         _refusals.Values.All(state => state == "42501").ShouldBeTrue();
     }
 

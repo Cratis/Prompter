@@ -69,6 +69,7 @@ public static class ApplicationRole
         await Formatted(connection, "ALTER DEFAULT PRIVILEGES IN SCHEMA %1$I GRANT USAGE, SELECT ON SEQUENCES TO %2$I", cancellationToken, schema, role.Value);
 
         await Formatted(connection, "GRANT CONNECT ON DATABASE %1$I TO %2$I", cancellationToken, database, role.Value);
+        await Formatted(connection, "REVOKE TEMPORARY ON DATABASE %1$I FROM PUBLIC", cancellationToken, database);
         var others = await Column(connection, "SELECT datname FROM pg_database WHERE datallowconn AND datname <> current_database()", cancellationToken);
         foreach (var other in others)
         {
