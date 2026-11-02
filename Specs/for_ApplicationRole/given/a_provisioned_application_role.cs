@@ -15,8 +15,6 @@ public class a_provisioned_application_role : Specification
 {
     const string AdminUser = "postgres";
 
-    static readonly SemaphoreSlim _extensionCreation = new(1, 1);
-
     public static bool HasDatabase => int.TryParse(Environment.GetEnvironmentVariable("PROMPTER_LEDGER_TEST_PORT"), out _);
 
     protected string Schema { get; } = $"role_{Guid.NewGuid():N}";
@@ -31,15 +29,7 @@ public class a_provisioned_application_role : Specification
         Port = int.Parse(Environment.GetEnvironmentVariable("PROMPTER_LEDGER_TEST_PORT")!, CultureInfo.InvariantCulture);
         Admin = Source(AdminUser, null);
 
-        await _extensionCreation.WaitAsync();
-        try
-        {
-            await Execute("CREATE EXTENSION IF NOT EXISTS vector WITH SCHEMA public");
-        }
-        finally
-        {
-            _extensionCreation.Release();
-        }
+        await VectorExtension.Ensure(Admin);
 
         await Execute($"CREATE SCHEMA {Schema}");
         await new Chunks(Admin).EnsureSchema();

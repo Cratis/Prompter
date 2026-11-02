@@ -11,7 +11,6 @@ namespace Cratis.Prompter.Specs.for_DocsGapInteractions.when_reading_a_week;
 
 public class and_a_disposable_database_is_available : Specification
 {
-    static readonly SemaphoreSlim _extensionCreation = new(1, 1);
     readonly string _schema = $"digest_{Guid.NewGuid():N}";
     readonly DateTimeOffset _from = new(2026, 11, 2, 8, 0, 0, TimeSpan.Zero);
     NpgsqlDataSource _database = null!;
@@ -43,15 +42,7 @@ public class and_a_disposable_database_is_available : Specification
         _database = NpgsqlDataSource.Create(settings);
 
         // The migrations use the pgvector type, which lives in the public schema shared by every fixture.
-        await _extensionCreation.WaitAsync();
-        try
-        {
-            await Execute("CREATE EXTENSION IF NOT EXISTS vector WITH SCHEMA public");
-        }
-        finally
-        {
-            _extensionCreation.Release();
-        }
+        await VectorExtension.Ensure(_database);
 
         await Execute($"CREATE SCHEMA {_schema}");
         foreach (var migration in MigrationPlan.Pending(EmbeddedMigrations.LoadFrom(typeof(DocsGapInteractions).Assembly), new HashSet<MigrationVersion>()))

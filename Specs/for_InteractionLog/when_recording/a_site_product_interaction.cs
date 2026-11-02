@@ -12,7 +12,6 @@ namespace Cratis.Prompter.Specs.for_InteractionLog.when_recording;
 public class a_site_product_interaction : Specification
 {
     static readonly string[] _migrations = ["v1_0_0", "v1_1_0", "v1_2_0"];
-    static readonly SemaphoreSlim _extensionCreation = new(1, 1);
     readonly string _schema = $"interactions_{Guid.NewGuid():N}";
     NpgsqlDataSource? _database;
     long _id;
@@ -52,15 +51,7 @@ public class a_site_product_interaction : Specification
         var settings = new NpgsqlConnectionStringBuilder { Host = "127.0.0.1", Port = port, Username = "postgres", Database = "postgres", SearchPath = "public" };
         await using (var admin = NpgsqlDataSource.Create(settings))
         {
-            await _extensionCreation.WaitAsync();
-            try
-            {
-                await Execute(admin, "CREATE EXTENSION IF NOT EXISTS vector WITH SCHEMA public");
-            }
-            finally
-            {
-                _extensionCreation.Release();
-            }
+            await VectorExtension.Ensure(admin);
 
             await Execute(admin, $"CREATE SCHEMA {_schema}");
         }
