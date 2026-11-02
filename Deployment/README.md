@@ -258,7 +258,7 @@ embedding failures, cancellation or lost sessions cannot publish a partial corpu
 Job memory for the approved corpus. Do not deploy a new query embedding model before its compatible staged
 full corpus is ready: incremental indexing rejects model/dimension/profile changes. The migration records
 the legacy shipped `voyage-4/1024/markdown-v1` profile; confirm that matches the existing corpus before upgrade.
-The current profile is `voyage-4/1024/markdown-v2` (#103); a deploy with a new profile needs the confirmed full
+The current profile is `voyage-4/1024/markdown-v3` (frontmatter page titles; v2 was #103); a deploy with a new profile needs the confirmed full
 run before the next scheduled index.
 Dimension changes additionally require a compatible schema migration; bump the profile version for future
 chunking changes. Price verification and query-model rollout remain operator responsibilities.

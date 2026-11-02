@@ -25,7 +25,8 @@ public static partial class MarkdownChunker
     /// <paramref name="maxTableLength"/> are split into row groups that repeat the header, and blocks without blank lines
     /// that exceed <paramref name="maxChunkLength"/> are split at line boundaries. Tiny sections (under 200 characters
     /// without a code fence) are merged with a neighbor under the same second level heading, keeping their heading
-    /// inline, so a heading is never indexed alone. The first piece of a part keeps the
+    /// inline, so a heading is never indexed alone. The page title is the level one heading, else the top level
+    /// frontmatter title, else the slug. The first piece of a part keeps the
     /// part id; further pieces get a numbered suffix, so unaffected parts keep their id and hash.
     /// </summary>
     /// <param name="page">The URL of the page being chunked.</param>
@@ -38,7 +39,7 @@ public static partial class MarkdownChunker
         var content = StripMdxComponents(StripFrontmatter(markdown));
         var lines = content.Split('\n');
         var titleLine = lines.FirstOrDefault(line => line.StartsWith("# ", StringComparison.Ordinal));
-        var title = BoundHeading(titleLine is null ? PageTitleFrom(page).AsSpan() : titleLine.AsSpan(2).Trim());
+        var title = BoundHeading(titleLine is null ? FallbackTitle(page, markdown).AsSpan() : titleLine.AsSpan(2).Trim());
         var output = new EmbeddingOutputBudget(Math.Max(8192L, markdown.Length * 64L));
 
         var sections = SectionMerger.Merge(SplitIntoSections(lines, title), maxChunkLength);
@@ -116,6 +117,20 @@ public static partial class MarkdownChunker
             headingPath,
             content,
             ContentHash.For(global::Cratis.Prompter.Ingestion.Chunk.EmbeddingInputFor(title, headingPath, content)));
+    }
+
+    /// <summary>
+    /// Gets the title of a page without a level one heading: its top level frontmatter title, else its slug. The
+    /// cratis.io markdown mirrors carry the title only in frontmatter, and a slug such as index names nothing.
+    /// </summary>
+    /// <param name="page">The URL of the page.</param>
+    /// <param name="markdown">The raw page markdown, including frontmatter.</param>
+    /// <returns>The title.</returns>
+    static string FallbackTitle(PageUrl page, string markdown)
+    {
+        var frontmatterTitle = DocumentationMetadata.Unique(DocumentationMetadata.Split(markdown).Lines, "title")?.Trim();
+
+        return string.IsNullOrEmpty(frontmatterTitle) || BlockIndicator.IsMatch(frontmatterTitle) ? PageTitleFrom(page) : frontmatterTitle;
     }
 
     static string PageTitleFrom(PageUrl page)
