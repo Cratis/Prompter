@@ -9,4 +9,5 @@ public class and_the_question_has_no_words : Specification
 {
     [Fact] void should_be_empty() => LexicalQuery.Lenient("?! -- ").ShouldEqual(string.Empty);
     [Fact] void should_be_empty_for_only_the_word_or() => LexicalQuery.Lenient("or").ShouldEqual(string.Empty);
+    [Fact] void should_be_empty_for_only_the_brand_name() => LexicalQuery.Lenient("Cratis?").ShouldEqual(string.Empty);
 }
