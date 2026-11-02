@@ -29,10 +29,33 @@ public static class AnswerComponents
         }
         else if (answer.Suggestions.Count > 0 && !answer.IsRefusal)
         {
-            rows.Add(new(answer.Suggestions.Take(SuggestionButton.MaximumCount)
-                .Select((suggestion, index) => new ButtonProperties(SuggestionButton.CustomId(index), suggestion, ButtonStyle.Secondary))));
+            var buttons = answer.Suggestions.Take(SuggestionButton.MaximumCount)
+                .Select((suggestion, index) => (Label: PlainLabel(suggestion), Index: index))
+                .Where(button => button.Label is not null)
+                .Select(button => new ButtonProperties(SuggestionButton.CustomId(button.Index), button.Label!, ButtonStyle.Secondary)).ToArray();
+            if (buttons.Length > 0) rows.Add(new(buttons));
         }
 
         return rows;
+    }
+
+    static string? PlainLabel(string suggestion)
+    {
+        // Button labels are plain text, not Markdown. Unwrap a complete protective fence only for display;
+        // leave the underlying protected question unchanged and never truncate an invalid label.
+        var label = UnwrapFence(suggestion);
+        if (label.Length is < 1 or > 80) return null;
+        return label.Any(char.IsControl) ? null : label;
+    }
+
+    static string UnwrapFence(string suggestion)
+    {
+        var lineEnd = suggestion.IndexOf('\n');
+        if (lineEnd < 3) return suggestion;
+        var contentLength = suggestion.Length - (2 * (lineEnd + 1));
+        if (contentLength < 0) return suggestion;
+        var fence = suggestion[..lineEnd];
+        if (fence.AsSpan().IndexOfAnyExcept('`') >= 0) return suggestion;
+        return suggestion.EndsWith($"\n{fence}", StringComparison.Ordinal) ? suggestion.Substring(lineEnd + 1, contentLength) : suggestion;
     }
 }
