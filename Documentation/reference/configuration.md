@@ -10,6 +10,8 @@ Configuration binds to the `Cratis:Prompter` section. Environment variables use 
 | Setting | Environment variable | Default |
 |---|---|---|
 | Postgres connection string | `Cratis__Prompter__ConnectionString` | localhost, database/user/password `prompter` |
+| Application database role (`migrate` mode only) | `Cratis__Prompter__Migration__ApplicationRole` | unset |
+| Application database role password (`migrate` mode only) | `Cratis__Prompter__Migration__ApplicationRolePassword` | unset |
 | Docs site to ingest | `Cratis__Prompter__DocsSiteUrl` | `https://cratis.io` |
 | Ingestion path exclusions | `Cratis__Prompter__Ingestion__ExcludedPathSegments__0…` | `client-snippets`, `api-reference` |
 | Interaction retention (days) | `Cratis__Prompter__RetentionDays` | `90` |

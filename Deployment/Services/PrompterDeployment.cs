@@ -1,6 +1,7 @@
 // Copyright (c) Cratis. All rights reserved.
 // Licensed under the MIT license. See LICENSE file in the project root for full license information.
 
+using Cratis.Prompter.Deployment.Storage;
 using Pulumi;
 using Pulumi.Kubernetes.Core.V1;
 using Pulumi.Kubernetes.Types.Inputs.Apps.V1;
@@ -144,7 +145,7 @@ public sealed class PrompterDeployment
                             Labels = labels,
                             Annotations = { ["checksum/configuration"] = ConfigurationFingerprint.Create(secretData) },
                         },
-                        Spec = WorkloadPod.Create(args.GitHubApp, container),
+                        Spec = WorkloadPod.Create(args.GitHubApp, container, DatabaseMigration.Container(args.Image)),
                     },
                 },
             },

@@ -22,7 +22,6 @@ public class a_disposable_documentation_corpus : Specification
     protected const string LexicalOnlyQuestion = "Cratis Chronicle guaranteed lottery numbers glossary?";
     protected const string CrowdedQuestion = "Which zephyr quasar widgets does Cratis ship?";
     protected const string ChronicleContent = "Chronicle stores immutable facts and builds read models from events.";
-    static readonly SemaphoreSlim _extensionCreation = new(1, 1);
     readonly string _schema = $"retrieval_{Guid.NewGuid():N}";
     NpgsqlDataSource? _database;
 
@@ -85,15 +84,7 @@ public class a_disposable_documentation_corpus : Specification
         Assert.True(int.TryParse(Environment.GetEnvironmentVariable("PROMPTER_RETRIEVAL_TEST_PORT"), System.Globalization.NumberStyles.None, System.Globalization.CultureInfo.InvariantCulture, out var port) && port is > 0 and <= 65535, "Invalid disposable retrieval port.");
         var settings = new NpgsqlConnectionStringBuilder { Host = "127.0.0.1", Port = port, Username = "postgres", Database = "postgres", SearchPath = "public" };
         _database = NpgsqlDataSource.Create(settings);
-        await _extensionCreation.WaitAsync();
-        try
-        {
-            await Execute("CREATE EXTENSION IF NOT EXISTS vector WITH SCHEMA public");
-        }
-        finally
-        {
-            _extensionCreation.Release();
-        }
+        await VectorExtension.Ensure(_database);
 
         await Execute($"CREATE SCHEMA {_schema}");
         settings.SearchPath = $"{_schema},public";
