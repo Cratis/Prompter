@@ -55,9 +55,11 @@ Turn on **Developer Mode** in Discord (User Settings, under Advanced), then righ
 | Help forum (auto-reply to new posts) | `Cratis__Prompter__Discord__HelpForumChannelId` |
 | Channels where answers start a thread (optional) | `Cratis__Prompter__Discord__AnswerInThreadChannelIds__0`, `__1`, … |
 | Forums whose unanswered posts get a delayed answer (optional; off until configured) | `Cratis__Prompter__Discord__DelayedForums__0__ChannelId` and `__DelayMinutes` (default `30`) |
-| Maintainer role for the Ask a human button (optional; make the role mentionable) | `Cratis__Prompter__Discord__MaintainerRoleId` |
+| Maintainer role for the Ask a human button (optional; make the role mentionable). It also exempts holders from the per-user question limits and allows them to use `/answering pause`, `resume` and `status` | `Cratis__Prompter__Discord__MaintainerRoleId` |
 | Maintainer channel (also enables the This should be documented and Request this buttons; see the configuration reference) | `Cratis__Prompter__Discord__MaintainerChannelId` |
 | Ask channel (every message is a question) | `Cratis__Prompter__Discord__AskChannelId` |
+
+`/answering` is registered with a default permission of Manage Server, which only controls who sees it. Prompter itself checks the guild and the maintainer role. To show the command to maintainers who lack Manage Server, add an override for the maintainer role in Server Settings → Integrations → Prompter → `/answering`.
 
 Delayed forum answers need no extra permission beyond the list above, but the bot must have View Channels and Read Message History
 on each opted-in forum so it can list active posts and check whether a human replied. Without a configured forum the feature stays off, and

@@ -80,7 +80,7 @@ public class an_interaction : for_PaidWork.given.a_paid_work
     {
         Options.Protection.AllowedGuilds = [1];
         var config = Microsoft.Extensions.Options.Options.Create(Options);
-        Admission = new(config, new RateLimiter(config), Clock);
+        Admission = new(config, new RateLimiter(config), Clock, Fakes.Switch.Running());
         var token = Substitute.For<IEntityToken>();
         token.Id.Returns(42UL);
         var handler = Substitute.For<IRestRequestHandler>();

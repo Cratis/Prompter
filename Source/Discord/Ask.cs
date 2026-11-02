@@ -40,12 +40,12 @@ public class Ask(
     public async Task Handle(string question)
     {
         var channel = Context.Channel.Id;
-        var decision = ChannelAdmission.TryEnter(admission, new(Context.Interaction.GuildId, channel, Context.User.Id), Context.Channel, question);
+        var decision = ChannelAdmission.TryEnter(admission, new(Context.Interaction.GuildId, channel, Context.User.Id, MaintainerRole.Holds(options.Value.Discord, Context.User)), Context.Channel, question);
         if (!decision.Allowed)
         {
             if (decision.Reply)
             {
-                await Refuse();
+                await Refuse(decision.Text);
             }
 
             return;
@@ -91,8 +91,8 @@ public class Ask(
         }
     }
 
-    async Task Refuse() => await Context.Interaction.SendResponseAsync(
-        InteractionCallback.Message(SafeMessages.Ephemeral(options.Value.Discord.RateLimitedReply)));
+    async Task Refuse(string? text = null) => await Context.Interaction.SendResponseAsync(
+        InteractionCallback.Message(SafeMessages.Ephemeral(text ?? options.Value.Discord.RateLimitedReply)));
 
     async Task TryApologize()
     {

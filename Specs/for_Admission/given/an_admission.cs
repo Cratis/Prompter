@@ -4,12 +4,14 @@
 using Cratis.Prompter.Discord;
 using Cratis.Prompter.Protection;
 using Cratis.Prompter.Specs.Fakes;
+using Microsoft.Extensions.Logging.Abstractions;
 
 namespace Cratis.Prompter.Specs.for_Admission.given;
 
 public class an_admission : Specification
 {
     protected Admission Guard { get; private set; } = null!;
+    protected AnsweringSwitch Answering { get; private set; } = null!;
     protected PrompterOptions Options { get; private set; } = null!;
     protected ControlledTime Clock { get; private set; } = null!;
 
@@ -19,6 +21,7 @@ public class an_admission : Specification
         Options.Protection.AllowedGuilds = [123];
         Clock = new(new(2026, 1, 1, 0, 0, 0, TimeSpan.Zero));
         var config = Microsoft.Extensions.Options.Options.Create(Options);
-        Guard = new(config, new RateLimiter(config), Clock);
+        Answering = Fakes.Switch.Running();
+        Guard = new(config, new RateLimiter(config), Clock, Answering);
     }
 }

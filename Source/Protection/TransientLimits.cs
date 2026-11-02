@@ -20,6 +20,16 @@ internal sealed class TransientLimits(int capacity)
         return _entries.TryGetValue(key, out var entry) ? entry.Count < maximum : maximum > 0 && _entries.Count < capacity;
     }
 
+    /// <summary>Gets when a live counter expires.</summary>
+    /// <param name="key">The anonymous counter key.</param>
+    /// <param name="now">The expiry clock.</param>
+    /// <returns>The expiry, or <see langword="null"/> when there is no live counter.</returns>
+    public DateTimeOffset? ExpiresAt(string key, DateTimeOffset now)
+    {
+        Expire(now);
+        return _entries.TryGetValue(key, out var entry) ? entry.Expires : null;
+    }
+
     /// <summary>Consumes previously checked capacity.</summary>
     /// <param name="key">The anonymous counter key.</param>
     /// <param name="window">The counter lifetime.</param>

@@ -35,7 +35,7 @@ public class Indexer(
         request.Validate();
         await using var lease = await chunks.AcquireIndexLease(cancellationToken);
         var start = Stopwatch.GetTimestamp();
-        var profile = $"{options.Value.Voyage.Model}/{options.Value.Voyage.Dimensions}/markdown-v1";
+        var profile = $"{options.Value.Voyage.Model}/{options.Value.Voyage.Dimensions}/markdown-v2";
         await lease.CheckProfile(profile, request.Full, cancellationToken);
         if (request.Scheduled)
         {

@@ -29,6 +29,9 @@ public class Passages(
 
     const int CandidatesPerMethod = 20;
     const int RrfConstant = 60;
+    const int MaximumSectionAnchors = 3;
+    const int SmallPageBytes = 4000;
+    const int MaximumSectionRows = 64;
 
     /// <summary>Keeps every candidate when no prefix is given, otherwise only pages under one of the prefixes.</summary>
     const string ScopeFilter = "(cardinality($4::text[]) = 0 OR EXISTS (SELECT 1 FROM unnest($4::text[]) AS prefix WHERE starts_with(page_url, prefix)))";
@@ -49,17 +52,20 @@ public class Passages(
                 LIMIT {CandidatesPerMethod}
             ),
             lexical AS (
-                SELECT id, RANK() OVER (ORDER BY ts_rank_cd(tsv, websearch_to_tsquery('english', $2)) DESC) AS rank
+                SELECT id, ROW_NUMBER() OVER (
+                           ORDER BY (tsv @@ websearch_to_tsquery('english', $2)) DESC,
+                                    ts_rank_cd(tsv, websearch_to_tsquery('english', $2)) DESC,
+                                    ts_rank_cd(tsv, websearch_to_tsquery('english', $5), 1) DESC, id) AS rank
                 FROM chunks
-                WHERE tsv @@ websearch_to_tsquery('english', $2) AND {ScopeFilter}
-                ORDER BY ts_rank_cd(tsv, websearch_to_tsquery('english', $2)) DESC
+                WHERE (tsv @@ websearch_to_tsquery('english', $2) OR tsv @@ websearch_to_tsquery('english', $5)) AND {ScopeFilter}
+                ORDER BY rank
                 LIMIT {CandidatesPerMethod}
             )
             SELECT c.page_url, c.title, c.heading_path, c.content,
                    COALESCE(1.0 / ({RrfConstant} + semantic.rank), 0) +
                    COALESCE(1.0 / ({RrfConstant} + lexical.rank), 0) AS score,
                    1.0 - (c.embedding <=> $1) AS semantic_similarity,
-                   p.indexed_at, p.page_last_modified, p.product_version, c.id = c.page_url || '#summary' AS is_summary
+                   p.indexed_at, p.page_last_modified, p.product_version, c.id = c.page_url || '#summary' AS is_summary, c.id
             FROM chunks c
             LEFT JOIN semantic ON c.id = semantic.id
             LEFT JOIN lexical ON c.id = lexical.id
@@ -73,6 +79,7 @@ public class Passages(
         command.Parameters.AddWithValue(question.Value);
         command.Parameters.AddWithValue(limit);
         command.Parameters.AddWithValue(ScopePrefixes(question));
+        command.Parameters.AddWithValue(LexicalQuery.Lenient(question.Value));
 
         var passages = new List<Passage>();
         await using var reader = await command.ExecuteReaderAsync(cancellationToken);
@@ -91,6 +98,13 @@ public class Passages(
         {
             passages.AddRange(await ExpandSummaries(questionEmbedding, summaryPages, cancellationToken));
         }
+
+        var anchors = SectionAnchors(passages);
+        if (anchors.Length > 0)
+        {
+            passages.AddRange(await ExpandSections(questionEmbedding, anchors, cancellationToken));
+        }
+
         return passages;
     }
 
@@ -105,7 +119,8 @@ public class Passages(
         IndexedAt = await NullableField<DateTimeOffset>(reader, 6, cancellationToken),
         PageLastModifiedAt = await NullableField<DateTimeOffset>(reader, 7, cancellationToken),
         ProductVersion = await reader.IsDBNullAsync(8, cancellationToken) ? null : reader.GetString(8),
-        IsSummary = reader.GetBoolean(9)
+        IsSummary = reader.GetBoolean(9),
+        ChunkId = reader.GetString(10)
     };
 
     /// <summary>
@@ -129,7 +144,7 @@ public class Passages(
             """
             SELECT c.page_url, c.title, c.heading_path, c.content, 0.0::double precision AS score,
                    1.0 - (c.embedding <=> $1) AS semantic_similarity,
-                   p.indexed_at, p.page_last_modified, p.product_version, false AS is_summary
+                   p.indexed_at, p.page_last_modified, p.product_version, false AS is_summary, c.id
             FROM chunks c
             LEFT JOIN documentation_pages p ON p.page_url = c.page_url
             WHERE c.page_url = ANY($2::text[]) AND c.id <> c.page_url || '#summary'
@@ -148,6 +163,74 @@ public class Passages(
             expansion.Add(await ReadPassage(reader, cancellationToken) with { IsPageExpansion = true });
         }
         return expansion;
+    }
+
+    /// <summary>
+    /// Picks the admitted, non-summary passages whose section is read whole, one per distinct section.
+    /// </summary>
+    /// <param name="passages">The main search rows, best first.</param>
+    /// <returns>The anchors, best first.</returns>
+    SectionAnchor[] SectionAnchors(List<Passage> passages) => [.. passages
+        .Where(passage => SourceHosts.IsCitable(passage.Page, options.Value) && double.IsFinite(passage.SemanticSimilarity) &&
+            passage.SemanticSimilarity is >= -1 and <= 1 && passage.SemanticSimilarity >= options.Value.Answering.MinSemanticSimilarity)
+        .Take(options.Value.Answering.MaxPassages)
+        .Where(passage => !passage.IsSummary && passage.ChunkId is not null)
+        .Select(SectionAnchor.Of)
+        .DistinctBy(anchor => (anchor.Page, anchor.Root))
+        .Take(MaximumSectionAnchors)];
+
+    async Task<List<Passage>> ExpandSections(Vector questionEmbedding, SectionAnchor[] anchors, CancellationToken cancellationToken)
+    {
+        // Only the anchors are excluded. Other already retrieved chunks may return: one below the similarity threshold was
+        // not admitted, and SectionExpansions removes the admitted ones. Rows are ranked before the limit, so the cut drops the
+        // least relevant section. A chunk joins when it is in the anchor's section, next to the anchor, or on a small page. No similarity
+        // threshold applies: the rows only ever attach to an admitted anchor, and the answering layer bounds the bytes.
+        await using var command = dataSource.CreateCommand(
+            $"""
+            WITH anchors AS (
+                SELECT page, root, exact FROM unnest($2::text[], $3::text[], $4::boolean[]) AS a(page, root, exact)
+            ),
+            sizes AS (
+                SELECT page_url, SUM(octet_length(content)) AS total
+                FROM chunks
+                WHERE page_url = ANY($2::text[]) AND id <> page_url || '#summary'
+                GROUP BY page_url
+            )
+            SELECT c.page_url, c.title, c.heading_path, c.content, 0.0::double precision AS score,
+                   1.0 - (c.embedding <=> $1) AS semantic_similarity,
+                   p.indexed_at, p.page_last_modified, p.product_version, false AS is_summary, c.id
+            FROM chunks c
+            JOIN sizes s ON s.page_url = c.page_url
+            LEFT JOIN documentation_pages p ON p.page_url = c.page_url
+            WHERE c.page_url = ANY($2::text[]) AND c.id <> c.page_url || '#summary' AND c.id <> ALL($6::text[])
+              AND (s.total <= {SmallPageBytes}
+                   OR c.id = ANY($5::text[])
+                   OR EXISTS (SELECT 1 FROM anchors a WHERE a.page = c.page_url
+                              AND (c.heading_path = a.root OR (NOT a.exact AND starts_with(c.heading_path, a.root || ' > ')))))
+            ORDER BY array_position($2::text[], c.page_url),
+                     (c.id = ANY($5::text[]) OR EXISTS (SELECT 1 FROM anchors a WHERE a.page = c.page_url
+                         AND (c.heading_path = a.root OR (NOT a.exact AND starts_with(c.heading_path, a.root || ' > '))))) DESC,
+                     (c.id = ANY($5::text[])) DESC,
+                     COALESCE(substring(c.id from '#([0-9]+)(?:\.[0-9]+)?$')::int, 2147483647),
+                     COALESCE(substring(c.id from '#[0-9]+\.([0-9]+)$')::int, 0),
+                     c.id
+            LIMIT {MaximumSectionRows}
+            """);
+        command.Parameters.AddWithValue(questionEmbedding);
+        command.Parameters.AddWithValue(anchors.Select(anchor => anchor.Page).ToArray());
+        command.Parameters.AddWithValue(anchors.Select(anchor => anchor.Root).ToArray());
+        command.Parameters.AddWithValue(anchors.Select(anchor => anchor.Exact).ToArray());
+        command.Parameters.AddWithValue(anchors.SelectMany(anchor => anchor.Neighbors).ToArray());
+        command.Parameters.AddWithValue(anchors.Select(anchor => anchor.ChunkId).ToArray());
+        var rows = new List<Passage>();
+        await using var reader = await command.ExecuteReaderAsync(cancellationToken);
+        while (await reader.ReadAsync(cancellationToken))
+        {
+            rows.Add(await ReadPassage(reader, cancellationToken) with { IsSectionExpansion = true });
+        }
+
+        return [.. rows.OrderBy(row => SectionAnchor.Rank(anchors, row)).ThenBy(row => SectionAnchor.Distance(anchors, row))
+            .ThenBy(row => ChunkOrder.Of(row.ChunkId).Piece)];
     }
 
     string[] ScopePrefixes(Question question) => question.Scope is { } product

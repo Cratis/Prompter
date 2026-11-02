@@ -8,7 +8,11 @@ public class and_nonadmitted_work_does_not_spend_requester_allowances : given.an
     bool _allowed;
     bool _afterDuplicate;
 
-    void Establish() => Options.Protection.UserAdmissionsPerDay = 2;
+    void Establish()
+    {
+        Options.Protection.UserAdmissionsPerDay = 2;
+        Options.Protection.UserAdmissionCooldownSeconds = 60;
+    }
 
     void Because()
     {

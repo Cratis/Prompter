@@ -49,7 +49,7 @@ public class ForumAnswerer(
             var decision = admission.TryEnter(new(thread.GuildId, thread.Id, thread.OwnerId), included?.Content ?? $"forum-starter:{thread.Id}");
             if (!decision.Allowed)
             {
-                await Refuse(thread.Id, decision.Reply);
+                await Refuse(thread.Id, decision.Reply, decision.Text);
                 return;
             }
 
@@ -102,11 +102,11 @@ public class ForumAnswerer(
         }
     }
 
-    async Task Refuse(ulong threadId, bool reply)
+    async Task Refuse(ulong threadId, bool reply, string? text = null)
     {
         if (reply)
         {
-            await rest.SendMessageAsync(threadId, SafeMessages.Message(options.Value.Discord.RateLimitedReply));
+            await rest.SendMessageAsync(threadId, SafeMessages.Message(text ?? options.Value.Discord.RateLimitedReply));
         }
     }
 

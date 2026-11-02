@@ -52,6 +52,8 @@ return await Deployment.RunAsync(() =>
     var maintainerRoleId = config.Get("maintainerRoleId");
     var answerInThreadChannelIds = config.Get("answerInThreadChannelIds");
     var delayedForumAnswers = config.Get("delayedForumAnswers");
+    var deniedUserIds = config.Get("deniedUserIds");
+    var allowedUserIds = config.Get("allowedUserIds");
 
     // The namespace is owned by Core. The name is a constant, and the Core output is read as a guard that
     // fails the deployment when Infrastructure has not onboarded Prompter yet.
@@ -110,6 +112,8 @@ return await Deployment.RunAsync(() =>
         MaintainerRoleId = maintainerRoleId,
         AnswerInThreadChannelIds = answerInThreadChannelIds,
         DelayedForumAnswers = delayedForumAnswers,
+        DeniedUserIds = deniedUserIds,
+        AllowedUserIds = allowedUserIds,
         GitHubToken = gitHubToken,
         GitHubWebhookSecret = gitHubWebhookSecret,
         AnsweringRepositories = answeringRepositories,

@@ -27,7 +27,7 @@ public class and_admission_fails : Specification
         _chat = Substitute.For<IChatClient>();
         _log = Substitute.For<IInteractionLog>();
         var options = Options.Create(new PrompterOptions());
-        _work = new(Substitute.For<ISpendLedger>(), options, TimeProvider.System);
+        _work = new(Substitute.For<ISpendLedger>(), options, TimeProvider.System, Fakes.Switch.Running());
         var inner = new Answers(_passages, _chat, _log, options, NullLogger<Answers>.Instance);
         _answers = new(inner, _work, options);
     }

@@ -24,6 +24,6 @@ public class and_requester_fairness_limits_are_configured : Specification
 
     [Fact] void should_validate_the_documented_bounds() => _invalid.ShouldBeTrue();
     [Fact] void should_accept_the_documented_boundaries() => _valid.ShouldBeTrue();
-    [Fact] void should_default_to_five_admissions_per_day() => new ProtectionOptions().UserAdmissionsPerDay.ShouldEqual(5);
-    [Fact] void should_default_to_sixty_seconds_between_admissions() => new ProtectionOptions().UserAdmissionCooldownSeconds.ShouldEqual(60);
+    [Fact] void should_default_to_thirty_admissions_per_day() => new ProtectionOptions().UserAdmissionsPerDay.ShouldEqual(30);
+    [Fact] void should_default_to_fifteen_seconds_between_admissions() => new ProtectionOptions().UserAdmissionCooldownSeconds.ShouldEqual(15);
 }

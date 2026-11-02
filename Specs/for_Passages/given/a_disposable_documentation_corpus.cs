@@ -16,7 +16,7 @@ namespace Cratis.Prompter.Specs.for_Passages.given;
 
 public class a_disposable_documentation_corpus : Specification
 {
-    protected const string PositiveQuestion = "What is Cratis Chronicle, according to the public documentation?";
+    protected const string PositiveQuestion = "Describe the flagship ledger product.";
     protected const string NegativeQuestion = "Cratis Chronicle guaranteed lottery numbers?";
     protected const string WeakQuestion = "Cratis Chronicle guaranteed lottery numbers terms?";
     protected const string LexicalOnlyQuestion = "Cratis Chronicle guaranteed lottery numbers glossary?";

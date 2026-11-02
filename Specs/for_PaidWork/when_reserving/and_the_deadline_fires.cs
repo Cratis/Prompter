@@ -14,7 +14,7 @@ public class and_the_deadline_fires : given.a_paid_work
     async Task Because()
     {
         var clock = new DeadlineClock();
-        using var work = new PaidWork(Ledger, Microsoft.Extensions.Options.Options.Create(Options), clock);
+        using var work = new PaidWork(Ledger, Microsoft.Extensions.Options.Options.Create(Options), clock, Fakes.Switch.Running());
         await using var lease = await work.BeginInteractive();
         _dueTime = clock.DueTime;
         clock.Expire();

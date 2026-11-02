@@ -62,12 +62,12 @@ public class IssueConfirmation(
         }
 
         var customId = Context.Interaction.Data.CustomId;
-        var decision = ChannelAdmission.TryEnter(admission, new(Context.Interaction.GuildId, Context.Channel.Id, Context.User.Id), Context.Channel, customId);
+        var decision = ChannelAdmission.TryEnter(admission, new(Context.Interaction.GuildId, Context.Channel.Id, Context.User.Id, MaintainerRole.Holds(options.Value.Discord, Context.User)), Context.Channel, customId);
         if (!decision.Allowed)
         {
             if (decision.Reply)
             {
-                await Acknowledge(options.Value.Discord.RateLimitedReply);
+                await Acknowledge(decision.Text ?? options.Value.Discord.RateLimitedReply);
             }
 
             return;

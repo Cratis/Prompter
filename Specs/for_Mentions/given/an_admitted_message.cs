@@ -84,7 +84,7 @@ public class an_admitted_message : for_PaidWork.given.a_paid_work
         Options.Discord.AskChannelId = 2;
         Options.Discord.HelpForumChannelId = 7;
         var config = Microsoft.Extensions.Options.Options.Create(Options);
-        Admission = new(config, new RateLimiter(config), Clock);
+        Admission = new(config, new RateLimiter(config), Clock, Fakes.Switch.Running());
 
         // Suppress refusal replies: these specs must never make a Discord request.
         Admission.MayReply(new(1, 2, 3));

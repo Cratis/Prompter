@@ -274,7 +274,7 @@ Configuration binds to the `Cratis:Prompter` section (environment variables use 
 | Answer-in-thread channels (off when empty) | `Cratis__Prompter__Discord__AnswerInThreadChannelIds__0` | — |
 | Delayed forum answers (off when empty) | `Cratis__Prompter__Discord__DelayedForums__0__ChannelId` and `__DelayMinutes` | — / `30` |
 | Maintainer role for Ask a human (off when unset) | `Cratis__Prompter__Discord__MaintainerRoleId` | — |
-| Rate limit — questions per window | `Cratis__Prompter__Discord__RateLimit__MaxQuestions` | `5` |
+| Rate limit — questions per window | `Cratis__Prompter__Discord__RateLimit__MaxQuestions` | `10` |
 | Rate limit — window length (minutes) | `Cratis__Prompter__Discord__RateLimit__WindowMinutes` | `10` |
 | Answer timeout (seconds) | `Cratis__Prompter__Discord__AnswerTimeoutSeconds` | `60` |
 | Anthropic API key | `Cratis__Prompter__Anthropic__ApiKey` (or `ANTHROPIC_API_KEY`) | — |
@@ -345,9 +345,9 @@ Within an allowed guild, mentions still work in readable channels, alongside the
 channel and help forum. `DeniedChannels` optionally excludes channel/thread IDs.
 
 Defaults: 3 simultaneous paid answers (no queue), 60 admissions/hour globally, 20/hour per
-channel/thread, and the existing 5/user/10 minutes. Each requester also has 5 admissions per rolling
-24-hour window (`UserAdmissionsPerDay`) and a 60-second minimum gap (`UserAdmissionCooldownSeconds`),
-shared across guilds and channels. These anonymous limits spend only on admitted questions: rejected
+channel/thread, and 10/user/10 minutes (the per-user burst). Each requester also has 30 admissions per UTC day (resets at 00:00 UTC; maintainers holding the configured maintainer role skip the per-user limits but not the duplicate, global or channel limits)
+(`UserAdmissionsPerDay`) and a 15-second minimum gap (`UserAdmissionCooldownSeconds`),
+shared across guilds and channels. Per user that is a burst of 10, about one per minute sustained, and 30 per UTC day; the global, channel, concurrency and `DailyUsd` limits remain the cost guards. Every refusal names the limit that applied and how long to wait. A requester refused `RefusalStrikes` (5) times within `RefusalStrikeWindowSeconds` (10 minutes) is paused for `EscalatedCooldownSeconds` (5 minutes); each repeat doubles the pause up to `MaxEscalatedCooldownSeconds` (6 hours). Busy global or channel refusals never count, and escalation is held in memory only, so a restart clears it. `DeniedUsers` are refused silently (no reply); a non-empty `AllowedUsers` admits only those users, and denial wins over allowance, so maintainers must list themselves when they use an allow list. These anonymous limits spend only on admitted questions: rejected
 work, action clicks and refusal replies do not consume the requester's allowance. Current questions are
 capped at 4,000 characters; normalized duplicates from the same user/channel are suppressed for 2 minutes. Limit replies are
 restricted to one/user/10 minutes and one/channel/minute; excess requests are ignored silently.
@@ -396,6 +396,8 @@ including the highest applicable cache-write input price. Prices default to unve
 missing/mismatched pricing or an unavailable ledger refuses dispatch. Large indexing batches may
 need smaller existing indexing batch settings to fit the verified Voyage input bound and remaining spend.
 
+Maintainers can also pause answering at runtime with `/answering pause` (then `resume` or `status`) without a redeploy. The command is limited to guilds in `AllowedGuilds` and members with `MaintainerRoleId`, stores one flag in Postgres (migration `v1_11_0.sql`, no identity stored) and the bot re-reads it every 30 seconds. `AnsweringEnabled=false` always wins: the switch can only pause.
+
 `Protection:AnsweringEnabled`, `IndexingEnabled` and `GitHubWritesEnabled` all default to `true`.
 Set the corresponding environment setting to `false` and restart to stop new answers/drafts,
 indexing, or GitHub operations respectively. These switches do not revoke already-issued provider calls.
@@ -420,8 +422,13 @@ The new settings under `Cratis:Prompter:Protection` have these startup-validated
 
 | Setting | Default | Supported range |
 | --- | --- | --- |
-| `UserAdmissionsPerDay` | 5 | 0–100 |
-| `UserAdmissionCooldownSeconds` | 60 | 1–86400 |
+| `UserAdmissionsPerDay` | 30 | 0–100 |
+| `UserAdmissionCooldownSeconds` | 15 | 1–86400 |
+| `RefusalStrikes` | 5 | 0–100 (0 disables escalation) |
+| `RefusalStrikeWindowSeconds` | 600 | 1–86400 |
+| `EscalatedCooldownSeconds` | 300 | 1–86400 |
+| `MaxEscalatedCooldownSeconds` | 21600 | at least `EscalatedCooldownSeconds`, at most 604800 |
+| `AllowedUsers` / `DeniedUsers` | empty | Discord user ids, none zero (Pulumi: `allowedUserIds`, `deniedUserIds`) |
 | `ActionConcurrency` | 2 | 1–8 |
 | `ActionPerMinute` | 12 | 0–120 |
 | `ActionChannelPerMinute` | 6 | 0–120 |

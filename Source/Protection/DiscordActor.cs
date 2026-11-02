@@ -7,4 +7,5 @@ namespace Cratis.Prompter.Protection;
 /// <param name="GuildId">The source guild, absent for DMs.</param>
 /// <param name="ChannelId">The source channel/thread.</param>
 /// <param name="UserId">The author.</param>
-public sealed record DiscordActor(ulong? GuildId, ulong ChannelId, ulong UserId);
+/// <param name="Maintainer">Whether Discord-signed data shows the author holds the maintainer role.</param>
+public sealed record DiscordActor(ulong? GuildId, ulong ChannelId, ulong UserId, bool Maintainer = false);

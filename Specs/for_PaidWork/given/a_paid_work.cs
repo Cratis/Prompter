@@ -3,6 +3,7 @@
 
 using Cratis.Prompter.Protection;
 using Cratis.Prompter.Specs.Fakes;
+using Microsoft.Extensions.Logging.Abstractions;
 using NSubstitute;
 
 namespace Cratis.Prompter.Specs.for_PaidWork.given;
@@ -10,6 +11,7 @@ namespace Cratis.Prompter.Specs.for_PaidWork.given;
 public class a_paid_work : Specification
 {
     protected PaidWork Work { get; private set; } = null!;
+    protected AnsweringSwitch Answering { get; private set; } = null!;
     protected ISpendLedger Ledger { get; private set; } = null!;
     protected PrompterOptions Options { get; private set; } = null!;
     protected ControlledTime Clock { get; private set; } = null!;
@@ -31,7 +33,8 @@ public class a_paid_work : Specification
         Clock = new(new(2026, 1, 1, 0, 0, 0, TimeSpan.Zero));
         Ledger = Substitute.For<ISpendLedger>();
         Ledger.Reserve(Arg.Any<SpendExposure>(), Arg.Any<CancellationToken>()).Returns(_ => (Guid?)Guid.NewGuid());
-        Work = new(Ledger, Microsoft.Extensions.Options.Options.Create(Options), Clock);
+        Answering = Fakes.Switch.Running();
+        Work = new(Ledger, Microsoft.Extensions.Options.Options.Create(Options), Clock, Answering);
     }
 
     void Destroy() => Work.Dispose();

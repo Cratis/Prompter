@@ -78,12 +78,12 @@ public class GuidanceButtons(
             return;
         }
 
-        var decision = ChannelAdmission.TryEnter(admission, new(guildId, Context.Channel.Id, Context.User.Id), Context.Channel, text);
+        var decision = ChannelAdmission.TryEnter(admission, new(guildId, Context.Channel.Id, Context.User.Id, MaintainerRole.Holds(options.Value.Discord, Context.User)), Context.Channel, text);
         if (!decision.Allowed)
         {
             if (decision.Reply)
             {
-                await Notify(options.Value.Discord.RateLimitedReply);
+                await Notify(decision.Text ?? options.Value.Discord.RateLimitedReply);
             }
 
             return;

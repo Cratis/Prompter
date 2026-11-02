@@ -44,7 +44,7 @@ public class a_forum_answerer : for_PaidWork.given.a_paid_work
         Answerer = new(
             _client,
             assistance,
-            new(config, new RateLimiter(config), Clock),
+            new(config, new RateLimiter(config), Clock, Fakes.Switch.Running()),
             Work,
             new(Substitute.For<IConversationHistory>(), Clock),
             FollowUps,

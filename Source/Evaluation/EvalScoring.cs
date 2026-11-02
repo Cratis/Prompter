@@ -8,6 +8,9 @@ namespace Cratis.Prompter.Evaluation;
 /// <summary>Scores observable grounding and required facts without a judge model.</summary>
 public static class EvalScoring
 {
+    /// <summary>Gets the terms no answer may contain: retrieval meta-talk such as "the excerpts do not say".</summary>
+    public static readonly IReadOnlyList<string> ForbiddenTerms = ["excerpt"];
+
     /// <summary>Scores a case against a documentation answer.</summary>
     /// <param name="item">The expected behavior.</param>
     /// <param name="answer">The pipeline result.</param>
@@ -20,7 +23,9 @@ public static class EvalScoring
         var citation = answer.Citations.Any(page => expected.Contains(EvalPages.Normalize(page.Value)));
         var expectsAnswer = item.Expected == "answer";
         var refusal = answer.IsRefusal == !expectsAnswer;
-        var terms = item.MustMention.All(term => answer.Text.Contains(term, StringComparison.OrdinalIgnoreCase));
+        var terms = item.MustMention.All(term => Mentions(answer, term)) && !ForbiddenTerms.Concat(item.MustNotMention).Any(term => Mentions(answer, term));
         return new(item.Id, expectsAnswer, retrieval, citation, refusal, terms, refusal && (!expectsAnswer || (citation && terms)), cost, [.. answer.Citations.Select(page => page.Value)]);
     }
+
+    static bool Mentions(Answer answer, string term) => answer.Text.Contains(term, StringComparison.OrdinalIgnoreCase);
 }
