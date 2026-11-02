@@ -29,6 +29,9 @@ public class Answers(
     ILogger<Answers> logger) : IAnswers
 {
     const int MaximumClarifiedQuestionLength = 1500;
+    const int MaximumSectionExpansionBytes = 8000;
+    const int InputReserveBytes = 1024;
+    const int FramingReserveBytes = 512;
 
     /// <inheritdoc/>
     public async Task<Answer> For(Question question, string source, CancellationToken cancellationToken = default)
@@ -88,7 +91,7 @@ public class Answers(
         foreach (var page in found.GroupBy(passage => passage.Page))
         {
             message.AppendLine($"[{index}] {Evidence(page.Key.Value)}");
-            foreach (var passage in page)
+            foreach (var passage in InChunkOrder(page))
             {
                 message.AppendLine($"— {Evidence(passage.HeadingPath)}")
                     .AppendLine(Evidence(passage.Content))
@@ -116,6 +119,11 @@ public class Answers(
 
         return message.ToString();
     }
+
+    static IEnumerable<Passage> InChunkOrder(IEnumerable<Passage> page) =>
+        page.All(passage => passage.ChunkId is not null)
+            ? page.OrderBy(passage => ChunkOrder.Of(passage.ChunkId))
+            : page;
 
     static string Evidence(string text) => text.Replace("untrusted_excerpts", "untrusted-excerpts", StringComparison.OrdinalIgnoreCase);
 
@@ -149,8 +157,9 @@ public class Answers(
     async Task<(Passage[] Candidates, Passage[] Qualified)> Retrieve(Question question, CancellationToken cancellationToken)
     {
         var answering = options.Value.Answering;
-        var candidates = (await passages.Search(new(question.Value) { Scope = question.Scope }, Math.Max(answering.MaxPassages, Passages.MaximumCandidates), cancellationToken))
+        var retrieved = (await passages.Search(new(question.Value) { Scope = question.Scope }, Math.Max(answering.MaxPassages, Passages.MaximumCandidates), cancellationToken))
             .Where(passage => SourceHosts.IsCitable(passage.Page, options.Value)).ToArray();
+        var candidates = retrieved.Where(passage => !passage.IsSectionExpansion).ToArray();
         var eligible = candidates.Where(passage => double.IsFinite(passage.SemanticSimilarity) &&
             passage.SemanticSimilarity is >= -1 and <= 1 && passage.SemanticSimilarity >= answering.MinSemanticSimilarity).ToArray();
         var qualified = eligible.Where(passage => !passage.IsPageExpansion).Take(answering.MaxPassages).ToList();
@@ -164,7 +173,18 @@ public class Answers(
         {
             qualified.RemoveAt(qualified.FindLastIndex(passage => !passage.IsSummary));
         }
-        return (candidates, [.. qualified, .. expansion]);
+        Passage[] grounded = [.. qualified, .. expansion];
+        return (candidates, grounded.Length == 0
+            ? grounded
+            : [.. grounded, .. SectionExpansions.Select(retrieved, grounded, SectionBudget(question, qualified, expansion))]);
+    }
+
+    /// <summary>Gets the bytes section expansion may add while the answer input stays under the input ceiling.</summary>
+    int SectionBudget(Question question, IEnumerable<Passage> qualified, IEnumerable<Passage> expansion)
+    {
+        var baseline = Encoding.UTF8.GetByteCount(ComposeUserMessage(question, [.. qualified, .. expansion], AnswerModes.For(question.Value)));
+        var available = options.Value.Protection.AnthropicAnswer.MaxInputTokens - InputReserveBytes - Encoding.UTF8.GetByteCount(SystemPrompt.Text) - baseline - FramingReserveBytes;
+        return Math.Clamp(available, 0, MaximumSectionExpansionBytes);
     }
 
     async Task<GeneratedAnswer?> Generate(Question question, Passage[] qualified, AnswerMode mode, CancellationToken cancellationToken)

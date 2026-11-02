@@ -20,6 +20,12 @@ public record Passage(PageUrl Page, string Title, string HeadingPath, string Con
     /// <summary>Gets whether this passage was looked up to expand an admitted summary.</summary>
     public bool IsPageExpansion { get; init; }
 
+    /// <summary>Gets the id of the chunk the passage was read from, when known.</summary>
+    public string? ChunkId { get; init; }
+
+    /// <summary>Gets whether this passage was looked up as the section or a neighbor of an admitted passage.</summary>
+    public bool IsSectionExpansion { get; init; }
+
     /// <summary>Gets when the page was last published by a successful index run; <see langword="null"/> when unknown.</summary>
     public DateTimeOffset? IndexedAt { get; init; }
 
