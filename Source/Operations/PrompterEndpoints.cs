@@ -4,6 +4,7 @@
 using System.Text;
 using Cratis.Prompter.GitHub;
 using Cratis.Prompter.Ingestion;
+using Cratis.Prompter.Storage;
 using Microsoft.AspNetCore.Builder;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Routing;
@@ -45,6 +46,7 @@ public static class PrompterEndpoints
         HttpRequest request,
         IOptions<PrompterOptions> options,
         GitHubWebhook webhook,
+        WebhookProcessing processing,
         IHostApplicationLifetime lifetime,
         ILoggerFactory loggerFactory,
         CancellationToken cancellationToken)
@@ -80,27 +82,19 @@ public static class PrompterEndpoints
             return Results.Json(new { status = "ignored" }, statusCode: StatusCodes.Status202Accepted);
         }
 
-        logger.GitHubIssueOpened(issue.Repository, issue.Number);
+        if (!IssueDeliveries.IsValid(issue.Repository, issue.Number))
+        {
+            return Results.BadRequest();
+        }
 
-        // Answering takes seconds and GitHub expects a fast response, so the work runs detached under
-        // ApplicationStopping — a shutdown mid-answer cancels it cleanly instead of being killed abruptly.
-        _ = Task.Run(
-            async () =>
-            {
-                try
-                {
-                    await webhook.Handle(issue, lifetime.ApplicationStopping);
-                }
-                catch (OperationCanceledException)
-                {
-                    logger.GitHubHandlingCancelled(issue.Repository, issue.Number);
-                }
-                catch (Exception exception)
-                {
-                    logger.GitHubHandlingFailed(exception, issue.Repository, issue.Number);
-                }
-            },
-            CancellationToken.None);
+        // Reserve synchronously: rejected deliveries create no task, claim, answer or notification.
+        if (!processing.TryStart(token => webhook.Handle(issue, token), lifetime.ApplicationStopping))
+        {
+            request.HttpContext.Response.Headers.RetryAfter = "60";
+            return Results.StatusCode(StatusCodes.Status429TooManyRequests);
+        }
+
+        logger.GitHubIssueOpened(issue.Repository, issue.Number);
 
         return Results.Json(new { status = "accepted" }, statusCode: StatusCodes.Status202Accepted);
     }
