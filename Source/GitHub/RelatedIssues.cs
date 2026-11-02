@@ -11,7 +11,8 @@ namespace Cratis.Prompter.GitHub;
 /// <param name="httpClient">The redirect-free, request-authenticated GitHub client.</param>
 /// <param name="options">The explicit product mapping and installation scope.</param>
 /// <param name="clock">The closed-window clock.</param>
-public sealed class RelatedIssues(HttpClient httpClient, IOptions<PrompterOptions> options, TimeProvider clock) : IRelatedIssues
+/// <param name="limits">The process-wide public and authenticated GET quota.</param>
+public sealed class RelatedIssues(HttpClient httpClient, IOptions<PrompterOptions> options, TimeProvider clock, PublicIssueSearchLimits limits) : IRelatedIssues
 {
     const int MaximumResponseBytes = 65536;
     readonly GitHubPolicy _policy = new(options);
@@ -47,9 +48,11 @@ public sealed class RelatedIssues(HttpClient httpClient, IOptions<PrompterOption
             _policy.RequireRepository(destination);
             var since = clock.GetUtcNow().AddDays(-90);
             var open = await Bucket(new(destination, false, since), keywords, deadline.Token);
+            if (open is null) return [];
             if (!includeClosed) return open;
+            cancellationToken.ThrowIfCancellationRequested();
             var closed = await Bucket(new(destination, true, since), keywords, deadline.Token);
-            return [.. open.Concat(closed).DistinctBy(issue => issue.Number).Take(6)];
+            return closed is null ? [] : [.. open.Concat(closed).DistinctBy(issue => issue.Number).Take(6)];
         }
         catch (OperationCanceledException) when (!cancellationToken.IsCancellationRequested)
         {
@@ -62,9 +65,16 @@ public sealed class RelatedIssues(HttpClient httpClient, IOptions<PrompterOption
         }
     }
 
-    async Task<IReadOnlyList<RelatedIssue>> Bucket(RelatedSearchResponse bucket, string keywords, CancellationToken cancellationToken)
+    async Task<IReadOnlyList<RelatedIssue>?> Bucket(RelatedSearchResponse bucket, string keywords, CancellationToken cancellationToken)
     {
+        cancellationToken.ThrowIfCancellationRequested();
+        if (!limits.TryAcquire()) return null;
         using var response = await httpClient.GetAsync($"search/issues?q={Uri.EscapeDataString(bucket.Query(keywords))}&per_page=3", HttpCompletionOption.ResponseHeadersRead, cancellationToken);
+        if (response.StatusCode is System.Net.HttpStatusCode.Forbidden or System.Net.HttpStatusCode.TooManyRequests)
+        {
+            limits.CoolDown(PublicSearchHttp.RetryAfter(response, clock.GetUtcNow()));
+            return null;
+        }
         response.EnsureSuccessStatusCode();
         if (response.Content.Headers.ContentLength > MaximumResponseBytes) return [];
         await using var stream = await response.Content.ReadAsStreamAsync(cancellationToken);
