@@ -196,7 +196,7 @@ public sealed class PrompterDeployment
             yield return new EnvVarArgs { Name = "Cratis__Prompter__Discord__MaintainerChannelId", Value = args.MaintainerChannelId };
         }
 
-        foreach (var (name, value) in DiscordBehaviorEnvironment.Values(args.MaintainerRoleId, args.AnswerInThreadChannelIds, args.DelayedForumAnswers))
+        foreach (var (name, value) in DiscordBehaviorEnvironment.Values(args.MaintainerRoleId, args.AnswerInThreadChannelIds, args.DelayedForumAnswers, args.DeniedUserIds, args.AllowedUserIds))
         {
             yield return new EnvVarArgs { Name = name, Value = value };
         }

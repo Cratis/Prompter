@@ -129,6 +129,12 @@ public sealed class PrompterDeploymentArgs
     /// </summary>
     public string? DelayedForumAnswers { get; init; }
 
+    /// <summary>Gets the optional comma-separated Discord user ids refused silently.</summary>
+    public string? DeniedUserIds { get; init; }
+
+    /// <summary>Gets the optional comma-separated Discord user ids that are the only ones permitted.</summary>
+    public string? AllowedUserIds { get; init; }
+
     /// <summary>
     /// Gets resources this deployment must be created after — the database it connects to.
     /// </summary>
