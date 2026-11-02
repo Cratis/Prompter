@@ -28,4 +28,7 @@ public sealed record EvalCase
 
     /// <summary>Gets optional case-insensitive terms required in the answer.</summary>
     public IReadOnlyList<string> MustMention { get; init; } = [];
+
+    /// <summary>Gets optional case-insensitive terms that must not appear in the answer.</summary>
+    public IReadOnlyList<string> MustNotMention { get; init; } = [];
 }

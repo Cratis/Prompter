@@ -12,7 +12,7 @@ public class and_no_chunk_contains_every_term : given.a_corpus_with_a_semantic_c
             await SeedCrowd();
             await Seed(ChunkOf("https://cratis.io/first/", 0, "Broad", "Xylophone ensembles are described here."), Orthogonal(20));
             await Seed(ChunkOf("https://cratis.io/second/", 0, "Broad", "Quartz resonators are described here."), Orthogonal(21));
-            AskWith(Query);
+            AskWith(Query());
             await answers.For(new("xylophone quartz"), "cli", TestContext.Current.CancellationToken);
         }
     }

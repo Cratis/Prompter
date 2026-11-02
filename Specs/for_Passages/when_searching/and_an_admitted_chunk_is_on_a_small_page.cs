@@ -12,11 +12,11 @@ public class and_an_admitted_chunk_is_on_a_small_page : given.a_corpus_with_a_se
         if (HasDatabase)
         {
             await Seed(ChunkOf(Page, 0, "Broad", "Introduction."), Orthogonal(20));
-            await Seed(ChunkOf(Page, 1, "Broad > First", "Anchor text narwhalpod."), Query);
+            await Seed(ChunkOf(Page, 1, "Broad > First", "Anchor text narwhalpod."), Query());
             await Seed(ChunkOf(Page, 2, "Broad > Second", "Second."), Orthogonal(21));
             await Seed(ChunkOf(Page, 3, "Broad > Third", "Third."), Orthogonal(22));
             await Seed(ChunkOf(Page, 4, "Broad > Fourth", "Fourth."), Orthogonal(23));
-            AskWith(Query);
+            AskWith(Query());
             await answers.For(new("narwhalpod"), "cli", TestContext.Current.CancellationToken);
         }
     }

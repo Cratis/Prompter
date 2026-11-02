@@ -17,10 +17,10 @@ public static partial class LexicalQuery
     private static partial Regex Word { get; }
 
     /// <summary>
-    /// Builds an any-term query text for <c>websearch_to_tsquery</c>, which never raises syntax errors and drops stop words.
+    /// Builds an any-term query text for websearch_to_tsquery, which never raises syntax errors and drops stop words.
     /// </summary>
     /// <param name="question">The question text.</param>
-    /// <returns>The terms joined with <c>or</c>, or an empty string when the question has no words.</returns>
+    /// <returns>The terms joined with "or", or an empty string when the question has no words.</returns>
     public static string Lenient(string question) => string.Join(
         " or ",
         Word.Matches(question)

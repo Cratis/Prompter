@@ -180,6 +180,10 @@ public class Answers(
     }
 
     /// <summary>Gets the bytes section expansion may add while the answer input stays under the input ceiling.</summary>
+    /// <param name="question">The question.</param>
+    /// <param name="qualified">The passages that met the similarity threshold.</param>
+    /// <param name="expansion">The page detail passages already added.</param>
+    /// <returns>The byte budget.</returns>
     int SectionBudget(Question question, IEnumerable<Passage> qualified, IEnumerable<Passage> expansion)
     {
         var baseline = Encoding.UTF8.GetByteCount(ComposeUserMessage(question, [.. qualified, .. expansion], AnswerModes.For(question.Value)));

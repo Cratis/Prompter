@@ -9,12 +9,15 @@ public class and_sibling_subsections_are_tiny : Specification
 {
     const string Markdown = "# Title\n\n## Choices\n\n### One\n\nFirst.\n\n### Two\n\nSecond.\n\n### Three\n\nThird.\n";
 
+    static readonly string[] _headings = ["### One", "### Two", "### Three"];
+    static readonly string[] _bodies = ["First.", "Second.", "Third."];
+
     Chunk[] _chunks = null!;
 
     void Because() => _chunks = [.. MarkdownChunker.Chunk(new PageUrl("https://cratis.io/choices.md"), Markdown)];
 
     [Fact] void should_produce_one_chunk() => _chunks.Length.ShouldEqual(1);
     [Fact] void should_use_the_common_heading_path() => _chunks[0].HeadingPath.ShouldEqual("Title > Choices");
-    [Fact] void should_keep_every_heading_inline() => new[] { "### One", "### Two", "### Three" }.All(_chunks[0].Content.Contains).ShouldBeTrue();
-    [Fact] void should_keep_every_body() => new[] { "First.", "Second.", "Third." }.All(_chunks[0].Content.Contains).ShouldBeTrue();
+    [Fact] void should_keep_every_heading_inline() => _headings.All(_chunks[0].Content.Contains).ShouldBeTrue();
+    [Fact] void should_keep_every_body() => _bodies.All(_chunks[0].Content.Contains).ShouldBeTrue();
 }

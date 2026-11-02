@@ -6,11 +6,11 @@ using System.Globalization;
 namespace Cratis.Prompter.Retrieval;
 
 /// <summary>
-/// Reads the position of a chunk within its page from the chunk id (<c>{page}#summary</c>, <c>{page}#{index}</c> or <c>{page}#{index}.{piece}</c>).
+/// Reads the position of a chunk within its page from the chunk id ({page}#summary, {page}#{index} or {page}#{index}.{piece}).
 /// </summary>
 public static class ChunkOrder
 {
-    static readonly (int Index, int Piece) Unknown = (int.MaxValue, 0);
+    static readonly (int Index, int Piece) _unknown = (int.MaxValue, 0);
 
     /// <summary>
     /// Parses the order of a chunk.
@@ -22,7 +22,7 @@ public static class ChunkOrder
         var separator = chunkId?.LastIndexOf('#') ?? -1;
         if (chunkId is null || separator < 0)
         {
-            return Unknown;
+            return _unknown;
         }
 
         var local = chunkId[(separator + 1)..];
@@ -35,7 +35,7 @@ public static class ChunkOrder
         var piece = 0;
         return parts.Length is 1 or 2 && Number(parts[0], out var index) && (parts.Length == 1 || Number(parts[1], out piece))
             ? (index, piece)
-            : Unknown;
+            : _unknown;
     }
 
     static bool Number(string text, out int value) => int.TryParse(text, NumberStyles.None, CultureInfo.InvariantCulture, out value);

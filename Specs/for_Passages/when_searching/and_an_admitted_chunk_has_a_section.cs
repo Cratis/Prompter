@@ -12,11 +12,11 @@ public class and_an_admitted_chunk_has_a_section : given.a_corpus_with_a_semanti
         if (HasDatabase)
         {
             await Seed(ChunkOf(Page, 0, "Broad", "Introduction."), Orthogonal(20));
-            await Seed(ChunkOf(Page, 1, "Broad > Strengths", "Strengths overview zebrafinch."), Query);
+            await Seed(ChunkOf(Page, 1, "Broad > Strengths", "Strengths overview zebrafinch."), Query());
             await Seed(ChunkOf(Page, 2, "Broad > Strengths > Events", "Events detail."), Orthogonal(21));
             await Seed(ChunkOf(Page, 3, "Broad > Strengths > Arc", "Arc detail."), Orthogonal(22));
             await Seed(ChunkOf(Page, 4, "Broad > Other", new string('o', 5000)), Orthogonal(23));
-            AskWith(Query);
+            AskWith(Query());
             await answers.For(new("zebrafinch"), "cli", TestContext.Current.CancellationToken);
         }
     }

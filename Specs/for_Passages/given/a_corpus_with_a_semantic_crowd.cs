@@ -15,7 +15,7 @@ public class a_corpus_with_a_semantic_crowd : a_disposable_documentation_corpus
 {
     protected const int QueryAxis = 10;
 
-    protected static float[] Query => Axes((QueryAxis, 1f));
+    protected static float[] Query() => Axes((QueryAxis, 1f));
 
     protected static float[] Orthogonal(int axis) => Axes((axis, 1f));
 

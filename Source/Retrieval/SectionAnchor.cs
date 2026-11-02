@@ -25,9 +25,10 @@ record SectionAnchor(string Page, string Root, bool Exact, int Index, string[] N
             ? (prefix + passage.HeadingPath[prefix.Length..].Split(" > ")[0], false)
             : (passage.HeadingPath, true);
         var index = ChunkOrder.Of(passage.ChunkId).Index;
-        return new(passage.Page.Value, root, exact, index, index is >= 0 and < int.MaxValue
+        string[] neighbors = index is >= 0 and < int.MaxValue
             ? [$"{passage.Page.Value}#{index - 1}", $"{passage.Page.Value}#{index + 1}"]
-            : []);
+            : [];
+        return new(passage.Page.Value, root, exact, index, neighbors);
     }
 
     /// <summary>Gets the rank of the first anchor of the row's page that the row belongs to, falling back to the first anchor of the page.</summary>

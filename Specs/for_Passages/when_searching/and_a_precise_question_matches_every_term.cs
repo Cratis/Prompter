@@ -16,7 +16,7 @@ public class and_a_precise_question_matches_every_term : given.a_corpus_with_a_s
             }
 
             await Seed(ChunkOf("https://cratis.io/complete/", 0, "Broad", "Alpha, beta and gamma together."), Orthogonal(30));
-            AskWith(Query);
+            AskWith(Query());
             await answers.For(new("alpha beta gamma"), "cli", TestContext.Current.CancellationToken);
         }
     }

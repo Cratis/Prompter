@@ -4,15 +4,6 @@
 namespace Cratis.Prompter.Ingestion;
 
 /// <summary>
-/// Represents a section of a markdown page: the text under one heading.
-/// </summary>
-/// <param name="HeadingPath">The heading path of the section.</param>
-/// <param name="Content">The text of the section, without its own heading line.</param>
-/// <param name="Root">The heading path down to the second level heading the section belongs to (the page title before the first one).</param>
-/// <param name="Heading">The section's own heading text, or <see langword="null"/> for the page intro.</param>
-sealed record Section(string HeadingPath, string Content, string Root, string? Heading);
-
-/// <summary>
 /// Merges tiny sections into a neighbor under the same second level heading so a heading is not indexed alone.
 /// </summary>
 static class SectionMerger
