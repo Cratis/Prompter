@@ -51,7 +51,7 @@ public class a_hand_off : Specification
         var config = Microsoft.Extensions.Options.Options.Create(Options);
         Discord = new() { Author = 3 };
         _rest = Discord.Client();
-        Admission = new(config, new RateLimiter(config), Clock);
+        Admission = new(config, new RateLimiter(config), Clock, Fakes.Switch.Running());
         HandOffs = new(
             _rest,
             Admission,

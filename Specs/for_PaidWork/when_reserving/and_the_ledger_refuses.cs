@@ -25,7 +25,7 @@ public class and_the_ledger_refuses : Specification
         options.Value.Protection.Voyage.MaxInputTokens = 16000;
         var ledger = Substitute.For<ISpendLedger>();
         ledger.Reserve(Arg.Any<SpendExposure>(), Arg.Any<CancellationToken>()).Returns((Guid?)null);
-        _work = new(ledger, options, TimeProvider.System);
+        _work = new(ledger, options, TimeProvider.System, Fakes.Switch.Running());
     }
 
     async Task Because() => _error = await Catch.Exception(async () =>

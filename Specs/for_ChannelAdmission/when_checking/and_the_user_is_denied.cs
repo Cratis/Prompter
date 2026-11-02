@@ -23,7 +23,7 @@ public class and_the_user_is_denied : Specification
         options.Protection.AllowedGuilds = [1];
         options.Protection.DeniedUsers = [3];
         var config = Microsoft.Extensions.Options.Options.Create(options);
-        var admission = new Admission(config, new RateLimiter(config), new ControlledTime(DateTimeOffset.UnixEpoch));
+        var admission = new Admission(config, new RateLimiter(config), new ControlledTime(DateTimeOffset.UnixEpoch), Fakes.Switch.Running());
         var regular = TextChannel.CreateFromJson(new() { Id = 2, GuildId = 1, Type = ChannelType.TextGuildChannel }, _rest);
         _denied = ChannelAdmission.InScope(admission, new(1, 2, 3), regular);
         _other = ChannelAdmission.InScope(admission, new(1, 2, 4), regular);

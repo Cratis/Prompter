@@ -20,7 +20,7 @@ public class and_requests_repeat : Specification
         var options = Options.Create(new PrompterOptions());
         options.Value.Protection.AllowedGuilds = [123];
         var time = new ControlledTime(DateTimeOffset.UtcNow);
-        _admission = new(options, new RateLimiter(options), time);
+        _admission = new(options, new RateLimiter(options), time, Fakes.Switch.Running());
         _admission.TryEnter(new(123, 1, 1), "Hello   WORLD");
         _duplicate = _admission.TryEnter(new(123, 1, 1), "hello world");
         _differentUser = _admission.TryEnter(new(123, 1, 2), "hello world");

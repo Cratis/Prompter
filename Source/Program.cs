@@ -161,6 +161,8 @@ Environment.ExitCode = await BotFailure.Run(
         webBuilder.Services.AddSingleton<ReindexGate>();
         webBuilder.Services.AddSingleton<GitHubWebhook>();
         webBuilder.Services.AddSingleton<IIssueDeliveries, IssueDeliveries>();
+        webBuilder.Services.AddSingleton<IAnsweringPauses, AnsweringPauses>();
+        webBuilder.Services.AddHostedService<AnsweringSwitchRefresh>();
         webBuilder.Services.AddSingleton<WebhookProcessing>();
         webBuilder.Services.AddHostedService<RetentionPurge>();
         webBuilder.Services.AddSingleton<IDocsGapInteractions, DocsGapInteractions>();

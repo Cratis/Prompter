@@ -24,7 +24,7 @@ public class and_actions_do_not_spend_answer_allowance : given.a_forward
         Options.Protection.GlobalPerHour = 1;
         var config = Microsoft.Extensions.Options.Options.Create(Options);
         var clock = new ControlledTime(Clock.GetUtcNow());
-        var admission = new Admission(config, new RateLimiter(config), clock);
+        var admission = new Admission(config, new RateLimiter(config), clock, Fakes.Switch.Running());
         var actions = new NonpaidActions(admission, config, clock);
         using var rest = Discord.Client();
         var forwards = new MaintainerForwards(rest, Channel, admission, config, clock, NullLogger<MaintainerForwards>.Instance);

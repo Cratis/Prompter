@@ -49,7 +49,7 @@ public class and_the_endpoint_is_saturated : given.a_verified_delivery
         var processing = new WebhookProcessing(options, Clock, NullLogger<WebhookProcessing>.Instance);
         var lifetime = Substitute.For<IHostApplicationLifetime>();
         var endpoint = typeof(PrompterEndpoints).GetMethod("ReceiveGitHubEvent", BindingFlags.Static | BindingFlags.NonPublic)!;
-        return await (Task<IResult>)endpoint.Invoke(null, [request, options, Webhook, processing, lifetime, NullLoggerFactory.Instance, CancellationToken.None])!;
+        return await (Task<IResult>)endpoint.Invoke(null, [request, options, Webhook, processing, Fakes.Switch.Running(), lifetime, NullLoggerFactory.Instance, CancellationToken.None])!;
     }
 
     [Fact] void should_report_overload() => _validStatus.ShouldEqual(429);

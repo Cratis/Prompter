@@ -13,6 +13,7 @@ public class and_a_disposable_database_is_available : a_provisioned_application_
     readonly Dictionary<string, string?> _refusals = [];
     bool _roundTrip;
     bool _claimed;
+    bool _paused;
     bool[] _attributes = [];
     long _memberships;
     Exception? _schemaCheck;
@@ -29,6 +30,9 @@ public class and_a_disposable_database_is_available : a_provisioned_application_
         await chunks.RemoveAllExcept(new HashSet<ChunkId>());
         _roundTrip = hashes.ContainsKey(chunk.Id);
         _claimed = await new IssueDeliveries(App).Claim("Cratis/Arc", 1, default);
+        var pauses = new AnsweringPauses(App);
+        await pauses.Set(true, default);
+        _paused = await pauses.IsPaused(default);
 
         await Refuse("create role", "CREATE ROLE spec_forbidden");
         await Refuse("create database", "CREATE DATABASE spec_forbidden");
@@ -70,6 +74,7 @@ public class and_a_disposable_database_is_available : a_provisioned_application_
         Assert.SkipUnless(HasDatabase, "Requires an isolated local Postgres port in PROMPTER_LEDGER_TEST_PORT.");
         _roundTrip.ShouldBeTrue();
         _claimed.ShouldBeTrue();
+        _paused.ShouldBeTrue();
     }
 
     [Fact]

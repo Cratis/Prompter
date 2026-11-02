@@ -4,6 +4,7 @@
 using System.Text;
 using Cratis.Prompter.GitHub;
 using Cratis.Prompter.Ingestion;
+using Cratis.Prompter.Protection;
 using Cratis.Prompter.Storage;
 using Microsoft.AspNetCore.Builder;
 using Microsoft.AspNetCore.Http;
@@ -47,12 +48,13 @@ public static class PrompterEndpoints
         IOptions<PrompterOptions> options,
         GitHubWebhook webhook,
         WebhookProcessing processing,
+        AnsweringSwitch answering,
         IHostApplicationLifetime lifetime,
         ILoggerFactory loggerFactory,
         CancellationToken cancellationToken)
     {
         var logger = loggerFactory.CreateLogger(GitHubLogCategory);
-        if (!options.Value.Protection.AnsweringEnabled || !options.Value.Protection.GitHubWritesEnabled)
+        if (!options.Value.Protection.AnsweringEnabled || answering.Paused || !options.Value.Protection.GitHubWritesEnabled)
         {
             return Results.StatusCode(StatusCodes.Status503ServiceUnavailable);
         }

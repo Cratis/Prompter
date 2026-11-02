@@ -16,6 +16,7 @@ namespace Cratis.Prompter.Discord;
 /// <param name="threads">Reads forum post metadata.</param>
 /// <param name="answerer">The shared forum answer path.</param>
 /// <param name="admission">The cheap shared admission guard.</param>
+/// <param name="answering">The maintainer kill switch.</param>
 /// <param name="options">The Prompter options carrying the delayed forums.</param>
 /// <param name="time">The UTC clock and timer.</param>
 /// <param name="logger">The logger.</param>
@@ -23,6 +24,7 @@ public class DelayedForumAnswers(
     IForumThreads threads,
     IForumAnswerer answerer,
     Admission admission,
+    AnsweringSwitch answering,
     IOptions<PrompterOptions> options,
     TimeProvider time,
     ILogger<DelayedForumAnswers> logger) : BackgroundService
@@ -43,7 +45,7 @@ public class DelayedForumAnswers(
     public async Task<int> SweepOnce(CancellationToken ct)
     {
         var forums = DelayedForumSchedule.Configured(options.Value.Discord);
-        if (forums.Count == 0 || !options.Value.Protection.AnsweringEnabled)
+        if (forums.Count == 0 || !options.Value.Protection.AnsweringEnabled || answering.Paused)
         {
             return 0;
         }

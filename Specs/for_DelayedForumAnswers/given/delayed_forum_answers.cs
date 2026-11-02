@@ -22,12 +22,13 @@ public class delayed_forum_answers : Specification
     protected PrompterOptions Options { get; private set; } = null!;
     protected ControlledTime Clock { get; private set; } = null!;
     protected DelayedForumAnswers Sweeper { get; private set; } = null!;
+    protected AnsweringSwitch Answering { get; } = new(NullLogger<AnsweringSwitch>.Instance);
     protected int Answered { get; set; }
 
     protected DelayedForumAnswers Create()
     {
         var config = Microsoft.Extensions.Options.Options.Create(Options);
-        return new(Threads, Answerer, new(config, new RateLimiter(config), Clock), config, Clock, NullLogger<DelayedForumAnswers>.Instance);
+        return new(Threads, Answerer, new(config, new RateLimiter(config), Clock, Answering), Answering, config, Clock, NullLogger<DelayedForumAnswers>.Instance);
     }
 
     protected void Post(ulong id, int minutesOld, bool closed = false, ulong forum = Forum)

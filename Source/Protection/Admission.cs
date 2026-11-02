@@ -15,7 +15,8 @@ namespace Cratis.Prompter.Protection;
 /// <param name="options">The protection configuration.</param>
 /// <param name="users">The existing per-user bucket.</param>
 /// <param name="clock">The expiry clock.</param>
-public sealed class Admission(IOptions<PrompterOptions> options, RateLimiter users, TimeProvider clock)
+/// <param name="answering">The maintainer kill switch.</param>
+public sealed class Admission(IOptions<PrompterOptions> options, RateLimiter users, TimeProvider clock, AnsweringSwitch answering)
 {
     readonly Lock _lock = new();
     readonly byte[] _key = RandomNumberGenerator.GetBytes(32);
@@ -31,7 +32,7 @@ public sealed class Admission(IOptions<PrompterOptions> options, RateLimiter use
     /// <param name="channel">The channel or parent forum.</param>
     /// <returns>Whether this is an enabled, approved source.</returns>
     public bool InScope(ulong? guild, ulong channel) =>
-        options.Value.Protection.AnsweringEnabled && guild is { } id &&
+        options.Value.Protection.AnsweringEnabled && !answering.Paused && guild is { } id &&
         options.Value.Protection.AllowedGuilds.Contains(id) &&
         !options.Value.Protection.DeniedChannels.Contains(channel);
 

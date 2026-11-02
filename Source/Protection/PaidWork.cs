@@ -11,7 +11,8 @@ namespace Cratis.Prompter.Protection;
 /// <param name="ledger">The durable ledger.</param>
 /// <param name="options">The verified exposure limits.</param>
 /// <param name="clock">The request deadline clock.</param>
-public sealed class PaidWork(ISpendLedger ledger, IOptions<PrompterOptions> options, TimeProvider clock) : IDisposable
+/// <param name="answering">The maintainer kill switch.</param>
+public sealed class PaidWork(ISpendLedger ledger, IOptions<PrompterOptions> options, TimeProvider clock, AnsweringSwitch answering) : IDisposable
 {
     readonly SemaphoreSlim _slots = new(options.Value.Protection.Concurrency);
     readonly Lock _lock = new();
@@ -53,7 +54,7 @@ public sealed class PaidWork(ISpendLedger ledger, IOptions<PrompterOptions> opti
     void CheckEnabled()
     {
         var config = options.Value;
-        if (!config.Protection.AnsweringEnabled)
+        if (!config.Protection.AnsweringEnabled || answering.Paused)
         {
             throw Refused("disabled");
         }

@@ -18,7 +18,7 @@ public class and_work_is_untrusted : Specification
         _options.Protection.AllowedGuilds = [123];
         _options.Protection.DeniedChannels = [456];
         var options = Options.Create(_options);
-        _admission = new(options, new RateLimiter(options), TimeProvider.System);
+        _admission = new(options, new RateLimiter(options), TimeProvider.System, Fakes.Switch.Running());
     }
 
     [Theory]

@@ -17,7 +17,7 @@ public class and_local_memory_is_full : Specification
         var options = Options.Create(new PrompterOptions());
         options.Value.Protection.AllowedGuilds = [123];
         options.Value.Protection.LocalCapacity = 2;
-        _guard = new(options, new RateLimiter(options), TimeProvider.System);
+        _guard = new(options, new RateLimiter(options), TimeProvider.System, Fakes.Switch.Running());
         _guard.TryEnter(new(123, 1, 1), "first");
     }
 
