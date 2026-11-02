@@ -5,7 +5,7 @@ namespace Cratis.Prompter.Specs.for_AnsweringCommand.when_asking_for_status;
 
 public class and_a_maintainer_asks : given.an_answering_command
 {
-    void Establish() => Switch.Apply(true);
+    void Establish() => Switch.BeginPause();
 
     async Task Because()
     {

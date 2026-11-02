@@ -21,7 +21,7 @@ public class an_admission : Specification
         Options.Protection.AllowedGuilds = [123];
         Clock = new(new(2026, 1, 1, 0, 0, 0, TimeSpan.Zero));
         var config = Microsoft.Extensions.Options.Options.Create(Options);
-        Answering = new(NullLogger<AnsweringSwitch>.Instance);
+        Answering = Fakes.Switch.Running();
         Guard = new(config, new RateLimiter(config), Clock, Answering);
     }
 }

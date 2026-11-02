@@ -124,6 +124,11 @@ public class Mentions(
                 return;
             }
 
+            if (!ParentInScope(message))
+            {
+                return;
+            }
+
             var question = asked.Question;
 
             var decision = admission.TryEnter(new(message.GuildId, message.ChannelId, message.Author.Id, MaintainerRole.Holds(options.Value.Discord, message.Author)), question);

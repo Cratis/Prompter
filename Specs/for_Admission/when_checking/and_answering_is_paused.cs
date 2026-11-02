@@ -14,11 +14,11 @@ public class and_answering_is_paused : given.an_admission
 
     void Because()
     {
-        Answering.Apply(true);
+        Answering.BeginPause();
         _paused = Guard.TryEnter(new(123, 1, 1), "question");
         _maintainer = Guard.TryEnter(new(123, 1, 2, Maintainer: true), "question");
         _inScope = Guard.InScope(123, 1);
-        Answering.Apply(false);
+        Answering.Resumed();
         _resumed = Guard.TryEnter(new(123, 1, 1), "question");
     }
 

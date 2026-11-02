@@ -3,6 +3,7 @@
 
 using Cratis.Prompter.Protection;
 using Cratis.Prompter.Storage;
+using Cratis.Prompter.Telemetry;
 using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Logging;
 
@@ -10,7 +11,7 @@ namespace Cratis.Prompter.Discord;
 
 /// <summary>
 /// Mirrors the persisted kill switch into memory: once at startup, then every 30 seconds, so a restart and a
-/// manual database edit are both honored. A failed read keeps the last known value.
+/// manual database edit are both honored. Until the first read succeeds answering stays closed; a failed read keeps the last known value and is retried on the next poll.
 /// </summary>
 /// <param name="answering">The in-memory switch.</param>
 /// <param name="pauses">The persisted flag.</param>
@@ -57,11 +58,20 @@ public sealed class AnsweringSwitchRefresh(
         {
             using var linked = CancellationTokenSource.CreateLinkedTokenSource(cancellationToken);
             linked.CancelAfter(timeout);
-            answering.Apply(await pauses.IsPaused(linked.Token));
+            var started = answering.Version;
+            answering.Refresh(await pauses.IsPaused(linked.Token), started);
         }
         catch (Exception exception) when (!cancellationToken.IsCancellationRequested)
         {
-            logger.RefreshFailed(exception);
+            ProviderMetrics.Event("protection", "refresh_failed");
+            if (answering.AwaitingFirstRead)
+            {
+                logger.StillClosed(exception);
+            }
+            else
+            {
+                logger.RefreshFailed(exception);
+            }
         }
     }
 }

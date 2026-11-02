@@ -11,5 +11,10 @@ public static class Switch
 {
     /// <summary>Creates a switch that is not paused.</summary>
     /// <returns>A new, running switch.</returns>
-    public static AnsweringSwitch Running() => new(NullLogger<AnsweringSwitch>.Instance);
+    public static AnsweringSwitch Running()
+    {
+        var answering = new AnsweringSwitch(NullLogger<AnsweringSwitch>.Instance);
+        answering.Refresh(false, answering.Version);
+        return answering;
+    }
 }

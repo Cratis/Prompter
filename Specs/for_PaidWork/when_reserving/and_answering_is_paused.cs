@@ -12,9 +12,9 @@ public class and_answering_is_paused : given.a_paid_work
 
     async Task Because()
     {
-        Answering.Apply(true);
+        Answering.BeginPause();
         _refused = await Catch.Exception(async () => await Work.BeginInteractive());
-        Answering.Apply(false);
+        Answering.Resumed();
         _resumed = await Catch.Exception(async () =>
         {
             await using var lease = await Work.BeginInteractive();

@@ -27,6 +27,7 @@ public class an_answering_command : Specification
     protected IAnsweringPauses Pauses { get; private set; } = null!;
     protected PrompterOptions Options { get; private set; } = null!;
     protected IList<string> Payloads { get; } = [];
+    protected IList<string> Paths { get; } = [];
     protected AnsweringCommand Command { get; private set; } = null!;
 
     protected void Invoke(ulong guild, params ulong[] roles)
@@ -57,12 +58,13 @@ public class an_answering_command : Specification
         handler.SendAsync(Arg.Any<HttpRequestMessage>(), Arg.Any<CancellationToken>()).Returns(async call =>
         {
             var request = call.Arg<HttpRequestMessage>();
+            Paths.Add(request.RequestUri!.AbsolutePath);
             if (request.Content is not null)
             {
                 Payloads.Add(await request.Content.ReadAsStringAsync());
             }
 
-            return new HttpResponseMessage(HttpStatusCode.OK) { Content = new StringContent("{}") };
+            return new HttpResponseMessage(HttpStatusCode.OK) { Content = new StringContent("""{"id":200,"channel_id":70,"author":{"id":42,"username":"bot","bot":true},"content":"ok","timestamp":"2026-01-01T00:00:00Z","mentions":[],"mention_roles":[],"attachments":[],"embeds":[],"components":[]}""") };
         });
         _client = new(token, new() { RestClientConfiguration = new() { RequestHandler = handler } });
         Command = new(Switch, Pauses, Microsoft.Extensions.Options.Options.Create(Options), NullLogger<AnsweringCommand>.Instance);

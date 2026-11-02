@@ -10,7 +10,7 @@ public class and_answering_is_paused : given.delayed_forum_answers
     void Establish()
     {
         Post(70, 45);
-        Answering.Apply(true);
+        Answering.BeginPause();
     }
 
     async Task Because() => Answered = await Sweeper.SweepOnce(CancellationToken.None);

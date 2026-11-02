@@ -9,4 +9,7 @@ internal static partial class AnsweringSwitchRefreshLogging
 {
     [LoggerMessage(LogLevel.Warning, "Could not read the answering pause flag; keeping the last value")]
     internal static partial void RefreshFailed(this ILogger<AnsweringSwitchRefresh> logger, Exception exception);
+
+    [LoggerMessage(LogLevel.Error, "Could not read the answering pause flag; answering stays closed until a read succeeds")]
+    internal static partial void StillClosed(this ILogger<AnsweringSwitchRefresh> logger, Exception exception);
 }

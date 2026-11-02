@@ -33,7 +33,7 @@ public class a_paid_work : Specification
         Clock = new(new(2026, 1, 1, 0, 0, 0, TimeSpan.Zero));
         Ledger = Substitute.For<ISpendLedger>();
         Ledger.Reserve(Arg.Any<SpendExposure>(), Arg.Any<CancellationToken>()).Returns(_ => (Guid?)Guid.NewGuid());
-        Answering = new(NullLogger<AnsweringSwitch>.Instance);
+        Answering = Fakes.Switch.Running();
         Work = new(Ledger, Microsoft.Extensions.Options.Options.Create(Options), Clock, Answering);
     }
 

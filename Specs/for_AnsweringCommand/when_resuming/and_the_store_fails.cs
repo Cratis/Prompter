@@ -9,7 +9,7 @@ public class and_the_store_fails : given.an_answering_command
 {
     void Establish()
     {
-        Switch.Apply(true);
+        Switch.BeginPause();
         Pauses.Set(false, Arg.Any<CancellationToken>()).Returns(_ => Task.FromException(new InvalidOperationException("database down")));
     }
 

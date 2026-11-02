@@ -28,8 +28,8 @@ public class AnsweringCommand(
 {
     static readonly TimeSpan _storeTimeout = TimeSpan.FromSeconds(10);
 
-    /// <summary>Pauses answering. The in-memory switch is set first, so a failing write still pauses (fail safe).</summary>
-    /// <returns>A task that completes when the reply is sent.</returns>
+    /// <summary>Pauses answering locally first, then persists the flag. A failed write keeps the local pause latched.</summary>
+    /// <returns>A task that completes when the outcome is sent.</returns>
     [SubSlashCommand("pause", "Pause all answers until resumed")]
     public async Task Pause()
     {
@@ -39,19 +39,21 @@ public class AnsweringCommand(
             return;
         }
 
-        answering.Apply(true);
+        answering.BeginPause();
+        await Defer();
         if (await TryStore(true))
         {
-            await Reply("Answering paused.");
+            answering.PauseStored();
+            await Followup("Answering paused.");
         }
         else
         {
-            await Reply("Paused until the next restart — could not save the setting.");
+            await Followup("Paused until the next restart — could not save the setting.");
         }
     }
 
     /// <summary>Resumes answering. The switch is released only after the write succeeded.</summary>
-    /// <returns>A task that completes when the reply is sent.</returns>
+    /// <returns>A task that completes when the outcome is sent.</returns>
     [SubSlashCommand("resume", "Resume answering")]
     public async Task Resume()
     {
@@ -61,14 +63,15 @@ public class AnsweringCommand(
             return;
         }
 
+        await Defer();
         if (!await TryStore(false))
         {
-            await Reply("Could not resume — the setting was not saved; answering stays paused.");
+            await Followup("Could not resume — the setting was not saved; answering stays paused.");
             return;
         }
 
-        answering.Apply(false);
-        await Reply(options.Value.Protection.AnsweringEnabled
+        answering.Resumed();
+        await Followup(options.Value.Protection.AnsweringEnabled
             ? "Answering resumed."
             : "Answering resumed, but answering is still disabled by configuration.");
     }
@@ -85,7 +88,13 @@ public class AnsweringCommand(
         }
 
         var configured = options.Value.Protection.AnsweringEnabled ? "enabled" : "disabled";
-        await Reply($"Answering is {(answering.Paused ? "paused" : "running")}; configuration has answering {configured}.");
+        var state = answering.Paused ? "paused" : "running";
+        if (answering.AwaitingFirstRead)
+        {
+            state = "paused until the saved setting can be read";
+        }
+
+        await Reply($"Answering is {state}; configuration has answering {configured}.");
     }
 
     bool Authorized() =>
@@ -106,6 +115,10 @@ public class AnsweringCommand(
             return false;
         }
     }
+
+    async Task Defer() => await Context.Interaction.SendResponseAsync(InteractionCallback.DeferredMessage(MessageFlags.Ephemeral));
+
+    async Task Followup(string text) => await Context.Interaction.SendFollowupMessageAsync(SafeMessages.Ephemeral(text));
 
     async Task Reply(string text) => await Context.Interaction.SendResponseAsync(InteractionCallback.Message(SafeMessages.Ephemeral(text)));
 }
