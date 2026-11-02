@@ -800,6 +800,48 @@ questions:
     tags: [overview, product-list]
     rationale: "Imperative variant of gen-005; the Capability map supports a concise product list."
 
+  - id: gen-010
+    must_mention: [Chronicle, Arc]
+    must_not_mention: [excerpt]
+    product: cross-cutting
+    type: concept
+    question: "What is Cratis good at?"
+    expected: answer
+    expected_pages:
+      - https://cratis.io/why-cratis/
+      - https://cratis.io/cratis-stack/
+      - https://cratis.io/
+    tags: [overview, broad]
+    rationale: "why-cratis.md 'Why developers choose Cratis' lists the reasons; cratis.no/why-cratis is deliberately not accepted. The answer must not talk about excerpts."
+
+  - id: gen-011
+    must_mention: [Chronicle, Arc]
+    must_not_mention: [excerpt]
+    product: cross-cutting
+    type: concept
+    question: "Why use Cratis?"
+    expected: answer
+    expected_pages:
+      - https://cratis.io/why-cratis/
+      - https://cratis.io/cratis-stack/
+      - https://cratis.io/
+    tags: [overview, broad]
+    rationale: "why-cratis.md 'Why developers choose Cratis' lists the reasons; cratis.no/why-cratis is deliberately not accepted. The answer must not talk about excerpts."
+
+  - id: gen-012
+    must_mention: [Chronicle, Arc]
+    must_not_mention: [excerpt]
+    product: cross-cutting
+    type: concept
+    question: "What are Cratis's strengths?"
+    expected: answer
+    expected_pages:
+      - https://cratis.io/why-cratis/
+      - https://cratis.io/cratis-stack/
+      - https://cratis.io/
+    tags: [overview, broad]
+    rationale: "why-cratis.md 'Why developers choose Cratis' lists the reasons; cratis.no/why-cratis is deliberately not accepted. The answer must not talk about excerpts."
+
   # ===========================================================================
   # Out of scope — the bot MUST refuse honestly. No expected_pages. These
   # calibrate the refusal threshold (P-07) and guard the over-answer failure mode.

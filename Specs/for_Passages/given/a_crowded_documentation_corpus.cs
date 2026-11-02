@@ -11,7 +11,7 @@ namespace Cratis.Prompter.Specs.for_Passages.given;
 /// </summary>
 public class a_crowded_documentation_corpus : a_disposable_documentation_corpus
 {
-    protected const string OverviewContent = "Every Cratis product in one table.";
+    protected const string OverviewContent = "Every product in one table.";
     protected const string CrowdContent = "zephyr quasar widgets, entry";
 
     async Task Establish()

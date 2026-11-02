@@ -35,6 +35,16 @@ non-summary excerpts from admitted summary pages, reusing the question embedding
 receive reserved slots within the existing passage limit. They must meet the same similarity threshold as other
 passages; a weak summary cannot bypass the refusal gate. This lookup uses the existing index and needs no reindex.
 
+## Answers read whole sections
+
+A single chunk is often too small to answer a broad question such as "What is Cratis good at?". For up to three
+admitted passages, Prompter also reads the rest of the passage's section (everything under the same second level
+heading), the chunks right before and after it, and, when the whole page is under 4,000 bytes, the whole page.
+These extra chunks keep the page order and add at most 8,000 bytes, and always less than what is left under the
+answer input ceiling after the question, the history and the base passages. They attach only to an admitted
+passage, so they never bypass the refusal gate: a question with no admitted passage is still refused. The answer
+speaks about Cratis directly; it never describes the excerpts it was given.
+
 ## Refusals are a feature
 
 Before answering, Prompter scores how well the best retrieved passages match your question. Below a

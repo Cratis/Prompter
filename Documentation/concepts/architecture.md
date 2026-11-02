@@ -33,7 +33,8 @@ flowchart LR
 
 The documentation site already publishes a sitemap and a markdown mirror of every page on each deploy.
 Ingestion walks the sitemap, fetches each page's markdown mirror, splits pages into chunks along their
-heading structure, and embeds only
+heading structure (a section under 200 characters is merged with a neighbor under the same second level
+heading, keeping its heading inline), and embeds only
 chunks whose content hash changed since the last run. Generated code-snippet fragments are excluded. A
 re-index runs as a one-shot Kubernetes Job through **Reindex - Production**, nightly at 03:52 UTC or on
 demand on `main`. Documentation dispatches do not trigger it, and production has no public reindex route.
@@ -41,7 +42,8 @@ demand on `main`. Documentation dispatches do not trigger it, and production has
 ## Retrieval
 
 Retrieval is hybrid: full-text search (BM25-style, Postgres `tsvector`) and semantic search (embedding cosine
-similarity, pgvector) run in a single SQL query and are fused with reciprocal rank fusion. Hybrid retrieval
+similarity, pgvector) run in a single SQL query and are fused with reciprocal rank fusion. The full-text arm matches every question term first and then any
+term, so a broad question whose words never occur together in one chunk still finds candidates. Hybrid retrieval
 roughly halves retrieval failure compared to embeddings alone in published benchmarks, and it is the one
 quality technique Prompter commits to from day one.
 

@@ -44,7 +44,10 @@ cap stop exits 1. Reports include IDs, cited pages, scores and cost, never raw q
 or generated text. Only use trusted curated case IDs and documentation URLs.
 
 Answer cases pass with an expected-page citation, correct non-refusal and every optional
-`must_mention` term (case-insensitive). Refusal cases pass only with a refusal. Retrieval
+`must_mention` term (case-insensitive) and contain none of the forbidden terms: the word
+`excerpt` for every case (answers must speak about Cratis, not about how context was supplied)
+plus any case-specific `must_not_mention` terms. Forbidden terms are part of the `MustMentionHit`
+result, so the report shape is unchanged. Refusal cases pass only with a refusal. Retrieval
 hit rate is measured separately over answer cases; refusal accuracy includes all cases.
 The 15 initial term lists were checked against published Markdown pages, not inferred
 from model output. These deterministic checks do not measure factual quality by themselves.
