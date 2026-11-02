@@ -2,6 +2,7 @@
 // Licensed under the MIT license. See LICENSE file in the project root for full license information.
 
 using System.Runtime.CompilerServices;
+using System.Text;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Logging.Abstractions;
 using Microsoft.Extensions.Options;
@@ -27,7 +28,12 @@ public class CorpusSources(DocsSite docs, ReleaseNotes releaseNotes, SampleFiles
     public async IAsyncEnumerable<DocsPage> GetPages([EnumeratorCancellation] CancellationToken cancellationToken = default)
     {
         _failed.Clear();
-        await foreach (var page in docs.GetPages(cancellationToken)) yield return page;
+        var budget = new CrawlBudget(options.Value.Ingestion);
+        await foreach (var page in docs.GetPages(cancellationToken))
+        {
+            budget.Take(page);
+            yield return page;
+        }
         var sources = new List<RepositorySource>();
         var config = options.Value.Ingestion.Sites;
         foreach (var site in new[] { config.Company, config.Studio, config.Direct }.Where(site => site.Enabled))
@@ -49,7 +55,7 @@ public class CorpusSources(DocsSite docs, ReleaseNotes releaseNotes, SampleFiles
         }
         foreach (var source in sources)
         {
-            foreach (var page in await Read(source, cancellationToken)) yield return page;
+            foreach (var page in await Read(source, budget, cancellationToken)) yield return page;
         }
     }
 
@@ -57,20 +63,49 @@ public class CorpusSources(DocsSite docs, ReleaseNotes releaseNotes, SampleFiles
         (error is IncompleteCrawl or HttpRequestException or TimeoutException) ||
         (error is OperationCanceledException && !cancellationToken.IsCancellationRequested);
 
-    async Task<IReadOnlyCollection<DocsPage>> Read(RepositorySource source, CancellationToken cancellationToken)
+    async Task<IReadOnlyCollection<DocsPage>> Read(RepositorySource source, CrawlBudget budget, CancellationToken cancellationToken)
     {
         try
         {
             var pages = new List<DocsPage>();
-            await foreach (var page in source.Pages.WithCancellation(cancellationToken)) pages.Add(page);
+            await foreach (var page in source.Pages.WithCancellation(cancellationToken))
+            {
+                budget.Take(page);
+                pages.Add(page);
+            }
             if (pages.Count == 0) throw new IncompleteCrawl();
             return pages;
         }
-        catch (Exception error) when (Recoverable(error, cancellationToken))
+        catch (Exception error) when (!budget.Exhausted && Recoverable(error, cancellationToken))
         {
             _failed.AddRange(source.Prefixes);
             (logger ?? NullLogger<CorpusSources>.Instance).RepositorySourceFailed(source.Name, error.GetType().Name);
             return [];
+        }
+    }
+
+    sealed class CrawlBudget(IngestionOptions limits)
+    {
+        int _pages;
+        long _bytes;
+        int _chunks;
+
+        public bool Exhausted { get; private set; }
+
+        public void Take(DocsPage page)
+        {
+            Check(++_pages, limits.MaxCrawlPages);
+            _bytes += Encoding.UTF8.GetByteCount(page.Markdown);
+            Check(_bytes, limits.MaxCrawlBytes);
+            _chunks += MarkdownChunker.Chunk(page.Url, page.Markdown).Take(limits.MaxCrawlChunks - _chunks + 1).Count();
+            Check(_chunks, limits.MaxCrawlChunks);
+        }
+
+        void Check(long actual, long limit)
+        {
+            if (actual <= limit) return;
+            Exhausted = true;
+            throw new IncompleteCrawl();
         }
     }
 
