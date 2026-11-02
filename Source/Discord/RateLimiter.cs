@@ -68,6 +68,26 @@ public class RateLimiter(IOptions<PrompterOptions> options)
         }
     }
 
+    /// <summary>Computes how long until a user's bucket holds a whole token, without consuming one.</summary>
+    /// <param name="userKey">The in-memory identifier used to bucket requests.</param>
+    /// <param name="now">The current time, used to refill the bucket.</param>
+    /// <returns>The wait, or zero when a token is available, the user has no bucket or nothing refills.</returns>
+    public TimeSpan RetryAfter(string userKey, DateTimeOffset now)
+    {
+        double capacity = _limit.MaxQuestions;
+        var refillPerSecond = capacity / TimeSpan.FromMinutes(_limit.WindowMinutes).TotalSeconds;
+        lock (_lock)
+        {
+            if (refillPerSecond <= 0 || !_buckets.TryGetValue(userKey, out var bucket))
+            {
+                return TimeSpan.Zero;
+            }
+
+            var tokens = Math.Min(capacity, bucket.Tokens + (Math.Max(0, (now - bucket.LastRefill).TotalSeconds) * refillPerSecond));
+            return tokens >= 1 ? TimeSpan.Zero : TimeSpan.FromSeconds((1 - tokens) / refillPerSecond);
+        }
+    }
+
     sealed class Bucket(double tokens, DateTimeOffset lastRefill)
     {
         public double Tokens { get; set; } = tokens;

@@ -14,7 +14,7 @@ public class and_the_window_has_passed : Specification
     bool _deniedWithinWindow;
     bool _allowedAfterWindow;
 
-    void Establish() => _limiter = new RateLimiter(Options.Create(new PrompterOptions()));
+    void Establish() => _limiter = new RateLimiter(Options.Create(new PrompterOptions { Discord = { RateLimit = { MaxQuestions = 5 } } }));
 
     void Because()
     {

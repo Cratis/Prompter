@@ -126,10 +126,10 @@ public class Mentions(
 
             var question = asked.Question;
 
-            var decision = admission.TryEnter(new(message.GuildId, message.ChannelId, message.Author.Id), question);
+            var decision = admission.TryEnter(new(message.GuildId, message.ChannelId, message.Author.Id, MaintainerRole.Holds(options.Value.Discord, message.Author)), question);
             if (!decision.Allowed)
             {
-                await Refuse(message, decision.Reply);
+                await Refuse(message, decision.Reply, decision.Text);
                 return;
             }
 
@@ -220,12 +220,12 @@ public class Mentions(
         message.Type is MessageType.Default or MessageType.Reply &&
         message.Content.Length <= Math.Min(options.Value.Protection.MaxQuestionCharacters, ConversationContextReader.MaximumCurrentCharacters);
 
-    async Task Refuse(Message message, bool reply)
+    async Task Refuse(Message message, bool reply, string? text = null)
     {
         logger.RateLimited();
         if (reply)
         {
-            await message.ReplyAsync(options.Value.Discord.RateLimitedReply);
+            await message.ReplyAsync(text ?? options.Value.Discord.RateLimitedReply);
         }
     }
 

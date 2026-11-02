@@ -13,7 +13,7 @@ public class and_a_user_exceeds_the_limit : Specification
     int _allowedWithinLimit;
     bool _sixthAllowed;
 
-    void Establish() => _limiter = new RateLimiter(Options.Create(new PrompterOptions()));
+    void Establish() => _limiter = new RateLimiter(Options.Create(new PrompterOptions { Discord = { RateLimit = { MaxQuestions = 5 } } }));
 
     void Because()
     {

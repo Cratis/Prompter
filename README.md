@@ -274,7 +274,7 @@ Configuration binds to the `Cratis:Prompter` section (environment variables use 
 | Answer-in-thread channels (off when empty) | `Cratis__Prompter__Discord__AnswerInThreadChannelIds__0` | — |
 | Delayed forum answers (off when empty) | `Cratis__Prompter__Discord__DelayedForums__0__ChannelId` and `__DelayMinutes` | — / `30` |
 | Maintainer role for Ask a human (off when unset) | `Cratis__Prompter__Discord__MaintainerRoleId` | — |
-| Rate limit — questions per window | `Cratis__Prompter__Discord__RateLimit__MaxQuestions` | `5` |
+| Rate limit — questions per window | `Cratis__Prompter__Discord__RateLimit__MaxQuestions` | `10` |
 | Rate limit — window length (minutes) | `Cratis__Prompter__Discord__RateLimit__WindowMinutes` | `10` |
 | Answer timeout (seconds) | `Cratis__Prompter__Discord__AnswerTimeoutSeconds` | `60` |
 | Anthropic API key | `Cratis__Prompter__Anthropic__ApiKey` (or `ANTHROPIC_API_KEY`) | — |
@@ -345,8 +345,8 @@ Within an allowed guild, mentions still work in readable channels, alongside the
 channel and help forum. `DeniedChannels` optionally excludes channel/thread IDs.
 
 Defaults: 3 simultaneous paid answers (no queue), 60 admissions/hour globally, 20/hour per
-channel/thread, and the existing 5/user/10 minutes. Each requester also has 5 admissions per rolling
-24-hour window (`UserAdmissionsPerDay`) and a 60-second minimum gap (`UserAdmissionCooldownSeconds`),
+channel/thread, and the existing 5/user/10 minutes. Each requester also has 30 admissions per UTC day (resets at 00:00 UTC; maintainers holding the configured maintainer role skip the per-user limits but not the duplicate, global or channel limits)
+(`UserAdmissionsPerDay`) and a 15-second minimum gap (`UserAdmissionCooldownSeconds`),
 shared across guilds and channels. These anonymous limits spend only on admitted questions: rejected
 work, action clicks and refusal replies do not consume the requester's allowance. Current questions are
 capped at 4,000 characters; normalized duplicates from the same user/channel are suppressed for 2 minutes. Limit replies are
@@ -420,8 +420,8 @@ The new settings under `Cratis:Prompter:Protection` have these startup-validated
 
 | Setting | Default | Supported range |
 | --- | --- | --- |
-| `UserAdmissionsPerDay` | 5 | 0–100 |
-| `UserAdmissionCooldownSeconds` | 60 | 1–86400 |
+| `UserAdmissionsPerDay` | 30 | 0–100 |
+| `UserAdmissionCooldownSeconds` | 15 | 1–86400 |
 | `ActionConcurrency` | 2 | 1–8 |
 | `ActionPerMinute` | 12 | 0–120 |
 | `ActionChannelPerMinute` | 6 | 0–120 |

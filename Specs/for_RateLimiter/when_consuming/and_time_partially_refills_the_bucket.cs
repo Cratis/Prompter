@@ -15,7 +15,7 @@ public class and_time_partially_refills_the_bucket : Specification
 
     void Establish()
     {
-        _limiter = new RateLimiter(Options.Create(new PrompterOptions()));
+        _limiter = new RateLimiter(Options.Create(new PrompterOptions { Discord = { RateLimit = { MaxQuestions = 5 } } }));
         for (var i = 0; i < 5; i++)
         {
             _limiter.TryConsume("user", _now);

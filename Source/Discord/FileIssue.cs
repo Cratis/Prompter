@@ -130,10 +130,10 @@ public class FileIssue(
             return false;
         }
 
-        var decision = ChannelAdmission.TryEnter(admission, new(Context.Interaction.GuildId, Context.Channel.Id, Context.User.Id), Context.Channel, description);
+        var decision = ChannelAdmission.TryEnter(admission, new(Context.Interaction.GuildId, Context.Channel.Id, Context.User.Id, MaintainerRole.Holds(options.Value.Discord, Context.User)), Context.Channel, description);
         if (!decision.Allowed)
         {
-            await Refuse(decision.Reply, false);
+            await Refuse(decision.Reply, false, decision.Text);
             return false;
         }
 
@@ -148,7 +148,7 @@ public class FileIssue(
 
     bool CanDraft() => Context.Interaction.GuildId is not null && ChannelAdmission.InScope(admission, new(Context.Interaction.GuildId, Context.Channel.Id, Context.User.Id), Context.Channel) && options.Value.Protection.GitHubWritesEnabled;
 
-    async Task Refuse(bool reply, bool deferred)
+    async Task Refuse(bool reply, bool deferred, string? text = null)
     {
         if (!reply)
         {
@@ -157,11 +157,11 @@ public class FileIssue(
 
         if (deferred)
         {
-            await Context.Interaction.SendFollowupMessageAsync(Ephemeral(options.Value.Discord.RateLimitedReply));
+            await Context.Interaction.SendFollowupMessageAsync(Ephemeral(text ?? options.Value.Discord.RateLimitedReply));
         }
         else
         {
-            await RespondEphemerally(options.Value.Discord.RateLimitedReply);
+            await RespondEphemerally(text ?? options.Value.Discord.RateLimitedReply);
         }
     }
 

@@ -13,6 +13,7 @@ public class and_one_user_changes_channels : given.an_admission
     {
         Options.Protection.UserAdmissionCooldownSeconds = 1;
         Options.Protection.UserAdmissionsPerDay = 100;
+        Options.Discord.RateLimit.MaxQuestions = 5;
         for (ulong channel = 1; channel <= 5; channel++)
         {
             Guard.TryEnter(new(123, channel, 1), "a question").Allowed.ShouldBeTrue();

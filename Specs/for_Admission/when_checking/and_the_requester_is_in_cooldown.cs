@@ -12,7 +12,11 @@ public class and_the_requester_is_in_cooldown : given.an_admission
     AdmissionDecision _other = null!;
     AdmissionDecision _expired = null!;
 
-    void Establish() => Options.Protection.UserAdmissionsPerDay = 2;
+    void Establish()
+    {
+        Options.Protection.UserAdmissionsPerDay = 2;
+        Options.Protection.UserAdmissionCooldownSeconds = 60;
+    }
 
     void Because()
     {

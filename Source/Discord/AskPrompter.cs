@@ -56,10 +56,10 @@ public class AskPrompter(
             return;
         }
 
-        var decision = ChannelAdmission.TryEnter(admission, new(guild, Context.Channel.Id, Context.User.Id), Context.Channel, target.Content);
+        var decision = ChannelAdmission.TryEnter(admission, new(guild, Context.Channel.Id, Context.User.Id, MaintainerRole.Holds(options.Value.Discord, Context.User)), Context.Channel, target.Content);
         if (!decision.Allowed)
         {
-            if (decision.Reply) await Acknowledge(options.Value.Discord.RateLimitedReply, false);
+            if (decision.Reply) await Acknowledge(decision.Text ?? options.Value.Discord.RateLimitedReply, false);
             return;
         }
 

@@ -27,11 +27,11 @@ public class ProtectionOptions
     /// <summary>Gets or sets the global accepted-request allowance per hour.</summary>
     public int GlobalPerHour { get; set; } = 60;
 
-    /// <summary>Gets or sets admissions per requester per rolling 24 hours (0–100); zero denies.</summary>
-    public int UserAdmissionsPerDay { get; set; } = 5;
+    /// <summary>Gets or sets admissions per requester per UTC day (0–100); zero denies.</summary>
+    public int UserAdmissionsPerDay { get; set; } = 30;
 
     /// <summary>Gets or sets minimum seconds between requester admissions (1–86400).</summary>
-    public int UserAdmissionCooldownSeconds { get; set; } = 60;
+    public int UserAdmissionCooldownSeconds { get; set; } = 15;
 
     /// <summary>Gets or sets the channel/thread accepted-request allowance per hour.</summary>
     public int ChannelPerHour { get; set; } = 20;

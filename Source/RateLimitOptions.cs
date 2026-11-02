@@ -11,7 +11,7 @@ public class RateLimitOptions
     /// <summary>
     /// Gets or sets the maximum number of questions a single user may ask within <see cref="WindowMinutes"/>.
     /// </summary>
-    public int MaxQuestions { get; set; } = 5;
+    public int MaxQuestions { get; set; } = 10;
 
     /// <summary>
     /// Gets or sets the length of the rolling rate-limit window, in minutes.

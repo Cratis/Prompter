@@ -59,14 +59,18 @@ public sealed class Admission(IOptions<PrompterOptions> options, RateLimiter use
             }
 
             var duplicate = Hash($"{userKey.Value}:{channelKey.Value}:{normalized}");
-            if (!CanAdmit(duplicate, userKey, channelKey, now))
+            if (Limit(duplicate, userKey, channelKey, actor.Maintainer, now) is var (limit, wait))
             {
                 ProviderMetrics.Event("admission", "denied");
-                return Deny(userKey, channelKey, now);
+                return Deny(userKey, channelKey, now, limit, wait);
             }
 
-            _daily.Consume(userKey.Value, TimeSpan.FromHours(24), now);
-            _cooldowns.Consume(userKey.Value, TimeSpan.FromSeconds(limits.UserAdmissionCooldownSeconds), now);
+            if (!actor.Maintainer)
+            {
+                _daily.Consume(userKey.Value, NextUtcMidnight(now) - now, now);
+                _cooldowns.Consume(userKey.Value, TimeSpan.FromSeconds(limits.UserAdmissionCooldownSeconds), now);
+            }
+
             _duplicates.Consume(duplicate.Value, TimeSpan.FromSeconds(limits.DuplicateSeconds), now);
             _windows.Consume("global", TimeSpan.FromHours(1), now);
             _windows.Consume(channelKey.Value, TimeSpan.FromHours(1), now);
@@ -85,13 +89,51 @@ public sealed class Admission(IOptions<PrompterOptions> options, RateLimiter use
         }
     }
 
-    bool CanAdmit(AnonymousKey duplicate, AnonymousKey user, AnonymousKey channel, DateTimeOffset now) =>
-        _duplicates.Available(duplicate.Value, 1, now) && RequesterAvailable(user, now) && UnderRateLimits(user, channel, now);
+    static DateTimeOffset NextUtcMidnight(DateTimeOffset now) => new(now.UtcDateTime.Date.AddDays(1), TimeSpan.Zero);
 
-    bool RequesterAvailable(AnonymousKey user, DateTimeOffset now) =>
-        _daily.Available(user.Value, options.Value.Protection.UserAdmissionsPerDay, now) && _cooldowns.Available(user.Value, 1, now);
+    static (AdmissionLimit Limit, TimeSpan Wait) Waiting(AdmissionLimit limit, DateTimeOffset? expires, DateTimeOffset now) =>
+        expires is { } at ? (limit, at - now) : (AdmissionLimit.Unknown, TimeSpan.Zero);
 
-    AdmissionDecision Deny(AnonymousKey user, AnonymousKey channel, DateTimeOffset now)
+    /// <summary>Finds the first failing limit and its wait. The user bucket is checked last because it spends a token on success.</summary>
+    /// <remarks>Maintainers skip the per-user limits but keep duplicate, global and channel checks.</remarks>
+    (AdmissionLimit Limit, TimeSpan Wait)? Limit(AnonymousKey duplicate, AnonymousKey user, AnonymousKey channel, bool maintainer, DateTimeOffset now)
+    {
+        var limits = options.Value.Protection;
+        if (!_duplicates.Available(duplicate.Value, 1, now))
+        {
+            return Waiting(AdmissionLimit.Duplicate, _duplicates.ExpiresAt(duplicate.Value, now), now);
+        }
+
+        if (!maintainer && !_daily.Available(user.Value, limits.UserAdmissionsPerDay, now))
+        {
+            return Waiting(AdmissionLimit.Daily, _daily.ExpiresAt(user.Value, now), now);
+        }
+
+        if (!maintainer && !_cooldowns.Available(user.Value, 1, now))
+        {
+            return Waiting(AdmissionLimit.Cooldown, _cooldowns.ExpiresAt(user.Value, now), now);
+        }
+
+        if (!_windows.Available("global", limits.GlobalPerHour, now))
+        {
+            return Waiting(AdmissionLimit.Busy, _windows.ExpiresAt("global", now), now);
+        }
+
+        if (!_windows.Available(channel.Value, limits.ChannelPerHour, now))
+        {
+            return Waiting(AdmissionLimit.Busy, _windows.ExpiresAt(channel.Value, now), now);
+        }
+
+        if (!maintainer && !users.TryConsume(user.Value, now))
+        {
+            var retry = users.RetryAfter(user.Value, now);
+            return retry > TimeSpan.Zero ? (AdmissionLimit.Burst, retry) : (AdmissionLimit.Unknown, TimeSpan.Zero);
+        }
+
+        return null;
+    }
+
+    AdmissionDecision Deny(AnonymousKey user, AnonymousKey channel, DateTimeOffset now, AdmissionLimit limit = AdmissionLimit.Unknown, TimeSpan wait = default)
     {
         var limits = options.Value.Protection;
         var channelKey = $"channel:{channel.Value}";
@@ -102,13 +144,8 @@ public sealed class Admission(IOptions<PrompterOptions> options, RateLimiter use
 
         _replies.Consume(user.Value, TimeSpan.FromSeconds(limits.UserRefusalSeconds), now);
         _replies.Consume(channelKey, TimeSpan.FromSeconds(limits.ChannelRefusalSeconds), now);
-        return new(false, true);
+        return new(false, true, RefusalReplies.For(limit, wait, limits.UserAdmissionsPerDay));
     }
-
-    bool UnderRateLimits(AnonymousKey user, AnonymousKey channel, DateTimeOffset now) =>
-        _windows.Available("global", options.Value.Protection.GlobalPerHour, now) &&
-        _windows.Available(channel.Value, options.Value.Protection.ChannelPerHour, now) &&
-        users.TryConsume(user.Value, now);
 
     bool TryNormalize(Question question, out string normalized)
     {
