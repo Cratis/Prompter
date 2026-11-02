@@ -56,7 +56,8 @@ public class and_the_endpoint_is_saturated : given.a_verified_delivery
     [Fact] void should_suggest_a_bounded_redelivery_interval() => _retry.ShouldEqual("60");
     [Fact] void should_preserve_signature_rejection() => _invalidStatus.ShouldEqual(401);
     [Fact] void should_not_claim_any_issue() => Deliveries.ReceivedCalls().Count().ShouldEqual(0);
-    [Fact] void should_not_answer_or_notify()
+    [Fact]
+    void should_not_answer_or_notify()
     {
         Answers.ReceivedCalls().ShouldBeEmpty();
         Channel.ReceivedCalls().ShouldBeEmpty();
