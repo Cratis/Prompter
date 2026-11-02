@@ -30,12 +30,18 @@ public sealed class ProtectedAnswers(Answers inner, PaidWork work, IOptions<Prom
         {
             using var linked = CancellationTokenSource.CreateLinkedTokenSource(cancellationToken, active.Token);
             var answer = await inner.For(question, source, linked.Token);
-            return answer with { SecretsRedacted = redacted };
+            return Protect(answer) with { SecretsRedacted = redacted };
         }
 
         await using var lease = await work.BeginInteractive(cancellationToken);
         lease.Activate();
         var result = await inner.For(question, source, lease.Token);
-        return result with { SecretsRedacted = redacted };
+        return Protect(result) with { SecretsRedacted = redacted };
     }
+
+    Answer Protect(Answer answer) => answer with
+    {
+        Text = PublishedMarkdown.Neutralize(answer.Text, options.Value),
+        Suggestions = [.. answer.Suggestions.Select(suggestion => PublishedMarkdown.Neutralize(suggestion, options.Value))]
+    };
 }

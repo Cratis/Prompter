@@ -30,11 +30,17 @@ public sealed class ProtectedDrafting(IssueDrafting inner, PaidWork work, IOptio
         if (WorkLease.Current is { } active)
         {
             using var linked = CancellationTokenSource.CreateLinkedTokenSource(cancellationToken, active.Token);
-            return await inner.Draft(conversation, hint, linked.Token);
+            return Protect(await inner.Draft(conversation, hint, linked.Token));
         }
 
         await using var lease = await work.BeginInteractive(cancellationToken);
         lease.Activate();
-        return await inner.Draft(conversation, hint, lease.Token);
+        return Protect(await inner.Draft(conversation, hint, lease.Token));
     }
+
+    IssueDraft? Protect(IssueDraft? draft) => draft is null ? null : draft with
+    {
+        Title = PublishedMarkdown.Neutralize(draft.Title, options.Value),
+        Body = PublishedMarkdown.Neutralize(draft.Body, options.Value)
+    };
 }
