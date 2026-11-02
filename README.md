@@ -141,6 +141,7 @@ Index the documentation, then ask a question straight from your terminal:
 
 ```bash
 cd Source
+dotnet run -- migrate                                      # apply migrations explicitly (other modes also migrate when the role may)
 dotnet run -- index                                        # ingest cratis.io into the corpus
 dotnet run -- ask "How do I append an event in Chronicle?" # answer from the CLI (add --verbose for the passages)
 ```
@@ -231,6 +232,8 @@ Configuration binds to the `Cratis:Prompter` section (environment variables use 
 | Setting | Environment variable | Default |
 |---|---|---|
 | Postgres connection string | `Cratis__Prompter__ConnectionString` | localhost, db/user/pass `prompter` |
+| Application database role (`migrate` mode only) | `Cratis__Prompter__Migration__ApplicationRole` | unset |
+| Application database role password (`migrate` mode only) | `Cratis__Prompter__Migration__ApplicationRolePassword` | unset |
 | Docs site to ingest | `Cratis__Prompter__DocsSiteUrl` | `https://cratis.io` |
 | Embedding batch size | `Cratis__Prompter__Voyage__BatchSize` | `128` |
 | Include release notes | `Cratis__Prompter__Ingestion__ReleaseNotes__Enabled` | `true` |

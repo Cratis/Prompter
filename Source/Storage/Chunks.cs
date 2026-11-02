@@ -40,14 +40,28 @@ public class Chunks(NpgsqlDataSource dataSource) : IChunks
         await AcquireMigrationLock(lockConnection, cancellationToken);
         try
         {
-            await EnsureMigrationsTable(cancellationToken);
-
+            // A schema that is already current needs no DDL, so a role that may only read and write data can start.
             var available = EmbeddedMigrations.LoadFrom(typeof(Chunks).Assembly);
-            var applied = await GetAppliedVersions(cancellationToken);
-
-            foreach (var migration in MigrationPlan.Pending(available, applied))
+            var applied = await MigrationsTableExists(cancellationToken)
+                ? await GetAppliedVersions(cancellationToken)
+                : new HashSet<MigrationVersion>();
+            var pending = MigrationPlan.Pending(available, applied);
+            if (pending.Count == 0)
             {
-                await Apply(migration, cancellationToken);
+                return;
+            }
+
+            try
+            {
+                await EnsureMigrationsTable(cancellationToken);
+                foreach (var migration in pending)
+                {
+                    await Apply(migration, cancellationToken);
+                }
+            }
+            catch (PostgresException error) when (error.SqlState == PostgresErrorCodes.InsufficientPrivilege)
+            {
+                throw new PendingMigrationsNotPermitted(pending.Select(migration => migration.Version), error);
             }
         }
         finally
@@ -106,6 +120,12 @@ public class Chunks(NpgsqlDataSource dataSource) : IChunks
         command.CommandText = "SELECT pg_advisory_unlock($1)";
         command.Parameters.AddWithValue(MigrationLockKey);
         await command.ExecuteNonQueryAsync(cancellationToken);
+    }
+
+    async Task<bool> MigrationsTableExists(CancellationToken cancellationToken)
+    {
+        await using var command = dataSource.CreateCommand("SELECT to_regclass('schema_migrations') IS NOT NULL");
+        return (bool)(await command.ExecuteScalarAsync(cancellationToken))!;
     }
 
     async Task EnsureMigrationsTable(CancellationToken cancellationToken)

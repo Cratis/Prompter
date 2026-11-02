@@ -71,12 +71,18 @@ return await Deployment.RunAsync(() =>
         $"postgres-password-{environment}",
         new RandomPasswordArgs { Length = 32, Special = false });
 
+    // The restricted role the application runs as; also generated once and stable in state.
+    var postgresApplicationPassword = new RandomPassword(
+        $"postgres-application-password-{environment}",
+        new RandomPasswordArgs { Length = 32, Special = false });
+
     var postgres = new PostgresDeployment(new PostgresDeploymentArgs
     {
         Provider = provider,
         Namespace = namespaceName,
         Environment = environment,
         Password = postgresPassword.Result,
+        ApplicationPassword = postgresApplicationPassword.Result,
         StorageClassName = storageClassName,
         StorageSizeGb = storageSizeGb,
     });

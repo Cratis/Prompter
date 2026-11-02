@@ -29,6 +29,17 @@ public class and_app_credentials_are_optional
         if (configured) await AssertKey(pod, container);
     }
 
+    [Fact]
+    public async Task should_harden_init_containers_like_the_workload()
+    {
+        var container = new ContainerArgs { Name = "prompter" };
+        var init = new ContainerArgs { Name = "migrate" };
+        var pod = WorkloadPod.Create(new GitHubAppArgs(), container, init);
+        (await Value(pod.InitContainers)).Length.ShouldEqual(1);
+        await AssertContainer(init);
+        await AssertTmp(pod, init);
+    }
+
     static Task<T> Value<T>(Input<T> input) => OutputUtilities.GetValueAsync((Output<T>)input);
 
     static async Task AssertPod(PodSpecArgs pod)

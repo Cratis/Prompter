@@ -1,6 +1,7 @@
 // Copyright (c) Cratis. All rights reserved.
 // Licensed under the MIT license. See LICENSE file in the project root for full license information.
 
+using Cratis.Prompter;
 using Cratis.Prompter.Answering;
 using Cratis.Prompter.Cli;
 using Cratis.Prompter.Digest;
@@ -19,6 +20,7 @@ using Microsoft.Extensions.Hosting;
 using NetCord.Gateway;
 using NetCord.Hosting.Gateway;
 using NetCord.Hosting.Services;
+using Npgsql;
 
 var mode = args.FirstOrDefault() ?? "bot";
 
@@ -54,6 +56,44 @@ if (mode == "eval")
     var summary = await command.Run(set, evaluation);
     foreach (var line in summary.Lines()) Console.WriteLine(line);
     Environment.ExitCode = summary.ExitCode;
+    return;
+}
+
+if (mode == "migrate")
+{
+    try
+    {
+        // Only the database is needed: the full host would also demand the Discord and model settings the init container does not have.
+        var migrateConfiguration = new ConfigurationBuilder().AddEnvironmentVariables().Build();
+        var connectionString = migrateConfiguration[ConfigurationPath.Combine("Cratis", "Prompter", "ConnectionString")] ?? new PrompterOptions().ConnectionString;
+        var dataSourceBuilder = new NpgsqlDataSourceBuilder(connectionString);
+        dataSourceBuilder.UseVector();
+        await using var dataSource = dataSourceBuilder.Build();
+        await new Chunks(dataSource).EnsureSchema();
+
+        var migration = migrateConfiguration.GetSection(ConfigurationPath.Combine("Cratis", "Prompter", "Migration")).Get<MigrationOptions>() ?? new();
+        if (migration.ApplicationRole.Length == 0)
+        {
+            Console.WriteLine("Database schema current.");
+        }
+        else
+        {
+            if (migration.ApplicationRolePassword.Length == 0)
+            {
+                throw new InvalidOperationException("Cratis:Prompter:Migration:ApplicationRolePassword must be set when an application role is given.");
+            }
+
+            await ApplicationRole.Provision(dataSource, new DatabaseRoleName(migration.ApplicationRole), migration.ApplicationRolePassword);
+            Console.WriteLine($"Database schema current; application role {migration.ApplicationRole} provisioned.");
+        }
+    }
+    catch (Exception error)
+    {
+        // An exception escaping Main aborts PID 1 in the container, which surfaces as exit 139, not the cause.
+        await Console.Error.WriteLineAsync(MigrateFailure.Message(error));
+        Environment.ExitCode = MigrateFailure.ExitCode;
+    }
+
     return;
 }
 

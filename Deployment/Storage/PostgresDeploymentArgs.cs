@@ -27,9 +27,14 @@ public sealed class PostgresDeploymentArgs
     public required string Environment { get; init; }
 
     /// <summary>
-    /// Gets the password for the <c language="csharp">prompter</c> database role.
+    /// Gets the password for the <c language="csharp">prompter</c> bootstrap role, which runs migrations.
     /// </summary>
     public required Output<string> Password { get; init; }
+
+    /// <summary>
+    /// Gets the password for the restricted <c language="csharp">prompter_app</c> role the application connects as.
+    /// </summary>
+    public required Output<string> ApplicationPassword { get; init; }
 
     /// <summary>
     /// Gets the name of the storage class volumes are provisioned from. This references a cluster-scoped

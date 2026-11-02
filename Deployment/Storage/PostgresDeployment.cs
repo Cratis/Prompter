@@ -39,10 +39,36 @@ public sealed class PostgresDeployment
     /// </summary>
     public const int Port = 5432;
 
-    const string DatabaseName = "prompter";
-    const string UserName = "prompter";
-    const string SecretName = "prompter-postgres";
-    const string PasswordKey = "password";
+    /// <summary>
+    /// The name of the database.
+    /// </summary>
+    public const string DatabaseName = "prompter";
+
+    /// <summary>
+    /// The bootstrap role: it owns the schema and runs migrations. The application does not connect as it.
+    /// </summary>
+    public const string UserName = "prompter";
+
+    /// <summary>
+    /// The least-privilege role the application, the index Job and the eval Job connect as.
+    /// </summary>
+    public const string ApplicationUserName = "prompter_app";
+
+    /// <summary>
+    /// The name of the Secret holding both passwords.
+    /// </summary>
+    public const string SecretName = "prompter-postgres";
+
+    /// <summary>
+    /// The Secret key holding the bootstrap role's password.
+    /// </summary>
+    public const string PasswordKey = "password";
+
+    /// <summary>
+    /// The Secret key holding the application role's password.
+    /// </summary>
+    public const string ApplicationPasswordKey = "application-password";
+
     const string ClaimName = "postgres-data";
 
     /// <summary>
@@ -67,7 +93,11 @@ public sealed class PostgresDeployment
                     Namespace = args.Namespace,
                     Labels = labels,
                 },
-                StringData = new InputMap<string> { [PasswordKey] = args.Password },
+                StringData = new InputMap<string>
+                {
+                    [PasswordKey] = args.Password,
+                    [ApplicationPasswordKey] = args.ApplicationPassword,
+                },
             },
             new CustomResourceOptions { Provider = args.Provider });
 
@@ -194,8 +224,7 @@ public sealed class PostgresDeployment
             },
             new CustomResourceOptions { Provider = args.Provider, DependsOn = [secret, service, claim] });
 
-        ConnectionString = args.Password.Apply(password =>
-            $"Host={Name};Port={Port};Database={DatabaseName};Username={UserName};Password={password}");
+        ConnectionString = args.ApplicationPassword.Apply(password => PostgresConnection.For(ApplicationUserName, password));
     }
 
     /// <summary>
@@ -204,7 +233,7 @@ public sealed class PostgresDeployment
     public K8sDeployment Resource { get; }
 
     /// <summary>
-    /// Gets the Npgsql connection string the bot connects with.
+    /// Gets the Npgsql connection string the bot connects with, using the restricted application role.
     /// </summary>
     public Output<string> ConnectionString { get; }
 }

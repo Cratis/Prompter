@@ -9,6 +9,6 @@ services:
       - POSTGRES_USER=prompter
       - POSTGRES_PASSWORD=prompter
     ports:
-      - 5432:5432
+      - "${PROMPTER_POSTGRES_PORT:-5432}:5432"
     volumes:
       - prompter-data:/var/lib/postgresql/data
