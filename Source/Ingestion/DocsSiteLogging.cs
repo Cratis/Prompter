@@ -7,6 +7,9 @@ namespace Cratis.Prompter.Ingestion;
 
 internal static partial class DocsSiteLogging
 {
+    [LoggerMessage(LogLevel.Debug, "Following documentation redirect to host '{Host}'")]
+    internal static partial void RedirectedToHost(this ILogger<DocsSite> logger, string host);
+
     [LoggerMessage(LogLevel.Warning, "Failed fetching page '{Url}' - skipping it for this run")]
     internal static partial void FailedFetchingPage(this ILogger<DocsSite> logger, PageUrl url, Exception exception);
 }

@@ -15,13 +15,13 @@ public static class RelatedIssueRegistration
     /// <returns>The service collection.</returns>
     public static IServiceCollection AddRelatedIssueSearch(this IServiceCollection services)
     {
+        services.AddSingleton<PublicIssueSearchLimits>();
         services.AddHttpClient<IRelatedIssues, RelatedIssues>(client =>
         {
             client.Timeout = Timeout.InfiniteTimeSpan;
             client.DefaultRequestHeaders.Accept.Add(new("application/vnd.github+json"));
             client.DefaultRequestHeaders.UserAgent.Add(new("Cratis-Prompter", "1.0"));
         }).AddHttpMessageHandler<GitHubWriteGate>().AddGitHubAppAuthentication();
-        services.AddSingleton<PublicIssueSearchLimits>();
         services.AddHttpClient<IPublicRelatedIssues, PublicRelatedIssues>(client =>
         {
             client.BaseAddress = new("https://api.github.com/");

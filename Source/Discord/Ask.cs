@@ -59,7 +59,7 @@ public class Ask(
             await Context.Interaction.SendResponseAsync(InteractionCallback.DeferredMessage());
             deferred = true;
             var reply = await assistance.For(new(ConversationText.Sanitize(question)) { AllowClarification = true }, "discord-ask", lease.Token);
-            await InteractionAnswers.Send(Context.Interaction, reply, AnswerActions.For(options.Value.Discord, new(channel, 0), reply));
+            await InteractionAnswers.Send(Context.Interaction, reply, AnswerActions.For(options.Value.Discord, new(channel, 0), reply), options.Value);
         }
         catch (WorkRefused)
         {

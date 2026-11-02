@@ -95,6 +95,33 @@ public static class DiscordAnswers
         return chunks.Count == 0 ? [Format(answer)] : AppendSources(chunks, SourcesLine(answer));
     }
 
+    /// <summary>
+    /// Splits an answer and neutralizes every final message again, so splitting or truncating cannot re-form an active link.
+    /// </summary>
+    /// <param name="answer">The answer to split.</param>
+    /// <param name="options">The citation source policy.</param>
+    /// <returns>The message chunks, each within Discord's message length and safe on its own.</returns>
+    public static IReadOnlyList<string> Split(Answer answer, PrompterOptions options) => [.. Split(answer).Select(chunk => Secure(chunk, options))];
+
+    /// <summary>Formats a single message and neutralizes the final text again after any truncation.</summary>
+    /// <param name="answer">The answer to format.</param>
+    /// <param name="options">The citation source policy.</param>
+    /// <returns>The safe message content.</returns>
+    public static string Format(Answer answer, PrompterOptions options) => Secure(Format(answer), options);
+
+    static string Secure(string message, PrompterOptions options)
+    {
+        var text = Protection.PublishedMarkdown.Neutralize(message, options);
+        var limit = MaxMessageLength;
+        while (text.Length > MaxMessageLength)
+        {
+            limit -= text.Length - MaxMessageLength;
+            if (limit <= Ellipsis.Length) return Ellipsis;
+            text = Protection.PublishedMarkdown.Neutralize(text[..SafeCutLength(text, 0, limit)], options);
+        }
+        return text;
+    }
+
     static string BuildContent(Answer answer)
     {
         var body = answer.Text.Trim();

@@ -17,7 +17,7 @@ public class and_the_destination_is_not_allowlisted : Specification
         using var wire = new NoWire();
         using var client = new HttpClient(wire, disposeHandler: false) { BaseAddress = new("https://api.github.com/") };
         var options = Options.Create(new PrompterOptions { GitHub = new() { InstallationRepositories = ["Cratis/Chronicle"] } });
-        var issues = new Issues(client, options, NullLogger<Issues>.Instance);
+        var issues = new Issues(client, options, NullLogger<Issues>.Instance, new(TimeProvider.System));
         foreach (var payload in new PendingIssue[] { new("Other", "Chronicle", "Title", "Body", []), new("Cratis", "Other", "Title", "Body", []) })
         {
             try { await issues.File(payload); }

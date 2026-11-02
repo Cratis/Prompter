@@ -17,10 +17,12 @@ namespace Cratis.Prompter.GitHub;
 /// <param name="httpClient">The client, configured with the API base address and bearer token.</param>
 /// <param name="options">The Prompter options carrying the owner and routing.</param>
 /// <param name="logger">Logger for diagnostics.</param>
+/// <param name="limits">The process-wide quota shared by all optional issue searches.</param>
 public class Issues(
     HttpClient httpClient,
     IOptions<PrompterOptions> options,
-    ILogger<Issues> logger) : IIssues
+    ILogger<Issues> logger,
+    PublicIssueSearchLimits limits) : IIssues
 {
     readonly GitHubPolicy _policy = new(options);
     readonly string _filingOwner = options.Value.GitHub.Owner;
@@ -75,7 +77,7 @@ public class Issues(
         string title,
         CancellationToken cancellationToken = default)
     {
-        var related = await new RelatedIssues(httpClient, options, TimeProvider.System).FindOpen(repository, title, cancellationToken);
+        var related = await new RelatedIssues(httpClient, options, TimeProvider.System, limits).FindOpen(repository, title, cancellationToken);
         return [.. related.Select(issue => new ExistingIssue(issue.Number, $"Issue #{issue.Number}", issue.Url))];
     }
 }

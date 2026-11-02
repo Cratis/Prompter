@@ -2,6 +2,7 @@
 // Licensed under the MIT license. See LICENSE file in the project root for full license information.
 
 using System.Diagnostics;
+using System.Text;
 using Cratis.Prompter.Embeddings;
 using Cratis.Prompter.Storage;
 using Microsoft.Extensions.AI;
@@ -43,30 +44,10 @@ public class Indexer(
 
         var meter = new IndexMeter(lease, options.Value, request);
         var existing = await chunks.GetHashes(cancellationToken);
-        var seen = new HashSet<ChunkId>();
-        var changed = new List<Chunk>();
-        var metadata = new List<DocumentationMetadata>();
-        var pages = 0;
-        var unchanged = 0;
-
-        await foreach (var page in docsSite.GetPages(cancellationToken))
-        {
-            pages++;
-            metadata.Add(page.Metadata);
-            foreach (var chunk in MarkdownChunker.Chunk(page.Url, page.Markdown))
-            {
-                seen.Add(chunk.Id);
-                var sameHash = existing.TryGetValue(chunk.Id, out var hash) && hash == chunk.Hash;
-                if (!request.Full && sameHash)
-                {
-                    unchanged++;
-                }
-                else
-                {
-                    changed.Add(chunk);
-                }
-            }
-        }
+        var crawl = await Discover(existing, request, cancellationToken);
+        var seen = crawl.Seen;
+        var changed = crawl.Changed;
+        var metadata = crawl.Metadata;
 
         var failed = docsSite.FailedSources;
         seen.UnionWith(existing.Keys.Where(id => failed.Any(prefix => id.Value.StartsWith(prefix, StringComparison.Ordinal))));
@@ -85,7 +66,7 @@ public class Indexer(
             logger.IndexSpendMetered(meter.Spent.Tokens, meter.Spent.Dollars);
         }
 
-        var run = new IndexRun(pages, changed.Count, unchanged, removed, Stopwatch.GetElapsedTime(start));
+        var run = new IndexRun(crawl.Pages, changed.Count, crawl.Unchanged, removed, Stopwatch.GetElapsedTime(start));
         return Complete(run, failed);
     }
 
@@ -93,6 +74,50 @@ public class Indexer(
         snapshot.PreservedSources.Count == 0
             ? lease.CommitIndex(snapshot.Changed, snapshot.Existing, snapshot.Pages, cancellationToken)
             : lease.CommitIndex(snapshot, cancellationToken);
+
+    async Task<CrawlCandidates> Discover(IReadOnlyDictionary<ChunkId, ContentHash> existing, IndexRequest request, CancellationToken cancellationToken)
+    {
+        var crawl = new CrawlCandidates();
+        await foreach (var page in docsSite.GetPages(cancellationToken))
+        {
+            crawl.Pages++;
+            crawl.Bytes += Encoding.UTF8.GetByteCount(page.Markdown);
+            CheckCrawlLimit(nameof(IngestionOptions.MaxCrawlPages), crawl.Pages, options.Value.Ingestion.MaxCrawlPages);
+            CheckCrawlLimit(nameof(IngestionOptions.MaxCrawlBytes), crawl.Bytes, options.Value.Ingestion.MaxCrawlBytes);
+            crawl.Metadata.Add(page.Metadata);
+            foreach (var chunk in MarkdownChunker.Chunk(page.Url, page.Markdown)) AddCandidate(crawl, chunk, existing, request);
+        }
+        return crawl;
+    }
+
+    void AddCandidate(CrawlCandidates crawl, Chunk chunk, IReadOnlyDictionary<ChunkId, ContentHash> existing, IndexRequest request)
+    {
+        crawl.Chunks++;
+        CheckCrawlLimit(nameof(IngestionOptions.MaxCrawlChunks), crawl.Chunks, options.Value.Ingestion.MaxCrawlChunks);
+        crawl.Seen.Add(chunk.Id);
+        var sameHash = existing.TryGetValue(chunk.Id, out var hash) && hash == chunk.Hash;
+        if (!request.Full && sameHash)
+        {
+            crawl.Unchanged++;
+            return;
+        }
+
+        crawl.Tokens += IndexBudget.EstimatedTokensFor(chunk.EmbeddingInput);
+        var limit = request.Full ? options.Value.Ingestion.MaxFullTokens : options.Value.Ingestion.MaxIncrementalTokens;
+        if (crawl.Tokens > limit)
+        {
+            logger.CrawlLimitExceeded(request.Full ? nameof(IngestionOptions.MaxFullTokens) : nameof(IngestionOptions.MaxIncrementalTokens), limit);
+            throw new IndexBudgetExceeded();
+        }
+        crawl.Changed.Add(chunk);
+    }
+
+    void CheckCrawlLimit(string name, long actual, long limit)
+    {
+        if (actual <= limit) return;
+        logger.CrawlLimitExceeded(name, limit);
+        throw new IncompleteCrawl();
+    }
 
     IndexRun Complete(IndexRun run, IReadOnlyCollection<string> failed)
     {
@@ -154,5 +179,17 @@ public class Indexer(
         }
 
         batch.Clear();
+    }
+
+    sealed class CrawlCandidates
+    {
+        public int Pages { get; set; }
+        public long Bytes { get; set; }
+        public int Chunks { get; set; }
+        public int Unchanged { get; set; }
+        public long Tokens { get; set; }
+        public List<Chunk> Changed { get; } = [];
+        public HashSet<ChunkId> Seen { get; } = [];
+        public List<DocumentationMetadata> Metadata { get; } = [];
     }
 }

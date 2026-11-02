@@ -254,6 +254,11 @@ Configuration binds to the `Cratis:Prompter` section (environment variables use 
 | Maximum repositories inspected | `Cratis__Prompter__Ingestion__Readmes__MaxRepositories` | `200` |
 | Maximum README body characters | `Cratis__Prompter__Ingestion__Readmes__MaxReadmeCharacters` | `32768` |
 | Excluded README repositories | `Cratis__Prompter__Ingestion__Readmes__ExcludedRepositories__0` | `.github` |
+| Maximum sitemap bytes | `Cratis__Prompter__Ingestion__MaxSitemapBytes` | `8388608` |
+| Maximum raw sitemap entries before filtering | `Cratis__Prompter__Ingestion__MaxSitemapEntries` | `10000` |
+| Maximum crawl pages across all sources | `Cratis__Prompter__Ingestion__MaxCrawlPages` | `10000` |
+| Maximum aggregate UTF-8 Markdown bytes | `Cratis__Prompter__Ingestion__MaxCrawlBytes` | `67108864` |
+| Maximum accumulated chunks, including unchanged ones | `Cratis__Prompter__Ingestion__MaxCrawlChunks` | `100000` |
 | Incremental estimated-token admission ceiling | `Cratis__Prompter__Ingestion__MaxIncrementalTokens` | `4000000` |
 | Confirmed full estimated-token admission ceiling | `Cratis__Prompter__Ingestion__MaxFullTokens` | `16000000` |
 | Confirmed full run and UTC-day dollar ceiling | `Cratis__Prompter__Ingestion__MaxFullRunDollars` | `0` (full paid indexing disabled) |
@@ -337,13 +342,38 @@ Within an allowed guild, mentions still work in readable channels, alongside the
 channel and help forum. `DeniedChannels` optionally excludes channel/thread IDs.
 
 Defaults: 3 simultaneous paid answers (no queue), 60 admissions/hour globally, 20/hour per
-channel/thread, and the existing 5/user/10 minutes. Current questions are capped at 4,000 characters;
-normalized duplicates from the same user/channel are suppressed for 2 minutes. Limit replies are
+channel/thread, and the existing 5/user/10 minutes. Each requester also has 5 admissions per rolling
+24-hour window (`UserAdmissionsPerDay`) and a 60-second minimum gap (`UserAdmissionCooldownSeconds`),
+shared across guilds and channels. These anonymous limits spend only on admitted questions: rejected
+work, action clicks and refusal replies do not consume the requester's allowance. Current questions are
+capped at 4,000 characters; normalized duplicates from the same user/channel are suppressed for 2 minutes. Limit replies are
 restricted to one/user/10 minutes and one/channel/minute; excess requests are ignored silently.
+Consented maintainer forwards and human hand-offs share 2 running slots and 12 accepted actions/minute
+(`ActionConcurrency`, `ActionPerMinute`), independently of answer admission or model spend. Each channel
+allows 6/minute (`ActionChannelPerMinute`); each user allows 3/600s (`ActionClicksPerUser`,
+`ActionWindowSeconds`). There is no waiting queue; zero rate allowances deny actions. A shared 5-second
+deadline covers acknowledgement, message lookup, delivery and follow-up. Full global capacity is silent;
+user/channel refusals are suppressed by the existing refusal windows.
 Feedback buttons allow 10 clicks per user per 10 minutes (`FeedbackClicksPerUser`, `FeedbackWindowSeconds`).
-Repeating the current persisted vote is acknowledged silently without a write, and excess clicks fail closed under the same reply limits. Each user's and answer's acknowledgement/write lifecycle is serialized; waits are bounded to two seconds and cache capacity is reserved atomically before a write and the verdict is cached only after persistence succeeds. Pending writes count toward capacity; failed writes or acknowledgements release their reservation.
+All clicks—including malformed identifiers, repeats and refusals—first share 2 running slots and
+30 starts/minute (`FeedbackConcurrency`, `FeedbackPerMinute`), with no queue or unbudgeted acknowledgement
+path. Full global capacity is silent. One 2,000ms deadline (`FeedbackWriteTimeoutMilliseconds`) covers
+acknowledgement, serialized verdict acquisition and storage. Repeating the current persisted vote is
+acknowledged silently without a write; excess user clicks fail closed under the existing reply limits.
+Pending writes count toward cache capacity, and verdicts are cached only after successful persistence
+before cancellation. Failed writes or acknowledgements release their reservations.
 Only keyed hashes are kept in bounded expiring memory caches; rate limits reset on restart.
 The existing 60-second answer deadline also covers drafting, reservation and forum starter fetching.
+
+Published answers, suggested follow-ups and issue previews make prose mentions and destinations outside
+the configured citation sources inert. Safe labels and destination hosts stay visible for review; code
+examples are unchanged. Unclassifiable Markdown is displayed as inert text rather than passed through.
+
+Documentation responses are streamed within the configured sitemap and site-page byte limits.
+Crawls stop before embedding or publication if page, aggregate UTF-8 byte, chunk or changed-token
+limits are exceeded; the previous snapshot remains intact. Sitemap entry limits apply before
+filtering. Supported ranges are 65,536–52,428,800 sitemap bytes, 1–50,000 sitemap entries,
+1–100,000 crawl pages, 1,048,576–268,435,456 crawl bytes and 1–1,000,000 crawl chunks.
 
 The **shared $5/UTC-day ceiling is durable**, including CLI indexing, retries and concurrent processes.
 Each answer reserves its worst-case Anthropic input/output and Voyage retry exposure atomically,
@@ -366,12 +396,54 @@ need smaller existing indexing batch settings to fit the verified Voyage input b
 `Protection:AnsweringEnabled`, `IndexingEnabled` and `GitHubWritesEnabled` all default to `true`.
 Set the corresponding environment setting to `false` and restart to stop new answers/drafts,
 indexing, or GitHub operations respectively. These switches do not revoke already-issued provider calls.
-Webhook bodies, including chunked bodies, are capped at 65,536 bytes (`WebhookBytes`).
+Webhook bodies, including chunked bodies, are capped at 65,536 bytes (`WebhookBytes`). After signature
+verification and identity validation, opened issues share 2 running slots and 12 starts/minute
+(`WebhookConcurrency`, `WebhookPerMinute`). There is no waiting queue. Overload returns HTTP 429 with
+`Retry-After: 60`, before creating background work or touching the claim ledger. Accepted work shares
+a 60-second deadline linked to shutdown. A durable, two-second claim of normalized repository and issue
+number prevents replay across deliveries and restarts, before answers, comments or notifications.
+The additive `v1_10_0.sql` migration runs during normal schema initialization. This is **at-most-once
+attempt processing**: a crash, refusal, timeout or ambiguous downstream failure after claiming is not
+automatically retried. An unavailable claim store fails closed. Notifications independently share
+6 starts/minute (`WebhookNotificationsPerMinute`), one running slot and a two-second delivery deadline,
+including issues whose answers were refused or skipped.
+
+Optional public and authenticated related-issue searches share one process-wide allowance: 8 HTTP GETs
+per rolling minute and 40/hour. Open and closed buckets each count separately. HTTP 403/429 applies the
+same bounded `Retry-After` cooldown to both modes; a denied search never enters authentication or HTTP.
+Policy checks and caller cancellation still precede optional search work.
+
+The new settings under `Cratis:Prompter:Protection` have these startup-validated bounds:
+
+| Setting | Default | Supported range |
+| --- | --- | --- |
+| `UserAdmissionsPerDay` | 5 | 0–100 |
+| `UserAdmissionCooldownSeconds` | 60 | 1–86400 |
+| `ActionConcurrency` | 2 | 1–8 |
+| `ActionPerMinute` | 12 | 0–120 |
+| `ActionChannelPerMinute` | 6 | 0–120 |
+| `ActionClicksPerUser` | 3 | 0–100 |
+| `ActionWindowSeconds` | 600 | 1–86400 |
+| `FeedbackConcurrency` | 2 | 1–8 |
+| `FeedbackPerMinute` | 30 | 0–120 |
+| `FeedbackWriteTimeoutMilliseconds` | 2000 | 100–2500 |
+| `WebhookConcurrency` | 2 | 1–8 |
+| `WebhookPerMinute` | 12 | 0–120 |
+| `WebhookNotificationsPerMinute` | 6 | 0–120 |
+
+Zero rate allowances deny the corresponding work; concurrency cannot be zero. For example,
+`Cratis__Prompter__Protection__FeedbackPerMinute=0` disables feedback processing.
+
+The application image always runs as UID/GID 1654. The workload pod uses that nonroot identity even
+without a GitHub App, disables service-account token automount, selects `RuntimeDefault` seccomp,
+drops all capabilities and denies privilege escalation. Its root filesystem is read-only, with a
+64Mi memory-backed writable `/tmp`. An optional App key remains a read-only, single-key projection;
+unrelated existing mounts are retained. The standalone CLI uses the same nonroot image identity.
 
 For isolated ledger specs, supply only the loopback port of a disposable, trust-authenticated
 Postgres instance in `PROMPTER_LEDGER_TEST_PORT` and run `./Specs/bin/Release/net10.0/Prompter.Specs`.
-Without that opt-in, the Postgres integration spec is explicitly skipped; all other protection specs
-are offline. Never point this probe at a live database: it creates and drops a random test schema.
+Without that opt-in, the spend and issue-delivery Postgres integration specs are explicitly skipped;
+all other protection specs are offline. Never point this probe at a live database: it creates and drops a random test schema.
 
 ### Provider resilience and task policies
 

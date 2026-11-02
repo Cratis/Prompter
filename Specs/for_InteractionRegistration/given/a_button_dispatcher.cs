@@ -69,6 +69,8 @@ public class a_button_dispatcher : for_ActionButtons.given.an_action_interaction
         services.AddSingleton(Work);
         Votes = new(config, Clock);
         services.AddSingleton(Votes);
+        services.AddSingleton<TimeProvider>(Clock);
+        services.AddSingleton<FeedbackProcessing>();
         services.AddSingleton(new ConversationContextReader(History, Clock));
         services.AddTransient(_ =>
         {

@@ -10,14 +10,14 @@ public class and_the_user_is_rate_limited : given.a_forward
 {
     void Establish()
     {
-        Options.Discord.RateLimit.MaxQuestions = 1;
+        Options.Protection.ActionClicksPerUser = 1;
     }
 
     async Task Because()
     {
-        await Forwards.Forward(Requested with { CustomId = AnswerActionButton.RequestCustomId(new(2, 5), "chronicle") }, TestContext.Current.CancellationToken);
+        await Run(Requested with { CustomId = AnswerActionButton.RequestCustomId(new(2, 5), "chronicle") });
         Channel.ClearReceivedCalls();
-        Reply = await Forwards.Forward(Requested, TestContext.Current.CancellationToken);
+        await Run(Requested);
     }
 
     [Fact] void should_refuse() => Reply.ShouldEqual(Options.Discord.RateLimitedReply);

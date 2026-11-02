@@ -21,6 +21,27 @@ public class IngestionOptions
     /// </summary>
     public IList<string> ExcludedPathSegments { get; set; } = ["client-snippets", "api-reference"];
 
+    /// <summary>Gets or sets the maximum sitemap response size in bytes.</summary>
+    public int MaxSitemapBytes { get; set; } = 8_388_608;
+
+    /// <summary>Gets or sets the maximum number of raw sitemap entries before filtering.</summary>
+    public int MaxSitemapEntries { get; set; } = 10_000;
+
+    /// <summary>Gets or sets the maximum number of pages accumulated across all sources.</summary>
+    public int MaxCrawlPages { get; set; } = 10_000;
+
+    /// <summary>Gets or sets the maximum aggregate UTF-8 Markdown bytes across all sources.</summary>
+    public long MaxCrawlBytes { get; set; } = 67_108_864;
+
+    /// <summary>Gets or sets the maximum chunks accumulated, including unchanged chunks.</summary>
+    public int MaxCrawlChunks { get; set; } = 100_000;
+
+    /// <summary>Gets whether crawl limits are within supported memory and response bounds.</summary>
+    public bool CrawlLimitsAreValid =>
+        MaxSitemapBytes is >= 65_536 and <= 52_428_800 && MaxSitemapEntries is >= 1 and <= 50_000 &&
+        MaxCrawlPages is >= 1 and <= 100_000 && MaxCrawlBytes is >= 1_048_576 and <= 268_435_456 &&
+        MaxCrawlChunks is >= 1 and <= 1_000_000;
+
     /// <summary>Gets or sets the estimated-token admission cap for an incremental pass.</summary>
     public long MaxIncrementalTokens { get; set; } = 4_000_000;
 

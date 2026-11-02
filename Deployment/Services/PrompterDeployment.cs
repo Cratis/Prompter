@@ -144,7 +144,7 @@ public sealed class PrompterDeployment
                             Labels = labels,
                             Annotations = { ["checksum/configuration"] = ConfigurationFingerprint.Create(secretData) },
                         },
-                        Spec = GitHubAppPod.Create(args.GitHubApp, container),
+                        Spec = WorkloadPod.Create(args.GitHubApp, container),
                     },
                 },
             },

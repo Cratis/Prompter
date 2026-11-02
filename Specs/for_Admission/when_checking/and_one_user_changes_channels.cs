@@ -11,9 +11,12 @@ public class and_one_user_changes_channels : given.an_admission
 
     void Establish()
     {
+        Options.Protection.UserAdmissionCooldownSeconds = 1;
+        Options.Protection.UserAdmissionsPerDay = 100;
         for (ulong channel = 1; channel <= 5; channel++)
         {
             Guard.TryEnter(new(123, channel, 1), "a question").Allowed.ShouldBeTrue();
+            Clock.Advance(TimeSpan.FromSeconds(1));
         }
     }
 

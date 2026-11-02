@@ -7,6 +7,9 @@ namespace Cratis.Prompter.Ingestion;
 
 internal static partial class IndexerLogging
 {
+    [LoggerMessage(LogLevel.Warning, "Crawl exceeded {LimitName} ({LimitValue}); leaving the existing corpus intact")]
+    internal static partial void CrawlLimitExceeded(this ILogger<Indexer> logger, string limitName, long limitValue);
+
     [LoggerMessage(LogLevel.Information, "Index run completed in {Duration} - {Pages} pages, {Embedded} chunks embedded, {Unchanged} unchanged, {Removed} removed")]
     internal static partial void IndexRunCompleted(this ILogger<Indexer> logger, int pages, int embedded, int unchanged, int removed, TimeSpan duration);
 

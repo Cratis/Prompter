@@ -202,6 +202,12 @@ test('workflow is dispatch-only, main-only and approval-gated', () => {
     for (const command of ['node --test Specs/EvalProduction/*.test.mjs', 'bash Deployment/scripts/run-eval-job.spec.sh', 'shellcheck Deployment/scripts/run-eval-job.sh Deployment/scripts/run-eval-job.spec.sh']) assert.ok(build.includes(command), command);
     assert.equal(build.split('.github/workflows/eval-production.yml').length - 1, 2);
 });
+test('the runtime image uses the workload nonroot identity without a root launcher', () => {
+    const runtime = readFileSync('Docker/Dockerfile', 'utf8').split(/^FROM /m).at(-1);
+    const users = [...runtime.matchAll(/^USER\s+(.+)$/gm)].map(match => match[1]);
+    assert.deepEqual(users, ['$APP_UID']);
+    assert.match(runtime, /^ENTRYPOINT \["dotnet", "Cratis\.Prompter\.dll"\]$/m);
+});
 test('the image carries the curated set', () => {
     assert.match(readFileSync('Docker/Dockerfile', 'utf8'), /^COPY Eval\/golden-questions\.yaml Eval\/$/m);
     assert.match(readFileSync('.dockerignore', 'utf8'), /^!Eval\/golden-questions\.yaml$/m);

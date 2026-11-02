@@ -24,7 +24,7 @@ public class and_the_lookup_is_unavailable : Specification
     {
         using var handler = new Response((HttpStatusCode)status, body);
         using var client = new HttpClient(handler) { BaseAddress = new("https://api.github.com/") };
-        var result = await new RelatedIssues(client, Configured(), TimeProvider.System).FindRelated("arc", "Arc broken", TestContext.Current.CancellationToken);
+        var result = await new RelatedIssues(client, Configured(), TimeProvider.System, new(TimeProvider.System)).FindRelated("arc", "Arc broken", TestContext.Current.CancellationToken);
         result.ShouldBeEmpty();
     }
 
@@ -33,7 +33,7 @@ public class and_the_lookup_is_unavailable : Specification
     {
         using var handler = new Response(HttpStatusCode.OK, "{}");
         using var client = new HttpClient(handler);
-        var result = await new RelatedIssues(client, Options.Create(new PrompterOptions()), TimeProvider.System).FindRelated("arc", "Arc broken", TestContext.Current.CancellationToken);
+        var result = await new RelatedIssues(client, Options.Create(new PrompterOptions()), TimeProvider.System, new(TimeProvider.System)).FindRelated("arc", "Arc broken", TestContext.Current.CancellationToken);
         result.ShouldBeEmpty();
         handler.Calls.ShouldEqual(0);
     }
@@ -46,7 +46,7 @@ public class and_the_lookup_is_unavailable : Specification
     {
         using var handler = new Response(HttpStatusCode.OK, "{}");
         using var client = new HttpClient(handler);
-        await new RelatedIssues(client, Configured(), TimeProvider.System).FindRelated(product, text, TestContext.Current.CancellationToken);
+        await new RelatedIssues(client, Configured(), TimeProvider.System, new(TimeProvider.System)).FindRelated(product, text, TestContext.Current.CancellationToken);
         handler.Calls.ShouldEqual(0);
     }
 
@@ -57,7 +57,7 @@ public class and_the_lookup_is_unavailable : Specification
         using var client = new HttpClient(handler);
         var options = Configured();
         options.Value.GitHub.Repositories["arc"] = "NotApproved";
-        await new RelatedIssues(client, options, TimeProvider.System).FindRelated("arc", "Arc broken", TestContext.Current.CancellationToken);
+        await new RelatedIssues(client, options, TimeProvider.System, new(TimeProvider.System)).FindRelated("arc", "Arc broken", TestContext.Current.CancellationToken);
         handler.Calls.ShouldEqual(0);
     }
 
@@ -70,7 +70,7 @@ public class and_the_lookup_is_unavailable : Specification
         using var client = new HttpClient(handler);
         using var cancellation = new CancellationTokenSource();
         await cancellation.CancelAsync();
-        await Assert.ThrowsAnyAsync<OperationCanceledException>(() => new RelatedIssues(client, Configured(), TimeProvider.System).FindRelated(product, "Arc broken", cancellation.Token));
+        await Assert.ThrowsAnyAsync<OperationCanceledException>(() => new RelatedIssues(client, Configured(), TimeProvider.System, new(TimeProvider.System)).FindRelated(product, "Arc broken", cancellation.Token));
         handler.Calls.ShouldEqual(0);
     }
 
@@ -79,7 +79,7 @@ public class and_the_lookup_is_unavailable : Specification
     {
         using var handler = new Response(HttpStatusCode.OK, new string(' ', 65537));
         using var client = new HttpClient(handler) { BaseAddress = new("https://api.github.com/") };
-        var result = await new RelatedIssues(client, Configured(), TimeProvider.System).FindRelated("arc", "Arc broken", TestContext.Current.CancellationToken);
+        var result = await new RelatedIssues(client, Configured(), TimeProvider.System, new(TimeProvider.System)).FindRelated("arc", "Arc broken", TestContext.Current.CancellationToken);
         result.ShouldBeEmpty();
     }
 

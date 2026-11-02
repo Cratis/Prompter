@@ -25,7 +25,7 @@ public class and_the_deadline_expires : Specification
         options.Value.GitHub.Token = "offline-placeholder";
         options.Value.GitHub.AllowTokenFallback = true;
         options.Value.GitHub.InstallationRepositories = ["Cratis/Arc"];
-        _result = await new RelatedIssues(_client, options, TimeProvider.System).FindRelated("arc", "Arc broken");
+        _result = await new RelatedIssues(_client, options, TimeProvider.System, new(TimeProvider.System)).FindRelated("arc", "Arc broken");
     }
 
     void Destroy()

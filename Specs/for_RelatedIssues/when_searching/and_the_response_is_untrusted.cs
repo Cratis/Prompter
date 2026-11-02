@@ -27,7 +27,8 @@ public class and_the_response_is_untrusted : Specification
         options.Value.GitHub.Token = "offline-placeholder";
         options.Value.GitHub.AllowTokenFallback = true;
         options.Value.GitHub.InstallationRepositories = ["Cratis/Arc"];
-        var search = new RelatedIssues(_client, options, new FixedClock());
+        var clock = new FixedClock();
+        var search = new RelatedIssues(_client, options, clock, new(clock));
         _result = await search.FindRelated("arc", "Arc repo:evil/other OR \"inject\" broken <@123456789012345678> token=hidden credential", CancellationToken.None);
     }
 

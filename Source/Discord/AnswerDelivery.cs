@@ -47,7 +47,7 @@ public class AnswerDelivery(RestClient rest, IOptions<PrompterOptions> options, 
         var actions = AnswerActions.For(options.Value.Discord, new(message.ChannelId, message.Id), reply);
         var thread = context.OwnMessage && ShouldThread(context.GuildId, context.InThread, message.ChannelId) ? await TryOpenThread(message, context.Question, cancellationToken) : null;
         var target = new Target(message, thread, actions, context.OwnMessage);
-        var chunks = DiscordAnswers.Split(reply.Answer);
+        var chunks = DiscordAnswers.Split(reply.Answer, options.Value);
         for (var index = 0; index < chunks.Count; index++)
         {
             await SendChunk(target, new(chunks[index], index == 0, index == chunks.Count - 1 ? reply.Answer : null), cancellationToken);

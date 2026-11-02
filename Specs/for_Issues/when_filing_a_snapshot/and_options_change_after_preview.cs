@@ -19,7 +19,7 @@ public class and_options_change_after_preview : Specification
         var draft = new IssueDraft("Title", "Body", IssueKind.Bug, "chronicle");
         _payload = IssueComposition.Payload(draft, "Chronicle", "https://discord.com/channels/2/3", options);
         using var client = new HttpClient(_wire) { BaseAddress = new("https://api.github.com/") };
-        var issues = new Issues(client, Options.Create(new PrompterOptions { GitHub = options }), Microsoft.Extensions.Logging.Abstractions.NullLogger<Issues>.Instance);
+        var issues = new Issues(client, Options.Create(new PrompterOptions { GitHub = options }), Microsoft.Extensions.Logging.Abstractions.NullLogger<Issues>.Instance, new(TimeProvider.System));
         options.Owner = "Changed";
         options.IssueLabel = "Changed";
         options.Repositories["chronicle"] = "Changed";

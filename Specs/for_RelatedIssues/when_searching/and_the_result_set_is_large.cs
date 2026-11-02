@@ -26,7 +26,7 @@ public class and_the_result_set_is_large : Specification
         options.Value.GitHub.AllowTokenFallback = true;
         options.Value.GitHub.InstallationRepositories = ["Cratis/Arc"];
         var text = string.Join(' ', Enumerable.Range(0, 12).Select(index => new string((char)('a' + index), 24)));
-        _result = await new RelatedIssues(_client, options, TimeProvider.System).FindRelated("arc", text + "\nprivate payload");
+        _result = await new RelatedIssues(_client, options, TimeProvider.System, new(TimeProvider.System)).FindRelated("arc", text + "\nprivate payload");
     }
 
     void Destroy()

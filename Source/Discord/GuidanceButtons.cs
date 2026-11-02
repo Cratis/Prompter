@@ -100,7 +100,7 @@ public class GuidanceButtons(
             var anchor = new HistoryMessage(Context.Interaction.Message.Id, Context.Channel.Id, Context.Interaction.Message.CreatedAt, Context.Interaction.Message.Content, IsBot: true, IsSelf: true, IsSystem: false);
             var request = (await reader.For(ConversationText.Sanitize(text), location, anchor, lease.Token)) with { Scope = scope, AllowClarification = true };
             var reply = await assistance.For(request, source, lease.Token);
-            await InteractionAnswers.Send(interaction, reply, AnswerActions.For(options.Value.Discord, new(Context.Channel.Id, 0), reply));
+            await InteractionAnswers.Send(interaction, reply, AnswerActions.For(options.Value.Discord, new(Context.Channel.Id, 0), reply), options.Value);
         }
         catch (WorkRefused)
         {
