@@ -219,9 +219,17 @@ public class Answers(
         if (generated is null)
         {
             logger.GenerationParseFailed(response.Text.Length, response.FinishReason?.ToString());
+            return generated;
         }
 
-        return generated;
+        var stripped = RetrievalMetaTalk.Strip(generated.Text);
+        if (stripped != generated.Text)
+        {
+            logger.RemovedRetrievalMetaTalk();
+            ProviderMetrics.Event("anthropic", "meta_talk");
+        }
+
+        return generated with { Text = stripped };
     }
 
     IReadOnlyList<string> Suggest(GeneratedAnswer generated, Question question) =>

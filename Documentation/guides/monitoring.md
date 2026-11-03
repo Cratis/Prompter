@@ -166,6 +166,11 @@ An answer that reaches its output-token limit counts as `prompter_events_total{s
 and logs a warning saying whether a shortened answer was recovered. A rising count means answers need more
 output headroom. Raise `Anthropic:Answer:MaxOutputTokens` and `Answering:MaxOutputTokens` together.
 
+An answer that still describes its own sources ("the excerpts mention...") despite the system prompt's rule
+against it counts as `prompter_events_total{source="anthropic",reason="meta_talk"}` and logs a warning. The
+offending sentence is removed deterministically before the answer is delivered, so a rising count is a prompt-
+adherence signal to investigate, not a user-facing defect by itself.
+
 ## Offline checks
 
 ```bash

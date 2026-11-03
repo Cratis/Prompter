@@ -18,4 +18,7 @@ internal static partial class AnswersLogging
 
     [LoggerMessage(LogLevel.Warning, "Answer generation reached the output limit of {MaxOutputTokens} tokens; output tokens {OutputTokens}, salvaged {Salvaged}")]
     internal static partial void AnswerReachedOutputLimit(this ILogger<Answers> logger, int maxOutputTokens, long? outputTokens, bool salvaged);
+
+    [LoggerMessage(LogLevel.Warning, "Removed retrieval meta-talk from a generated answer")]
+    internal static partial void RemovedRetrievalMetaTalk(this ILogger<Answers> logger);
 }

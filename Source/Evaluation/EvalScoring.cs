@@ -9,7 +9,7 @@ namespace Cratis.Prompter.Evaluation;
 public static class EvalScoring
 {
     /// <summary>Gets the terms no answer may contain: retrieval meta-talk such as "the excerpts do not say".</summary>
-    public static readonly IReadOnlyList<string> ForbiddenTerms = ["excerpt"];
+    public static readonly IReadOnlyList<string> ForbiddenTerms = RetrievalMetaTalk.Terms;
 
     /// <summary>Scores a case against a documentation answer.</summary>
     /// <param name="item">The expected behavior.</param>
@@ -25,19 +25,11 @@ public static class EvalScoring
         var refusal = answer.IsRefusal == !expectsAnswer;
         string[] misses =
         [
-            .. item.MustMention.Where(term => !Mentions(answer, term)),
-            .. ForbiddenTerms.Concat(item.MustNotMention).Where(term => Mentions(answer, term)).Select(term => $"!{term}")
+            .. item.MustMention.Where(term => !RetrievalMetaTalk.Mentions(answer.Text, term)),
+            .. ForbiddenTerms.Concat(item.MustNotMention).Where(term => RetrievalMetaTalk.Mentions(answer.Text, term)).Select(term => $"!{term}")
         ];
         var terms = misses.Length == 0;
         var passed = refusal && (!expectsAnswer || (citation && terms));
         return new(item.Id, expectsAnswer, retrieval, citation, refusal, terms, passed, cost, [.. answer.Citations.Select(page => page.Value)], TermMisses: misses);
     }
-
-    /// <summary>Checks a mention where hyphens and whitespace are equivalent, so "event-sourcing" mentions "event sourcing".</summary>
-    /// <param name="answer">The answer to search.</param>
-    /// <param name="term">The term to find, ignoring case.</param>
-    /// <returns><see langword="true"/> when the answer mentions the term.</returns>
-    static bool Mentions(Answer answer, string term) => Words(answer.Text).Contains(Words(term), StringComparison.OrdinalIgnoreCase);
-
-    static string Words(string text) => string.Join(' ', text.Split([' ', '-', '\t', '\r', '\n'], StringSplitOptions.RemoveEmptyEntries));
 }
