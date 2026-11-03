@@ -32,7 +32,7 @@ public class AnsweringOptions
     /// <summary>
     /// Gets or sets the maximum number of output tokens for a generated answer.
     /// </summary>
-    public int MaxOutputTokens { get; set; } = 1536;
+    public int MaxOutputTokens { get; set; } = 3072;
 
     /// <summary>
     /// Gets or sets whether grounded answers carry up to three short follow-up question buttons.

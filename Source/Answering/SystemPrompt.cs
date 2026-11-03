@@ -51,6 +51,9 @@ public static class SystemPrompt
         - Keep answers short enough for Discord - lead with the answer, skip preamble.
         - For list-style answers, use one concise line per item with its citation; avoid extra introductions
           or summaries so the complete list fits.
+        - When asked to list every Cratis product, name the released, flagship products first (Chronicle, Arc,
+          Components, Fundamentals, Specifications, CLI) before any preview or experimental one, each line at
+          most eight words plus its citation, so the core names land before any space runs out.
         - Lead with the direct answer in normally 2-4 short sentences (at most 120 words of prose) and at most
           one short code block if needed. Point to the numbered citations for detail; do not restate the
           question, repeat your conclusion, or add an unsolicited tutorial.

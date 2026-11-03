@@ -38,7 +38,7 @@ public class and_parse_failures_are_logged : given.a_grounded_answerer
     [Fact] void should_report_the_response_length() => Warnings.All(values => Equals(values.Single(pair => pair.Key == "ResponseLength").Value, Response.Length)).ShouldBeTrue();
     [Fact] void should_report_the_finish_reason() => Warnings.All(values => Equals(values.Single(pair => pair.Key == "FinishReason").Value, ChatFinishReason.Length.ToString())).ShouldBeTrue();
     [Fact] void should_log_that_the_output_limit_was_reached() => OutputLimit.Select(pair => pair.Key).ShouldEqual(["MaxOutputTokens", "OutputTokens", "Salvaged", "{OriginalFormat}"]);
-    [Fact] void should_log_the_output_limit() => OutputLimit.Single(pair => pair.Key == "MaxOutputTokens").Value.ShouldEqual(1536);
+    [Fact] void should_log_the_output_limit() => OutputLimit.Single(pair => pair.Key == "MaxOutputTokens").Value.ShouldEqual(3072);
     [Fact] void should_log_that_nothing_was_salvaged() => OutputLimit.Single(pair => pair.Key == "Salvaged").Value.ShouldEqual(false);
     [Fact] void should_log_the_single_parse_failure_and_output_limit_only() => Logs(LogLevel.Warning).Length.ShouldEqual(2);
     [Fact] void should_log_only_the_top_qualified_page_and_similarity_at_information() => Information.Select(pair => pair.Key).ShouldEqual(["PageUrl", "Similarity", "{OriginalFormat}"]);
