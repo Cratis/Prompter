@@ -30,9 +30,11 @@ public class AnsweringOptions
     public bool SimilarityIsValid => double.IsFinite(MinSemanticSimilarity) && MinSemanticSimilarity is > 0 and <= 1;
 
     /// <summary>
-    /// Gets or sets the maximum number of output tokens for a generated answer.
+    /// Gets or sets the maximum number of output tokens for a generated answer. Answer generation dispatches once
+    /// per question (no retry on a truncated reply), so this needs headroom for a fully-cited, list-style answer
+    /// to complete without hitting the cap mid-text.
     /// </summary>
-    public int MaxOutputTokens { get; set; } = 1536;
+    public int MaxOutputTokens { get; set; } = 3072;
 
     /// <summary>
     /// Gets or sets whether grounded answers carry up to three short follow-up question buttons.

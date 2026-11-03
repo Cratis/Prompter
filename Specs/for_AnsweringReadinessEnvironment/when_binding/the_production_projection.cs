@@ -46,10 +46,10 @@ public class the_production_projection : Specification
     [Fact] void should_cover_every_chat_task_in_the_deployment() => ChatPricing.Covered(_defaults).ShouldBeTrue();
     [Fact] void should_reserve_the_worst_haiku_cache_write_rate() => _defaults.Protection.AnthropicAnswer.InputUsdPerMillion.ShouldEqual(0.2m);
     [Fact] void should_price_the_answer_model_without_any_deployment_settings() => new PrompterOptions().Protection.AnthropicAnswer.Covers(new PrompterOptions().Anthropic.Answer.Model!, true).ShouldBeTrue();
-    [Fact] void should_bind_the_short_answer_output_cap() => _defaults.Anthropic.Answer.MaxOutputTokens.ShouldEqual(1536);
-    [Fact] void should_match_the_answer_generation_cap() => _defaults.Answering.MaxOutputTokens.ShouldEqual(1536);
-    [Fact] void should_bound_default_answer_generation() => new PrompterOptions().Answering.MaxOutputTokens.ShouldEqual(1536);
-    [Fact] void should_bound_the_default_answer_task() => new PrompterOptions().Anthropic.Answer.MaxOutputTokens.ShouldEqual(1536);
+    [Fact] void should_bind_the_short_answer_output_cap() => _defaults.Anthropic.Answer.MaxOutputTokens.ShouldEqual(3072);
+    [Fact] void should_match_the_answer_generation_cap() => _defaults.Answering.MaxOutputTokens.ShouldEqual(3072);
+    [Fact] void should_bound_default_answer_generation() => new PrompterOptions().Answering.MaxOutputTokens.ShouldEqual(3072);
+    [Fact] void should_bound_the_default_answer_task() => new PrompterOptions().Anthropic.Answer.MaxOutputTokens.ShouldEqual(3072);
     [Fact] void should_price_the_verified_embedding_model() => _defaults.Protection.Voyage.Covers(_defaults.Voyage.Model, false).ShouldBeTrue();
     [Fact] void should_bind_the_job_index_run_ceiling() => _defaults.Ingestion.MaxRunDollars.ShouldEqual(0.25m);
     [Fact] void should_bind_the_job_index_daily_ceiling() => _defaults.Ingestion.MaxDailyDollars.ShouldEqual(0.50m);
