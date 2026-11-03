@@ -12,6 +12,18 @@ public class ProviderBudget
     /// <summary>Gets or sets the upper input dollar price per million tokens.</summary>
     public decimal InputUsdPerMillion { get; set; }
 
+    /// <summary>
+    /// Gets or sets the dollar price per million cache-write input tokens. Zero means not priced, so cache-write usage stays unsettled.
+    /// It is valid only when it does not exceed <see cref="InputUsdPerMillion"/>, which must be the highest applicable input price.
+    /// </summary>
+    public decimal CacheWriteUsdPerMillion { get; set; }
+
+    /// <summary>
+    /// Gets or sets the dollar price per million cache-read input tokens. Zero means cache reads are priced at <see cref="InputUsdPerMillion"/>.
+    /// It is valid only when it does not exceed <see cref="InputUsdPerMillion"/>.
+    /// </summary>
+    public decimal CacheReadUsdPerMillion { get; set; }
+
     /// <summary>Gets or sets the upper output dollar price per million tokens.</summary>
     public decimal OutputUsdPerMillion { get; set; }
 

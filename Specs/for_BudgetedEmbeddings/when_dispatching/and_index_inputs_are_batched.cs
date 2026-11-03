@@ -31,7 +31,7 @@ public class and_index_inputs_are_batched : for_PaidWork.given.a_paid_work
         _store.Reserve(Arg.Any<ProviderDispatch>(), Arg.Any<Guid?>(), Arg.Any<decimal>(), Arg.Any<CancellationToken>()).Returns(true);
         var config = Microsoft.Extensions.Options.Options.Create(Options);
         _budgeted = new(_transport, Ledger, config);
-        _embeddings = new(_budgeted, config, NullLogger<ResilientEmbeddingGenerator>.Instance, new ProviderAccounting(_store, config));
+        _embeddings = new(_budgeted, config, NullLogger<ResilientEmbeddingGenerator>.Instance, new ProviderAccounting(_store, config, NullLogger<ProviderAccounting>.Instance));
     }
 
     [Theory]

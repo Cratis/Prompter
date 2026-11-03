@@ -12,7 +12,6 @@ public sealed class ProviderAttemptScope : IDisposable
     readonly ProviderAttemptScope? _previous;
     readonly WorkLease? _lease;
     decimal _upper;
-    bool _prepaid;
     int _granted;
     int _consumed;
     int _completed;
@@ -38,6 +37,9 @@ public sealed class ProviderAttemptScope : IDisposable
 
     /// <summary>Gets the currently prepaid parent, if any.</summary>
     internal Guid? Parent => _lease?.Reservation;
+
+    /// <summary>Gets whether the attempt was funded from the parent lease's reservation.</summary>
+    internal bool Prepaid { get; private set; }
 
     /// <summary>Enters before awaiting reservation, so the granted object remains visible to inner decorators.</summary>
     /// <param name="dispatch">The exact dispatch metadata.</param>
@@ -65,7 +67,7 @@ public sealed class ProviderAttemptScope : IDisposable
     internal void Grant(ProviderAttemptFunding funding)
     {
         _upper = funding.Upper;
-        _prepaid = funding.Prepaid;
+        Prepaid = funding.Prepaid;
         Volatile.Write(ref _granted, 1);
     }
 
@@ -80,7 +82,7 @@ public sealed class ProviderAttemptScope : IDisposable
             throw new WorkRefused();
         }
 
-        if (_prepaid && _lease is not null)
+        if (Prepaid && _lease is not null)
         {
             if (request.Provider == "anthropic")
             {
@@ -112,7 +114,7 @@ public sealed class ProviderAttemptScope : IDisposable
         }
     }
 
-    bool CanComplete() => _prepaid && _consumed == 1 && Interlocked.Exchange(ref _completed, 1) == 0;
+    bool CanComplete() => Prepaid && _consumed == 1 && Interlocked.Exchange(ref _completed, 1) == 0;
 
     void ValidateIdentity(ProviderAttemptRequest request)
     {

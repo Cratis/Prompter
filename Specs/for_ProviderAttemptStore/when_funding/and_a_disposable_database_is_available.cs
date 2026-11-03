@@ -6,6 +6,7 @@ using Cratis.Prompter.Protection;
 using Cratis.Prompter.Specs.Fakes;
 using Cratis.Prompter.Telemetry;
 using Microsoft.Extensions.AI;
+using Microsoft.Extensions.Logging.Abstractions;
 using Microsoft.Extensions.Options;
 using Npgsql;
 
@@ -133,7 +134,7 @@ public class and_a_disposable_database_is_available : Specification
         budget.Model = _options.Value.Voyage.Model;
         budget.InputUsdPerMillion = 1;
         budget.MaxInputTokens = 32_000;
-        var accounting = new ProviderAccounting(_store, _options);
+        var accounting = new ProviderAccounting(_store, _options, NullLogger<ProviderAccounting>.Instance);
         var dispatch = Dispatch() with { Provider = "voyage", Task = "index", Model = budget.Model, MaxInputTokens = 40_128, MaxOutputTokens = 0 };
         using var scope = ProviderAttemptScope.Enter(dispatch, 2);
         var before = await Today();
