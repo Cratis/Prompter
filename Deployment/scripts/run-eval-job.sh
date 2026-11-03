@@ -143,8 +143,11 @@ if [[ "${1:-}" == '--extract-report' && $# -eq 1 ]]; then
         def rate: type == "number" and . >= 0 and . <= 1;
         def exact($want): (keys | sort) == ($want | sort);
         def page: type == "string" and length <= 300 and test("\\Ahttps://[A-Za-z0-9.-]+(/[A-Za-z0-9._~%/#-]*)?\\z");
+        def term: type == "string" and test("\\A!?[A-Za-z0-9][A-Za-z0-9 .+#_-]{0,39}\\z");
         def result: type == "object" and
-            exact(["Id", "ExpectsAnswer", "RetrievalHit", "CitationHit", "RefusalCorrect", "MustMentionHit", "Passed", "Cost", "CitedPages", "Reason"]) and
+            (exact(["Id", "ExpectsAnswer", "RetrievalHit", "CitationHit", "RefusalCorrect", "MustMentionHit", "Passed", "Cost", "CitedPages", "Reason"]) or
+                exact(["Id", "ExpectsAnswer", "RetrievalHit", "CitationHit", "RefusalCorrect", "MustMentionHit", "Passed", "Cost", "CitedPages", "Reason", "TermMisses"])) and
+            (.TermMisses == null or (.TermMisses | type == "array" and length <= 10 and all(.[]; term))) and
             (.Id | type == "string" and test("\\A[a-z]{2,12}-[0-9]{3}\\z")) and
             ([.ExpectsAnswer, .RetrievalHit, .CitationHit, .RefusalCorrect, .MustMentionHit, .Passed] | all(.[]; type == "boolean")) and
             (.Cost | type == "number" and . >= 0) and
@@ -175,9 +178,9 @@ if [[ "${1:-}" == '--render-markdown' && $# -eq 1 ]]; then
         "| --- | --- | --- | --- | --- | --- | --- |",
         "| \(.Results | length) | \(.PassRate | pct) | \(.RetrievalHitRate | pct) | \(.RefusalAccuracy | pct) | $\((.TotalCost * 10000 | round) / 10000) | \(.CostCapStopped | yn) | \(if .ExitCode == 0 then "PASS" else "FAIL" end) |",
         "",
-        "| Case | Passed | Retrieval | Citation | Refusal | Must mention | Cost |",
-        "| --- | --- | --- | --- | --- | --- | --- |",
-        (.Results[] | "| \(.Id) | \(.Passed | yn) | \(.RetrievalHit | yn) | \(.CitationHit | yn) | \(.RefusalCorrect | yn) | \(.MustMentionHit | yn) | $\((.Cost * 10000 | round) / 10000) |")'
+        "| Case | Passed | Retrieval | Citation | Refusal | Must mention | Term misses | Cost |",
+        "| --- | --- | --- | --- | --- | --- | --- | --- |",
+        (.Results[] | "| \(.Id) | \(.Passed | yn) | \(.RetrievalHit | yn) | \(.CitationHit | yn) | \(.RefusalCorrect | yn) | \(.MustMentionHit | yn) | \((.TermMisses // []) | join(", ")) | $\((.Cost * 10000 | round) / 10000) |")'
     exit 0
 fi
 

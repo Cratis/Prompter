@@ -23,8 +23,14 @@ public static class EvalScoring
         var citation = answer.Citations.Any(page => expected.Contains(EvalPages.Normalize(page.Value)));
         var expectsAnswer = item.Expected == "answer";
         var refusal = answer.IsRefusal == !expectsAnswer;
-        var terms = item.MustMention.All(term => Mentions(answer, term)) && !ForbiddenTerms.Concat(item.MustNotMention).Any(term => Mentions(answer, term));
-        return new(item.Id, expectsAnswer, retrieval, citation, refusal, terms, refusal && (!expectsAnswer || (citation && terms)), cost, [.. answer.Citations.Select(page => page.Value)]);
+        string[] misses =
+        [
+            .. item.MustMention.Where(term => !Mentions(answer, term)),
+            .. ForbiddenTerms.Concat(item.MustNotMention).Where(term => Mentions(answer, term)).Select(term => $"!{term}")
+        ];
+        var terms = misses.Length == 0;
+        var passed = refusal && (!expectsAnswer || (citation && terms));
+        return new(item.Id, expectsAnswer, retrieval, citation, refusal, terms, passed, cost, [.. answer.Citations.Select(page => page.Value)], TermMisses: misses);
     }
 
     /// <summary>Checks a mention where hyphens and whitespace are equivalent, so "event-sourcing" mentions "event sourcing".</summary>
