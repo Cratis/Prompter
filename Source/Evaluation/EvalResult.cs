@@ -14,5 +14,7 @@ namespace Cratis.Prompter.Evaluation;
 /// <param name="Cost">Known spend plus conservative unknown exposure.</param>
 /// <param name="CitedPages">Citations, not generated answer text.</param>
 /// <param name="Reason">A fixed failure reason, if applicable.</param>
+/// <param name="TermMisses">The case's own configured terms that failed: a required term the answer lacks, or a forbidden term prefixed with an exclamation mark that it contains. Never generated text.</param>
 public sealed record EvalResult(string Id, bool ExpectsAnswer, bool RetrievalHit, bool CitationHit,
-    bool RefusalCorrect, bool MustMentionHit, bool Passed, decimal Cost, IReadOnlyList<string> CitedPages, string? Reason = null);
+    bool RefusalCorrect, bool MustMentionHit, bool Passed, decimal Cost, IReadOnlyList<string> CitedPages, string? Reason = null,
+    IReadOnlyList<string>? TermMisses = null);

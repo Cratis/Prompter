@@ -144,6 +144,18 @@ test('extracts one valid report among noise', () => {
     assert.equal(outcome.status, 0, outcome.stderr);
     assert.deepEqual(JSON.parse(outcome.stdout), value);
 });
+test('a report with term misses is accepted and rendered', () => {
+    const value = report({}, [result({ Passed: false, MustMentionHit: false, TermMisses: ['Components', '!excerpt', 'event sourcing'] })]);
+    const outcome = extract(line(value));
+    assert.equal(outcome.status, 0, outcome.stderr);
+    assert.deepEqual(JSON.parse(outcome.stdout), value);
+    const rendered = run(['--render-markdown'], outcome.stdout);
+    assert.equal(rendered.status, 0, rendered.stderr);
+    assert.ok(rendered.stdout.includes('| Components, !excerpt, event sourcing |'));
+});
+test('null term misses are accepted', () => {
+    assert.equal(extract(line(report({}, [result({ TermMisses: null })]))).status, 0);
+});
 test('a refusal-by-protection reason is accepted', () => {
     assert.equal(extract(line(report({}, [result({ Reason: 'refused by protection', CitedPages: [] })]))).status, 0);
 });
@@ -157,6 +169,11 @@ for (const [label, logs] of [
     ['an id with spaces', line(report({}, [result({ Id: 'arc 001' })]))],
     ['an id with a newline suffix', line(report({}, [result({ Id: 'arc-001\nx' })]))],
     ['a free-text reason', line(report({}, [result({ Reason: 'the model said something' })]))],
+    ['a sentence-length term miss', line(report({}, [result({ TermMisses: ['the model said something long enough to be a sentence'] })]))],
+    ['a term miss with markup', line(report({}, [result({ TermMisses: ['a|b'] })]))],
+    ['a term miss with a newline', line(report({}, [result({ TermMisses: ['Arc\nmodel said'] })]))],
+    ['eleven term misses', line(report({}, [result({ TermMisses: Array(11).fill('Arc') })]))],
+    ['a non-array term miss', line(report({}, [result({ TermMisses: 'Arc' })]))],
     ['a javascript page', line(report({}, [result({ CitedPages: ['javascript:x'] })]))],
     ['21 pages', line(report({}, [result({ CitedPages: Array(21).fill('https://cratis.io/a') })]))],
     ['a huge cost', line(report({ TotalCost: 99 }))],
