@@ -30,7 +30,9 @@ internal static class UsagePrice
         var input = usage.InputTokenCount.Value;
         var write = usage.AdditionalCounts is not null && usage.AdditionalCounts.TryGetValue(CacheCreation, out var created) ? created : 0;
         var read = usage.CachedInputTokenCount ?? 0;
-        if (write < 0 || read < 0 || write + read > input)
+
+        // Compared without adding, so provider-reported counts near long.MaxValue cannot overflow past the check.
+        if (write < 0 || read < 0 || write > input || read > input - write)
         {
             return (null, SettlementRejection.CacheCountsInvalid);
         }
