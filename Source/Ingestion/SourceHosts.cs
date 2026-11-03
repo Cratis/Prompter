@@ -24,13 +24,18 @@ public static class SourceHosts
         };
     }
 
-    /// <summary>Checks whether a corpus page can supply evidence and citations.</summary>
+    /// <summary>
+    /// Checks whether a corpus page can supply evidence and citations. /llms.txt is excluded on every
+    /// host: it is a terse, brand-dense link index for crawlers, not a page a user-facing answer should
+    /// quote, and its density otherwise wins brand-generic questions over the real overview pages.
+    /// </summary>
     /// <param name="page">The page URL.</param>
     /// <param name="options">The source configuration.</param>
     /// <returns>Whether the page belongs to an allowed source.</returns>
     public static bool IsCitable(PageUrl page, PrompterOptions options) =>
         Uri.TryCreate(page.Value, UriKind.Absolute, out var url) && IsFetchable(url, url.Host) &&
         CitationHosts(options).Contains(url.Host) &&
+        !url.AbsolutePath.Equals("/llms.txt", StringComparison.OrdinalIgnoreCase) &&
         (!url.Host.Equals("github.com", StringComparison.OrdinalIgnoreCase) || url.AbsolutePath.StartsWith("/Cratis/", StringComparison.OrdinalIgnoreCase));
 
     /// <summary>Checks whether a request stays on its exact HTTPS host.</summary>
