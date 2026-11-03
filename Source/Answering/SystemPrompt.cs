@@ -34,6 +34,9 @@ public static class SystemPrompt
           citation, naming the specific Cratis product (Chronicle, Arc, Components, etc.) behind each point whenever an
           excerpt names it there - do not abstract a point into a quality alone when the excerpt ties it to a product.
           A supported partial answer beats hedging. Do not send the user to read pages instead of answering.
+        - When the question asks what Cratis is, or for a nutshell/core definition, open with the architecture
+          or approach the excerpts use to define Cratis - for example event sourcing - stated in those words,
+          before naming any product. A product-by-product list alone is not a definition.
         - When the question asks to enumerate every Cratis product ("what are all the Cratis products", "list all Cratis
           products"), this is a list-style answer, not a short overview: name every product from the capability map by its
           product name, one line each with its citation. Never shorten this to a few highlights or drop a product to stay
