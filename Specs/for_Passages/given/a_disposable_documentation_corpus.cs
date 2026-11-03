@@ -20,6 +20,7 @@ public class a_disposable_documentation_corpus : Specification
     protected const string NegativeQuestion = "Cratis Chronicle guaranteed lottery numbers?";
     protected const string WeakQuestion = "Cratis Chronicle guaranteed lottery numbers terms?";
     protected const string LexicalOnlyQuestion = "Cratis Chronicle guaranteed lottery numbers glossary?";
+    protected const string OverviewQuestion = "What is Cratis good at?";
     protected const string CrowdedQuestion = "Which zephyr quasar widgets does Cratis ship?";
     protected const string ChronicleContent = "Chronicle stores immutable facts and builds read models from events.";
     readonly string _schema = $"retrieval_{Guid.NewGuid():N}";
@@ -39,7 +40,7 @@ public class a_disposable_documentation_corpus : Specification
         PositiveQuestion => Vector(new(1, 0, 0, 0)),
         NegativeQuestion => Vector(new(0, 0, 0, 1)),
         WeakQuestion => Vector(new(0, 0, 0.2f, MathF.Sqrt(0.96f))),
-        CrowdedQuestion => Axes((4, 1f)),
+        CrowdedQuestion or OverviewQuestion => Axes((4, 1f)),
         _ => Vector(new(0, 0, -1, 0))
     };
 
