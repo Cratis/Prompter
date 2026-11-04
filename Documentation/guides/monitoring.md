@@ -10,6 +10,11 @@ GenAI prompt/completion capture. Labels are fixed allowlists: provider, model (u
 user/channel identifiers, operation UUIDs, URLs, exception text, credentials, or provider response bodies
 are recorded. Existing logs and interaction retention are separate from this export.
 
+For a first setup, start with [Enable private metrics](#enable-private-metrics), then
+[Dashboard and alert activation](#dashboard-and-alert-activation). [Scheduled reindex failure delivery](#scheduled-reindex-failure-delivery)
+uses a separate receiver. For an incident, go directly to [Missing telemetry](#missing-telemetry),
+[Index failure](#index-failure), [Spend and protection](#spend-and-protection), or [Provider errors](#provider-errors).
+
 ## Enable private metrics
 
 Exporting defaults **off**. Keep it disabled until the collector, network path, and end-to-end delivery
@@ -57,6 +62,9 @@ normal Prometheus name translation (`.` to `_`, counter `_total`, histogram `_se
 It covers attempts, logical operations, latency, tokens, usage knowledge, estimated cost, reserved spend,
 protection denials, retries, quota fallback/reset, and index outcome/freshness.
 
+Operator acceptance must confirm translated metric names, query evaluation, firing/resolution and actual
+notification receipt in a nonproduction test environment before activation.
+
 Core currently disables Prometheus Alertmanager and the push gateway. This repository therefore ships
 Grafana-managed alert provisioning, **paused by default**, not an unconfigured notification service.
 The definitions are in
@@ -74,16 +82,25 @@ and testing that route, render with `--enable` to unpause the rules. Do not put 
 in this repository. The Prompter deployment cannot modify Core Grafana. Importing the dashboard alone
 does not activate alerts. With no destination configured, leave the rules paused.
 
-Defaults: telemetry absent/stale for five minutes; failed/cancelled pipeline after latest success for two
-minutes; no success in more than 30 hours for 15 minutes; 70% and 90% of a UTC-day exposure ceiling for
-five minutes (warning and critical respectively); hard cap reached (100%) with no pending delay.
+These are initial operational thresholds, not measured percentiles. Review them against traffic.
 Spend tiers cover the interactive total, each provider, and the separate indexing ceiling. Incremental
 index tiers apply only when no confirmed full run was admitted that UTC day. On a confirmed full day,
 exposure at or above the incremental ceiling raises a warning; exposure above the admitted full-run
-ceiling remains critical. These are initial operational thresholds, not measured percentiles. Other defaults:
-provider errors above 20% over ten minutes with at least five attempts for five minutes; at least three
-429s over ten minutes for two minutes; any auth/quota/exhausted-overload event for one minute; ten
-admission/protection denials over ten minutes for five minutes. Review these thresholds against traffic.
+ceiling remains critical.
+
+| Condition | Required duration |
+|---|---|
+| Telemetry absent/stale | five minutes |
+| Failed/cancelled pipeline after latest success | two minutes |
+| No success in more than 30 hours | 15 minutes |
+| 70% of a UTC-day exposure ceiling (warning) | five minutes |
+| 90% of a UTC-day exposure ceiling (critical) | five minutes |
+| Hard cap reached (100%) | no pending delay |
+| Provider errors above 20% over ten minutes with at least five attempts | five minutes |
+| At least three 429s over ten minutes | two minutes |
+| Any auth/quota/exhausted-overload event | one minute |
+| Ten admission/protection denials over ten minutes | five minutes |
+
 Expected empty provider series do not alert. The dedicated missing-telemetry rule handles absent index
 snapshots; Grafana datasource execution failures alert rather than silently resolving.
 
@@ -179,5 +196,4 @@ node --check .github/scripts/notify-reindex-failure.mjs
 ```
 
 These validate artifact structure, paused activation, and mocked notification delivery, not live Grafana
-or PromQL evaluation. Operator acceptance must confirm translated metric names, query evaluation,
-firing/resolution and actual notification receipt in a nonproduction test environment before activation.
+or PromQL evaluation. They do not replace the nonproduction operator acceptance required before activation.

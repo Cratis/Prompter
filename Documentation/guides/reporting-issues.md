@@ -3,28 +3,28 @@ title: Report something with Prompter
 description: Turn a Discord conversation into a GitHub issue on the right Cratis repository, without leaving the chat.
 ---
 
-Good bug reports die in chat all the time. Someone hits a real problem at midnight, describes it perfectly in
-a thread, gets a workaround, and the tracker never hears about it. The description was never the hard part -
-the transcription was.
-
-Prompter closes that gap. Describe the problem where you already are, and it writes the issue for you.
+Use `/issue` to draft a GitHub issue from Discord, then review it before deciding whether to file it.
+Prompter prepares the report; you decide whether its destination and contents are right.
 
 ## Filing something
 
-Use the `/issue` command with a description of what happened:
+Where issue filing is enabled, use the `/issue` command with a description of what happened. The preview
+is private, but the issue you approve is public. Keep personal information and secrets out of your
+description, and review the draft before confirming.
 
 ```text
 /issue The projection stops updating after I rename a property. It worked in 16.0.4.
 ```
 
 Prompter drafts the issue - a title, a body, what kind of work it is, and which repository it belongs in -
-and shows it back to you privately. Nobody else sees the draft. You get three choices:
+and shows it back to you privately. Nobody else sees the draft. Review the destination and every field
+before choosing; you have fifteen minutes:
 
 - **Create issue** - it is filed, and you get the link.
 - **Cancel** - nothing happens, and the draft is discarded.
-- Neither - the draft expires by itself after fifteen minutes.
+- Neither - the draft expires by itself.
 
-Nothing reaches GitHub until you press the button. That is deliberate: filing is always a person's decision,
+Nothing reaches GitHub until you choose **Create issue**. That is deliberate: filing is always a person's decision,
 never an inference from something you typed.
 
 ## What Prompter fills in
@@ -35,7 +35,8 @@ never written into the issue, because the thread already knows who was there and
 need to.
 
 It also picks the repository from what you described. When it cannot tell which product you mean, it says so
-in the preview rather than guessing quietly, so you can correct it before anything is public.
+in the preview rather than guessing quietly. Confirm only if the destination and every field are right for
+a public issue.
 
 ## Anything worth tracking
 
@@ -43,8 +44,9 @@ in the preview rather than guessing quietly, so you can correct it before anythi
 documentation that does not exist or cannot be found. Prompter works out which it is and labels it
 accordingly.
 
-If something similar is already open, Prompter shows it in the preview - commenting on the existing issue is
-usually more useful than opening a second one.
+Prompter may send suggestions for possibly related open issues in a separate private message. These are
+not confirmed duplicates and are not included in the posted issue. Review them before deciding whether
+to open a new issue or comment on an existing one.
 
 ## When Prompter answers your issue
 

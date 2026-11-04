@@ -1,6 +1,6 @@
 ---
 title: Run Prompter locally
-description: Bring the bot up on your own machine, index the documentation, and ask questions from the terminal or a test Discord server.
+description: Bring the bot up on your own machine, index the documentation, and ask questions from the terminal or the Cratis Discord server.
 ---
 
 Run the full pipeline - ingestion, retrieval, answering, and optionally the Discord bot - on your own machine.
@@ -11,7 +11,14 @@ Run the full pipeline - ingestion, retrieval, answering, and optionally the Disc
 - Docker (for Postgres with pgvector)
 - A [Voyage AI](https://www.voyageai.com) API key (free tier, required for indexing)
 - An [Anthropic](https://www.anthropic.com) API key (required for answering)
-- Optional: a Discord bot token for a private test server (only for running the bot itself)
+- Optional: a Discord bot token for the Cratis server (only for running the bot itself)
+
+Before starting an answer-enabled host, explicitly set the scalar
+`Cratis__Prompter__Protection__ConfiguredAllowedGuilds=1182595891576717413`. This is required even when
+using only the terminal: the bot and the ask, index, and eval commands share the startup check. The
+migrate command is separate. Only the Cratis guild is allowed, with no local or Development exemption.
+If answering is disabled, the guild list may be empty, but it cannot name a different guild, and
+admission remains disabled.
 
 ## Bring up the database
 
@@ -56,15 +63,14 @@ retrieval quality. The command exits non-zero when Prompter refuses, so it works
 
 ## Run the Discord bot
 
-Create a bot application on a private test server first - follow
-[Set up the Discord app](discord-setup.md).
-Then:
+Follow [Set up the Discord app](discord-setup.md) for the application and Cratis guild configuration.
+The same guild restriction applies to this locally hosted bot. Then:
 
 ```bash
 export Cratis__Prompter__Discord__Token=<your-test-bot-token>
 dotnet run
 ```
 
-The bot connects outward to Discord - no ports, tunnels, or public IP needed - and answers on your test
-server exactly as it would in production. See [Configuration](../reference/configuration.md) for every
-setting.
+The bot connects outward to Discord - no ports, tunnels, or public IP needed - and answers only in the
+allowed Cratis guild. Local hosting does not enable a separate private test guild. See
+[Configuration](../reference/configuration.md) for every setting.
