@@ -191,23 +191,32 @@ if [[ "${1:-}" == '--render-markdown' && $# -eq 1 ]]; then
         "",
         "| Case | Passed | Retrieval | Citation | Refusal | Must mention | Term misses | Cost |",
         "| --- | --- | --- | --- | --- | --- | --- | --- |",
-        (.Results[] | "| \(.Id) | \(.Passed | yn) | \(.RetrievalHit | yn) | \(.CitationHit | yn) | \(.RefusalCorrect | yn) | \(.MustMentionHit | yn) | \((.TermMisses // []) | join(", ")) | $\((.Cost * 10000 | round) / 10000) |"),
-        # Answer text of failing cases only, after the table so it cannot break it. The fence is longer
-        # than any backtick run in the text, so the text cannot close it.
-        (.Results[] | select((.Passed | not) and .AnswerText != null) |
-            ([.AnswerText | match("`+"; "g").length] | max // 0) as $run |
-            ("`" * ([3, $run + 1] | max)) as $fence |
+        (.Results[] | "| \(.Id) | \(.Passed | yn) | \(.RetrievalHit | yn) | \(.CitationHit | yn) | \(.RefusalCorrect | yn) | \(.MustMentionHit | yn) | \((.TermMisses // []) | join(", ")) | $\((.Cost * 10000 | round) / 10000) |")'
+    exit 0
+fi
+
+# Answer text is untrusted model output. It goes only to files (report.md and the step summary), never to
+# stdout, where a line such as "::add-mask::" would run as a workflow command. Control characters are
+# dropped by code point (no regex), and the fence is longer than any backtick run, so the text cannot close it.
+if [[ "${1:-}" == '--render-answers' && $# -eq 1 ]]; then
+    jq -r '
+        def clean: explode | map(select(. == 9 or . == 10 or (. >= 32 and . != 127 and (. < 128 or . > 159)))) | implode;
+        def longest_backtick_run: reduce explode[] as $c ({run: 0, max: 0};
+            if $c == 96 then .run += 1 | .max = ([.max, .run] | max) else .run = 0 end) | .max;
+        .Results[] | select((.Passed | not) and .AnswerText != null) |
+            (.AnswerText | clean) as $text |
+            ("`" * ([3, ($text | longest_backtick_run) + 1] | max)) as $fence |
             "",
             "### \(.Id) answer (category: \(.Category // "unknown"), refusal: \(if .IsRefusal then "yes" else "no" end))",
             "",
             $fence,
-            .AnswerText,
-            $fence)'
+            $text,
+            $fence'
     exit 0
 fi
 
 if [[ $# -ne 0 ]]; then
-    echo "Usage: $0 [--print-manifest <image> <job-name> | --extract-report | --render-markdown]" >&2
+    echo "Usage: $0 [--print-manifest <image> <job-name> | --extract-report | --render-markdown | --render-answers]" >&2
     exit 1
 fi
 : "${KUBECONFIG:?KUBECONFIG must be set}"
@@ -267,10 +276,11 @@ if report="$("$0" --extract-report <<<"$logs" 2>/dev/null)"; then
     mkdir -p "$report_dir"
     printf '%s\n' "$report" > "$report_dir/report.json"
     markdown="$("$0" --render-markdown <<<"$report")"
-    printf '%s\n' "$markdown" > "$report_dir/report.md"
+    answers="$("$0" --render-answers <<<"$report")"
+    printf '%s\n%s\n' "$markdown" "$answers" > "$report_dir/report.md"
     printf '%s\n' "$markdown"
     if [[ -n "${GITHUB_STEP_SUMMARY:-}" ]]; then
-        printf '%s\n' "$markdown" >> "$GITHUB_STEP_SUMMARY"
+        printf '%s\n%s\n' "$markdown" "$answers" >> "$GITHUB_STEP_SUMMARY"
     fi
     if [[ "$job_succeeded" == 'true' ]] && jq -e '.ExitCode == 0' <<<"$report" >/dev/null; then
         exit 0
