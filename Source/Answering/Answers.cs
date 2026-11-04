@@ -165,22 +165,26 @@ public class Answers(
         var eligible = candidates.Where(passage => passage.ClearsFloor(answering.MinSemanticSimilarity)).ToArray();
         var qualified = eligible.Where(passage => !passage.IsPageExpansion).Take(answering.MaxPassages).ToList();
         var summaryPages = qualified.Where(passage => passage.IsSummary).Select(passage => passage.Page).ToHashSet();
-        var expansionCandidates = eligible.Where(passage => passage.IsPageExpansion && !passage.IsSummary && summaryPages.Contains(passage.Page))
-            .OrderByDescending(passage => passage.IsCurated)
-            .ThenByDescending(passage => passage.SemanticSimilarity)
-            .DistinctBy(passage => (passage.Page, passage.HeadingPath, passage.Content))
-            .Where(passage => !qualified.Exists(existing => existing.Page == passage.Page && existing.HeadingPath == passage.HeadingPath && existing.Content == passage.Content))
-            .ToArray();
+        var pageExpansions = eligible.Where(passage => passage.IsPageExpansion && !passage.IsSummary && summaryPages.Contains(passage.Page)).ToArray();
 
         // Curated leads come from the overview intent, one per curated page, so they take priority and may exceed the
-        // ordinary two-slot reservation, still within MaxPassages.
-        var expansion = expansionCandidates
-            .Take(Math.Min(Math.Max(MaximumPageExpansions, expansionCandidates.Count(passage => passage.IsCurated)), answering.MaxPassages - qualified.Count(passage => passage.IsSummary))).ToArray();
+        // ordinary two-slot reservation, still within MaxPassages. A lead that ordinary retrieval also found moves from
+        // the qualified passages into the protected expansion, so trimming ordinary passages cannot drop it.
+        var curatedLeads = pageExpansions.Where(passage => passage.IsCurated).DistinctBy(ContentKey).ToArray();
+        var curatedKeys = curatedLeads.Select(ContentKey).ToHashSet();
+        qualified.RemoveAll(passage => !passage.IsSummary && curatedKeys.Contains(ContentKey(passage)));
+        var ordinaryExpansions = pageExpansions.Where(passage => !passage.IsCurated)
+            .OrderByDescending(passage => passage.SemanticSimilarity)
+            .DistinctBy(ContentKey)
+            .Where(passage => !curatedKeys.Contains(ContentKey(passage)) && !qualified.Exists(existing => ContentKey(existing) == ContentKey(passage)));
+        var expansion = curatedLeads.Concat(ordinaryExpansions)
+            .Take(Math.Min(Math.Max(MaximumPageExpansions, curatedLeads.Length), answering.MaxPassages - qualified.Count(passage => passage.IsSummary))).ToArray();
         while (qualified.Count + expansion.Length > answering.MaxPassages)
         {
             qualified.RemoveAt(qualified.FindLastIndex(passage => !passage.IsSummary));
         }
         Passage[] grounded = [.. qualified, .. expansion];
+        static (PageUrl Page, string HeadingPath, string Content) ContentKey(Passage passage) => (passage.Page, passage.HeadingPath, passage.Content);
         return (candidates, grounded.Length == 0
             ? grounded
             : [.. grounded, .. SectionExpansions.Select(retrieved, grounded, SectionBudget(question, qualified, expansion))]);
