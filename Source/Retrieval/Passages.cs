@@ -155,7 +155,9 @@ public class Passages(
 
     async Task<List<Passage>> OverviewSummaries(Vector questionEmbedding, double score, CancellationToken cancellationToken)
     {
-        // Reuse the question embedding; the answering layer still applies the similarity threshold and the cap.
+        // Reuse the question embedding; the answering layer still enforces the cap and section/summary
+        // expansion, but exempts IsCuratedOverview from the similarity threshold - curation, not the
+        // question's embedding distance, already establishes that these pages are relevant.
         await using var command = dataSource.CreateCommand(
             """
             SELECT c.page_url, c.title, c.heading_path, c.content, $3::double precision AS score,
@@ -173,7 +175,7 @@ public class Passages(
         await using var reader = await command.ExecuteReaderAsync(cancellationToken);
         while (await reader.ReadAsync(cancellationToken))
         {
-            summaries.Add(await ReadPassage(reader, cancellationToken));
+            summaries.Add(await ReadPassage(reader, cancellationToken) with { IsCuratedOverview = true });
         }
 
         return summaries;

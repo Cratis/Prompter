@@ -20,6 +20,13 @@ public record Passage(PageUrl Page, string Title, string HeadingPath, string Con
     /// <summary>Gets whether this passage was looked up to expand an admitted summary.</summary>
     public bool IsPageExpansion { get; init; }
 
+    /// <summary>
+    /// Gets whether this passage is one of the curated docs overview pages injected for a recognized
+    /// broad Cratis question. Curation, not the question's embedding distance, already establishes its
+    /// relevance, so it is exempt from the semantic-similarity admission threshold.
+    /// </summary>
+    public bool IsCuratedOverview { get; init; }
+
     /// <summary>Gets the id of the chunk the passage was read from, when known.</summary>
     public string? ChunkId { get; init; }
 

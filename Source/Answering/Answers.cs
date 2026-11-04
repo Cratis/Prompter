@@ -162,7 +162,8 @@ public class Answers(
             .Where(passage => SourceHosts.IsCitable(passage.Page, options.Value)).ToArray();
         var candidates = retrieved.Where(passage => !passage.IsSectionExpansion).ToArray();
         var eligible = candidates.Where(passage => double.IsFinite(passage.SemanticSimilarity) &&
-            passage.SemanticSimilarity is >= -1 and <= 1 && passage.SemanticSimilarity >= answering.MinSemanticSimilarity).ToArray();
+            passage.SemanticSimilarity is >= -1 and <= 1 &&
+            (passage.IsCuratedOverview || passage.SemanticSimilarity >= answering.MinSemanticSimilarity)).ToArray();
         var qualified = eligible.Where(passage => !passage.IsPageExpansion).Take(answering.MaxPassages).ToList();
         var summaryPages = qualified.Where(passage => passage.IsSummary).Select(passage => passage.Page).ToHashSet();
         var expansion = eligible.Where(passage => passage.IsPageExpansion && !passage.IsSummary && summaryPages.Contains(passage.Page))
