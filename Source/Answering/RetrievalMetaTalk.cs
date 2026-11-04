@@ -15,10 +15,10 @@ public static partial class RetrievalMetaTalk
     /// <summary>Gets the terms that mark retrieval meta-talk.</summary>
     public static readonly IReadOnlyList<string> Terms = ["excerpt", "passage", "the provided documentation"];
 
-    [GeneratedRegex(@"[^.!?]*[.!?]+|[^.!?]+$", RegexOptions.None, matchTimeoutMilliseconds: 100)]
+    [GeneratedRegex(@"[^.!?]*[.!?]+|[^.!?]+$", RegexOptions.None, matchTimeoutMilliseconds: 1000)]
     private static partial Regex SentenceBoundary { get; }
 
-    [GeneratedRegex(@"[.!?]*\s*$", RegexOptions.None, matchTimeoutMilliseconds: 100)]
+    [GeneratedRegex(@"[.!?]*\s*$", RegexOptions.None, matchTimeoutMilliseconds: 1000)]
     private static partial Regex Terminator { get; }
 
     /// <summary>Checks whether the text mentions a given term, treating hyphens and whitespace as equivalent.</summary>
