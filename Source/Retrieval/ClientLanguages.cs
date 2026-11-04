@@ -42,7 +42,7 @@ public static partial class ClientLanguages
     [GeneratedRegex(@"\b(elixir|phoenix|erlang)\b", RegexOptions.IgnoreCase | RegexOptions.CultureInvariant | RegexOptions.ExplicitCapture, 100)]
     private static partial Regex Elixir { get; }
 
-    [GeneratedRegex(@"(\bgolang\b|\bgo\s+(client|sdk|module|package|app|service|code)\b|\b(in|from|with|for|using|on|via)\s+go\s*([?.,!;:)]|$)|\b(chronicle|arc|fundamentals)\.go\b)", RegexOptions.IgnoreCase | RegexOptions.CultureInvariant | RegexOptions.ExplicitCapture, 100)]
+    [GeneratedRegex(@"(\bgolang\b|\bgo\s+(client|sdk|module|package|app|service|code|language|lang|version)\b|\b(in|using|via)\s+go\b(?!-)|\b(from|with|for|on)\s+go\s*([?.,!;:)]|$)|\b(chronicle|arc|fundamentals)\.go\b)", RegexOptions.IgnoreCase | RegexOptions.CultureInvariant | RegexOptions.ExplicitCapture, 100)]
     private static partial Regex Go { get; }
 
     /// <summary>Detects the client languages named by a question and the user messages before it.</summary>
