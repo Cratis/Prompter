@@ -19,7 +19,7 @@ public static partial class LexicalQuery
     /// </summary>
     static readonly HashSet<string> _ubiquitous = new(["or", "cratis"], StringComparer.OrdinalIgnoreCase);
 
-    [GeneratedRegex(@"[\p{L}\p{N}]+", RegexOptions.CultureInvariant, 100)]
+    [GeneratedRegex(@"[\p{L}\p{N}]+", RegexOptions.CultureInvariant, RegexLimits.TimeoutMilliseconds)]
     private static partial Regex Word { get; }
 
     /// <summary>

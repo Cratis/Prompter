@@ -14,7 +14,7 @@ public static partial class Clarifications
     const int MaximumOptions = 4;
     const string Quote = "> ";
 
-    [GeneratedRegex(@"\b(chronicle|arc|fundamentals|components|cli|screenplay|prologue|(?<!visual\s+)studio|assurance|cratis\s+(?:specifications|stage|direct))\b", RegexOptions.IgnoreCase | RegexOptions.CultureInvariant | RegexOptions.ExplicitCapture, 100)]
+    [GeneratedRegex(@"\b(chronicle|arc|fundamentals|components|cli|screenplay|prologue|(?<!visual\s+)studio|assurance|cratis\s+(?:specifications|stage|direct))\b", RegexOptions.IgnoreCase | RegexOptions.CultureInvariant | RegexOptions.ExplicitCapture, RegexLimits.TimeoutMilliseconds)]
     private static partial Regex ProductName { get; }
 
     /// <summary>Detects an ambiguity between products.</summary>

@@ -8,7 +8,7 @@ namespace Cratis.Prompter.Discord;
 /// <summary>Produces a deterministic sanitized excerpt without a model call.</summary>
 public static partial class QuestionExcerpt
 {
-    [GeneratedRegex(@"\s+", RegexOptions.CultureInvariant, 100)]
+    [GeneratedRegex(@"\s+", RegexOptions.CultureInvariant, RegexLimits.TimeoutMilliseconds)]
     private static partial Regex Whitespace { get; }
 
     /// <summary>Sanitizes, collapses whitespace and bounds text, including the ellipsis.</summary>

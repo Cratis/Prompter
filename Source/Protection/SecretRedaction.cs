@@ -19,13 +19,13 @@ public static partial class SecretRedaction
         "string", "number", "boolean", "bool", "int", "str", "any", "object", "null", "undefined", "true", "false", "CancellationToken"
     };
 
-    [GeneratedRegex(@"\bBearer\s+[\w\-.~+/]{8,}=*|\bsk-(ant-)?[\w-]{16,}|\bgh[pousr]_\w{16,}|\bgithub_pat_\w{16,}|\b[MN][\w-]{23,25}\.[\w-]{6}\.[\w-]{27,38}\b|\bpa-[\w-]{20,}|\beyJ[\w-]+\.[\w-]+\.[\w-]+|-----BEGIN [A-Z ]*PRIVATE KEY-----[\s\S]*?(-----END [A-Z ]*PRIVATE KEY-----|$)|\bAKIA[0-9A-Z]{16}\b", PatternOptions, 100)]
+    [GeneratedRegex(@"\bBearer\s+[\w\-.~+/]{8,}=*|\bsk-(ant-)?[\w-]{16,}|\bgh[pousr]_\w{16,}|\bgithub_pat_\w{16,}|\b[MN][\w-]{23,25}\.[\w-]{6}\.[\w-]{27,38}\b|\bpa-[\w-]{20,}|\beyJ[\w-]+\.[\w-]+\.[\w-]+|-----BEGIN [A-Z ]*PRIVATE KEY-----[\s\S]*?(-----END [A-Z ]*PRIVATE KEY-----|$)|\bAKIA[0-9A-Z]{16}\b", PatternOptions, RegexLimits.TimeoutMilliseconds)]
     private static partial Regex Tokens { get; }
 
-    [GeneratedRegex(@"\b(?<key>api[_-]?key|access[_-]?key|token|pass" + @"word|passwd|pwd|secret|client[_-]?secret|Account" + @"Key|SharedAccess" + @"Key)(?<separator>\s*[:=]\s*)(?<value>""[^""]{4,}""|'[^']{4,}'|[^\s;,'""]{4,})", PatternOptions, 100)]
+    [GeneratedRegex(@"\b(?<key>api[_-]?key|access[_-]?key|token|pass" + @"word|passwd|pwd|secret|client[_-]?secret|Account" + @"Key|SharedAccess" + @"Key)(?<separator>\s*[:=]\s*)(?<value>""[^""]{4,}""|'[^']{4,}'|[^\s;,'""]{4,})", PatternOptions, RegexLimits.TimeoutMilliseconds)]
     private static partial Regex Assignments { get; }
 
-    [GeneratedRegex(@"://[^\s/:@]+:[^\s/@]+@", PatternOptions, 100)]
+    [GeneratedRegex(@"://[^\s/:@]+:[^\s/@]+@", PatternOptions, RegexLimits.TimeoutMilliseconds)]
     private static partial Regex UserInfo { get; }
 
     /// <summary>Replaces secret-shaped values, preserving harmless type declarations.</summary>
