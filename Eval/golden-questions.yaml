@@ -129,8 +129,9 @@ questions:
     expected_pages:
       - https://cratis.io/chronicle/hosting/docker-compose/
       - https://cratis.io/chronicle/hosting/
+      - https://cratis.io/chronicle/get-started/choose-hosting-model/
     tags: [hosting, docker, local-dev]
-    rationale: "docker-compose.md gives the cratis/chronicle image, ports, and Aspire dashboard wiring."
+    rationale: "docker-compose.md gives the cratis/chronicle image, ports, and Aspire dashboard wiring. choose-hosting-model.md, under 'Run Chronicle locally > Bring your own database', provides the Compose files and links the docker-compose page."
 
   - id: chr-006
     product: chronicle
@@ -208,8 +209,10 @@ questions:
     expected_pages:
       - https://cratis.io/chronicle/configuration/chronicle-options/
       - https://cratis.io/chronicle/connection-strings/dotnet-client/
+      - https://cratis.io/chronicle/connection-strings/configuration/
+      - https://cratis.io/chronicle/configuration/
     tags: [csharp, configuration, connection]
-    rationale: "chronicle-options.md documents ConnectionString and the Cratis:Chronicle option surface."
+    rationale: "chronicle-options.md documents ConnectionString and the Cratis:Chronicle option surface. connection-strings/configuration.md explains how to bind the connection string in the .NET client from appsettings.json or environment variables, and configuration.md explains the client configuration flow and links ChronicleOptions, TLS and gRPC."
 
   - id: chr-013
     product: chronicle
@@ -219,8 +222,9 @@ questions:
     expected_pages:
       - https://cratis.io/chronicle/hosting/configuration/storage/
       - https://cratis.io/faq/
+      - https://cratis.io/chronicle/concepts/event-store/
     tags: [storage, configuration]
-    rationale: "FAQ lists MongoDB / PostgreSQL / SQL Server / SQLite; the storage config page covers backend selection."
+    rationale: "FAQ lists MongoDB / PostgreSQL / SQL Server / SQLite; the storage config page covers backend selection. concepts/event-store.md states 'MongoDB, PostgreSQL, Microsoft SQL Server, or SQLite' with MongoDB as the default."
 
   - id: chr-014
     product: chronicle
@@ -243,8 +247,9 @@ questions:
       - https://cratis.io/chronicle/reducers/
       - https://cratis.io/chronicle/projections/
       - https://cratis.io/chronicle/concepts/observers/
+      - https://cratis.io/chronicle/concepts/observer-patterns/
     tags: [observers, concept]
-    rationale: "Classic confusion; all three observer types have index pages, and observers.md frames them as a family."
+    rationale: "Classic confusion; all three observer types have index pages, and observers.md frames them as a family. observer-patterns.md covers projections, reducers and reactors, how to tell them apart and choose between them."
 
   - id: chr-016
     product: chronicle
@@ -274,10 +279,10 @@ questions:
     question: "how do I read back the current state of an entity by replaying its events?"
     expected: answer
     expected_pages:
-      - https://cratis.io/chronicle/events/getting-state/
       - https://cratis.io/chronicle/read-models/getting-single-instance/
+      - https://cratis.io/chronicle/read-models/consistency/
     tags: [events, read-models, state]
-    rationale: "getting-state.md is the on-demand replay path; getting-single-instance covers materialized read models."
+    rationale: "getting-single-instance covers materialized read models. read-models/consistency.md, under 'Strong Consistency — On-Demand Computation', shows the replay via a passive read model and GetInstanceById. events/getting-state.md was removed because it covers event sequence state (tail sequence number, observer catch-up), not entity state."
 
   - id: chr-019
     product: chronicle
@@ -397,8 +402,9 @@ questions:
       - https://cratis.io/arc/backend/csharp/proxy-generation/
       - https://cratis.io/arc/backend/csharp/proxy-generation/getting-started/
       - https://cratis.io/arc/backend/typescript/proxy-generation/
+      - https://cratis.io/arc/understanding-the-proxy-boundary/
     tags: [proxy-generation, typescript]
-    rationale: "proxy-generation/overview.md: MSBuild target generates TS from compiled assemblies for compile-time safety."
+    rationale: "proxy-generation/overview.md: MSBuild target generates TS from compiled assemblies for compile-time safety. understanding-the-proxy-boundary.md is the concept page: how generated proxies keep an Arc backend and React frontend in step, with a C# example."
 
   - id: arc-010
     product: arc
@@ -445,8 +451,9 @@ questions:
     expected_pages:
       - https://cratis.io/arc/backend/csharp/queries/model-bound/observable-queries/
       - https://cratis.io/arc/frontend/react/queries/observable-queries/
+      - https://cratis.io/arc/backend/typescript/queries/observable-queries/
     tags: [queries, real-time, observable]
-    rationale: "Observable queries exist on both backend and React frontend sides."
+    rationale: "Observable queries exist on both backend and React frontend sides. The TypeScript backend page is a peer of the C# one, as accepted in the other Arc cases."
 
   # ===========================================================================
   # Fundamentals — cross-cutting building blocks (concepts, monads, serialization,

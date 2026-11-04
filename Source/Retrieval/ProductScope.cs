@@ -96,7 +96,11 @@ public static class ProductScope
         return false;
     }
 
-    static IEnumerable<string> DocumentationPrefixes(string key, string docsSiteUrl)
+    /// <summary>Builds the documentation URL prefixes for a path, for both the www and bare host forms.</summary>
+    /// <param name="key">The path below the documentation site root.</param>
+    /// <param name="docsSiteUrl">The documentation site URL.</param>
+    /// <returns>The folder and markdown prefixes for the path.</returns>
+    internal static IEnumerable<string> DocumentationPrefixes(string key, string docsSiteUrl)
     {
         var site = docsSiteUrl.TrimEnd('/');
         var roots = new List<string> { site };

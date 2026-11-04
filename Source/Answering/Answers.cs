@@ -167,7 +167,7 @@ public class Answers(
     async Task<(Passage[] Candidates, Passage[] Qualified)> Retrieve(Question question, CancellationToken cancellationToken)
     {
         var answering = options.Value.Answering;
-        var retrieved = (await passages.Search(new(question.Value) { Scope = question.Scope }, Math.Max(answering.MaxPassages, Passages.MaximumCandidates), cancellationToken))
+        var retrieved = (await passages.Search(new(question.Value) { Scope = question.Scope, ClientLanguages = ClientLanguages.Named(question) }, Math.Max(answering.MaxPassages, Passages.MaximumCandidates), cancellationToken))
             .Where(passage => SourceHosts.IsCitable(passage.Page, options.Value)).ToArray();
         var candidates = retrieved.Where(passage => !passage.IsSectionExpansion).ToArray();
         var eligible = candidates.Where(passage => passage.ClearsFloor(answering.MinSemanticSimilarity)).ToArray();
