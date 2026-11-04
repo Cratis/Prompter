@@ -96,12 +96,11 @@ public class Passages(
         {
             var overview = await OverviewSummaries(questionEmbedding, passages.Count > 0 ? passages[0].Score : 0.0, cancellationToken);
             var overviewIds = overview.Select(passage => passage.ChunkId).ToHashSet(StringComparer.Ordinal);
-            passages = [.. overview.Select(passage => passage with { IsOverviewBoost = true }), .. passages.Where(passage => !overviewIds.Contains(passage.ChunkId))];
+            passages = [.. overview, .. passages.Where(passage => !overviewIds.Contains(passage.ChunkId))];
         }
 
         var summaryPages = passages
-            .Where(passage => SourceHosts.IsCitable(passage.Page, options.Value) && double.IsFinite(passage.SemanticSimilarity) &&
-                passage.SemanticSimilarity is >= -1 and <= 1 && passage.SemanticSimilarity >= options.Value.Answering.MinSemanticSimilarity)
+            .Where(passage => SourceHosts.IsCitable(passage.Page, options.Value) && passage.ClearsFloor(options.Value.Answering.MinSemanticSimilarity))
             .Take(options.Value.Answering.MaxPassages).Where(passage => passage.IsSummary)
             .Select(passage => passage.Page.Value).Distinct().ToArray();
         if (summaryPages.Length > 0)
@@ -156,7 +155,7 @@ public class Passages(
     async Task<List<Passage>> OverviewSummaries(Vector questionEmbedding, double score, CancellationToken cancellationToken)
     {
         // Reuse the question embedding; the answering layer still applies the passage cap, but exempts
-        // these curated chunks from the similarity floor (Passage.IsOverviewBoost) - the system prompt
+        // these curated chunks from the similarity floor (Passage.IsCurated) - the system prompt
         // already names them canonical for a question OverviewQuestions.Matches classified as broad, so a
         // weak cosine score for one specific phrasing must not silently drop the one source it was told to use.
         await using var command = dataSource.CreateCommand(
@@ -176,7 +175,7 @@ public class Passages(
         await using var reader = await command.ExecuteReaderAsync(cancellationToken);
         while (await reader.ReadAsync(cancellationToken))
         {
-            summaries.Add(await ReadPassage(reader, cancellationToken));
+            summaries.Add(await ReadPassage(reader, cancellationToken) with { IsCurated = true });
         }
 
         return summaries;
@@ -217,8 +216,7 @@ public class Passages(
     /// <param name="passages">The main search rows, best first.</param>
     /// <returns>The anchors, best first.</returns>
     SectionAnchor[] SectionAnchors(List<Passage> passages) => [.. passages
-        .Where(passage => SourceHosts.IsCitable(passage.Page, options.Value) && double.IsFinite(passage.SemanticSimilarity) &&
-            passage.SemanticSimilarity is >= -1 and <= 1 && passage.SemanticSimilarity >= options.Value.Answering.MinSemanticSimilarity)
+        .Where(passage => SourceHosts.IsCitable(passage.Page, options.Value) && passage.ClearsFloor(options.Value.Answering.MinSemanticSimilarity))
         .Take(options.Value.Answering.MaxPassages)
         .Where(passage => !passage.IsSummary && passage.ChunkId is not null)
         .Select(SectionAnchor.Of)

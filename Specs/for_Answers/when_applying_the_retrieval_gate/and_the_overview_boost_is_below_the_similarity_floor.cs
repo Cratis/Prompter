@@ -16,7 +16,7 @@ public class and_the_overview_boost_is_below_the_similarity_floor : given.a_grou
             Page = new("https://cratis.io/why-cratis/"),
             Content = "Why developers choose Cratis.",
             IsSummary = true,
-            IsOverviewBoost = true
+            IsCurated = true
         };
         Found(
             _overview,

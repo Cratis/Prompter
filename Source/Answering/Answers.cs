@@ -161,13 +161,7 @@ public class Answers(
         var retrieved = (await passages.Search(new(question.Value) { Scope = question.Scope }, Math.Max(answering.MaxPassages, Passages.MaximumCandidates), cancellationToken))
             .Where(passage => SourceHosts.IsCitable(passage.Page, options.Value)).ToArray();
         var candidates = retrieved.Where(passage => !passage.IsSectionExpansion).ToArray();
-
-        // The overview boost is exempt from the similarity floor: OverviewQuestions.Matches already decided the
-        // question is broad enough for the system prompt's canonical pages, so a weak cosine score for one
-        // specific phrasing must not drop the very source the question was routed to.
-        var eligible = candidates.Where(passage => double.IsFinite(passage.SemanticSimilarity) &&
-            passage.SemanticSimilarity is >= -1 and <= 1 &&
-            (passage.IsOverviewBoost || passage.SemanticSimilarity >= answering.MinSemanticSimilarity)).ToArray();
+        var eligible = candidates.Where(passage => passage.ClearsFloor(answering.MinSemanticSimilarity)).ToArray();
         var qualified = eligible.Where(passage => !passage.IsPageExpansion).Take(answering.MaxPassages).ToList();
         var summaryPages = qualified.Where(passage => passage.IsSummary).Select(passage => passage.Page).ToHashSet();
         var expansion = eligible.Where(passage => passage.IsPageExpansion && !passage.IsSummary && summaryPages.Contains(passage.Page))

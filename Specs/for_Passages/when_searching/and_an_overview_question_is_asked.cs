@@ -24,6 +24,14 @@ public class and_an_overview_question_is_asked : given.a_corpus_with_overview_pa
 
     [Fact]
     [Trait("Category", "Integration")]
+    void should_mark_it_as_curated()
+    {
+        RequireDatabase();
+        retrieved[0].IsCurated.ShouldBeTrue();
+    }
+
+    [Fact]
+    [Trait("Category", "Integration")]
     void should_not_duplicate_it()
     {
         RequireDatabase();
