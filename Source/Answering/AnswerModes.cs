@@ -8,10 +8,10 @@ namespace Cratis.Prompter.Answering;
 /// <summary>Classifies a question into the shape of answer it asks for, deterministically and without a model call.</summary>
 public static partial class AnswerModes
 {
-    [GeneratedRegex(@"\b(which|what)\b.{0,60}\b(should i use|to use|do i need|is best|fits)\b|\bis there an? (tool|package|library|way)\b|\brecommend", RegexOptions.IgnoreCase | RegexOptions.CultureInvariant | RegexOptions.ExplicitCapture, 100)]
+    [GeneratedRegex(@"\b(which|what)\b.{0,60}\b(should i use|to use|do i need|is best|fits)\b|\bis there an? (tool|package|library|way)\b|\brecommend", RegexOptions.IgnoreCase | RegexOptions.CultureInvariant | RegexOptions.ExplicitCapture, RegexLimits.TimeoutMilliseconds)]
     private static partial Regex Recommending { get; }
 
-    [GeneratedRegex(@"\b(?<first>chronicle|arc|fundamentals|components|cli)\b\s+(?:vs\.?|versus|or)\s+(?<second>chronicle|arc|fundamentals|components|cli)\b", RegexOptions.IgnoreCase | RegexOptions.CultureInvariant | RegexOptions.ExplicitCapture, 100)]
+    [GeneratedRegex(@"\b(?<first>chronicle|arc|fundamentals|components|cli)\b\s+(?:vs\.?|versus|or)\s+(?<second>chronicle|arc|fundamentals|components|cli)\b", RegexOptions.IgnoreCase | RegexOptions.CultureInvariant | RegexOptions.ExplicitCapture, RegexLimits.TimeoutMilliseconds)]
     private static partial Regex Comparing { get; }
 
     /// <summary>Classifies a question.</summary>

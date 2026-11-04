@@ -15,10 +15,12 @@ public static partial class RetrievalMetaTalk
     /// <summary>Gets the terms that mark retrieval meta-talk.</summary>
     public static readonly IReadOnlyList<string> Terms = ["excerpt", "passage", "the provided documentation"];
 
-    [GeneratedRegex(@"[^.!?]*[.!?]+|[^.!?]+$", RegexOptions.None, matchTimeoutMilliseconds: 1000)]
+    // A sentence ends at terminators followed by whitespace or the end of the line, so "Next.js", "app/.cratis"
+    // or "v1.2" do not split a sentence in two.
+    [GeneratedRegex(@".*?[.!?]+(?=\s|$)|.+$", RegexOptions.None, matchTimeoutMilliseconds: RegexLimits.TimeoutMilliseconds)]
     private static partial Regex SentenceBoundary { get; }
 
-    [GeneratedRegex(@"[.!?]*\s*$", RegexOptions.None, matchTimeoutMilliseconds: 1000)]
+    [GeneratedRegex(@"[.!?]*\s*$", RegexOptions.None, matchTimeoutMilliseconds: RegexLimits.TimeoutMilliseconds)]
     private static partial Regex Terminator { get; }
 
     /// <summary>Checks whether the text mentions a given term, treating hyphens and whitespace as equivalent.</summary>

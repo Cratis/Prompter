@@ -21,7 +21,7 @@ internal static partial class ProseCitations
         | (?<inline>`+)(?!`)[\s\S]*?(?<!`)\k<inline>(?!`)
         | [\p{L}\p{N}_)\]}?!]\[[0-9]+\](?:\[[0-9]+\])*
         | \[(?<index>[0-9]+)\]
-        """, RegexOptions.ExplicitCapture | RegexOptions.Multiline | RegexOptions.IgnorePatternWhitespace, 1000)]
+        """, RegexOptions.ExplicitCapture | RegexOptions.Multiline | RegexOptions.IgnorePatternWhitespace, RegexLimits.TimeoutMilliseconds)]
     private static partial Regex Tokens { get; }
 
     /// <summary>Gets prose reference numbers, using zero for an overflowed number.</summary>

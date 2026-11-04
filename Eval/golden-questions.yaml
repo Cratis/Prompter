@@ -894,11 +894,14 @@ questions:
     rationale: "Language trivia. Near-miss on 'JavaScript/TypeScript' surface area of the docs."
 
   - id: oos-005
-    product: out-of-scope
-    type: refusal
+    product: cross-cutting
+    type: how-to
     question: "can you give me a regex that validates email addresses?"
-    expected: refuse
-    rationale: "Generic coding request. Adversarial overlap: Chronicle docs use an email-uniqueness example, so this checks the bot won't drift into writing unrelated regex."
+    expected: answer
+    expected_pages:
+      - https://cratis.io/screenplay/commands/
+    must_mention: [matches email]
+    rationale: "Was a refusal case (id kept, never renumbered). The Screenplay commands page now documents the built-in `matches email` rule with its expanded pattern and a not-RFC-5322 caveat, so a Cratis-grounded answer is correct; writing an unrelated, ungrounded regex is still wrong."
 
   - id: oos-006
     product: out-of-scope

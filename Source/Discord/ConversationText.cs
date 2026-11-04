@@ -9,7 +9,7 @@ namespace Cratis.Prompter.Discord;
 /// <summary>Removes transport identities and obvious secret-like text before model input.</summary>
 public static partial class ConversationText
 {
-    [GeneratedRegex(@"<[@#][!&]?\d+>|@[\w.-]+|\b\d{17,20}\b", RegexOptions.CultureInvariant | RegexOptions.NonBacktracking, 100)]
+    [GeneratedRegex(@"<[@#][!&]?\d+>|@[\w.-]+|\b\d{17,20}\b", RegexOptions.CultureInvariant | RegexOptions.NonBacktracking, RegexLimits.TimeoutMilliseconds)]
     private static partial Regex Identities { get; }
 
     /// <summary>Strips Discord mentions and obvious tokens; this is not a guarantee of anonymity.</summary>

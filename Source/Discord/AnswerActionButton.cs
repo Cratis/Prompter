@@ -28,7 +28,7 @@ public static partial class AnswerActionButton
     /// <summary>The feature request label.</summary>
     public const string RequestLabel = "💡 Request this";
 
-    [GeneratedRegex(@"\A[a-z0-9-]{1,40}\z", RegexOptions.CultureInvariant, 100)]
+    [GeneratedRegex(@"\A[a-z0-9-]{1,40}\z", RegexOptions.CultureInvariant, RegexLimits.TimeoutMilliseconds)]
     private static partial Regex ProductKey { get; }
 
     /// <summary>Builds an action id.</summary>

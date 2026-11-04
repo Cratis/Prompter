@@ -30,19 +30,19 @@ public static partial class ClientLanguages
 
     static readonly ClientLanguage[] _languages = [ClientLanguage.DotNet, ClientLanguage.TypeScript, ClientLanguage.Jvm, ClientLanguage.Elixir, ClientLanguage.Go];
 
-    [GeneratedRegex(@"(\bc#|\bcsharp\b|\.net\b|\bdotnet\b)", RegexOptions.IgnoreCase | RegexOptions.CultureInvariant | RegexOptions.ExplicitCapture, 100)]
+    [GeneratedRegex(@"(\bc#|\bcsharp\b|\.net\b|\bdotnet\b)", RegexOptions.IgnoreCase | RegexOptions.CultureInvariant | RegexOptions.ExplicitCapture, RegexLimits.TimeoutMilliseconds)]
     private static partial Regex DotNet { get; }
 
-    [GeneratedRegex(@"\b(typescript|javascript|node(\.js)?|npm)\b", RegexOptions.IgnoreCase | RegexOptions.CultureInvariant | RegexOptions.ExplicitCapture, 100)]
+    [GeneratedRegex(@"\b(typescript|javascript|node(\.js)?|npm)\b", RegexOptions.IgnoreCase | RegexOptions.CultureInvariant | RegexOptions.ExplicitCapture, RegexLimits.TimeoutMilliseconds)]
     private static partial Regex TypeScript { get; }
 
-    [GeneratedRegex(@"\b(kotlin|java|jvm|spring|gradle|maven)\b", RegexOptions.IgnoreCase | RegexOptions.CultureInvariant | RegexOptions.ExplicitCapture, 100)]
+    [GeneratedRegex(@"\b(kotlin|java|jvm|spring|gradle|maven)\b", RegexOptions.IgnoreCase | RegexOptions.CultureInvariant | RegexOptions.ExplicitCapture, RegexLimits.TimeoutMilliseconds)]
     private static partial Regex Jvm { get; }
 
-    [GeneratedRegex(@"\b(elixir|phoenix|erlang)\b", RegexOptions.IgnoreCase | RegexOptions.CultureInvariant | RegexOptions.ExplicitCapture, 100)]
+    [GeneratedRegex(@"\b(elixir|phoenix|erlang)\b", RegexOptions.IgnoreCase | RegexOptions.CultureInvariant | RegexOptions.ExplicitCapture, RegexLimits.TimeoutMilliseconds)]
     private static partial Regex Elixir { get; }
 
-    [GeneratedRegex(@"(\bgolang\b|\bgo\s+(client|sdk|module|package|app|service|code|language|lang|version)\b|\b(in|using|via)\s+go\b(?!-)|\b(from|with|for|on)\s+go\s*([?.,!;:)]|$)|\b(chronicle|arc|fundamentals)\.go\b)", RegexOptions.IgnoreCase | RegexOptions.CultureInvariant | RegexOptions.ExplicitCapture, 100)]
+    [GeneratedRegex(@"(\bgolang\b|\bgo\s+(client|sdk|module|package|app|service|code|language|lang|version)\b|\b(in|using|via)\s+go\b(?!-)|\b(from|with|for|on)\s+go\s*([?.,!;:)]|$)|\b(chronicle|arc|fundamentals)\.go\b)", RegexOptions.IgnoreCase | RegexOptions.CultureInvariant | RegexOptions.ExplicitCapture, RegexLimits.TimeoutMilliseconds)]
     private static partial Regex Go { get; }
 
     /// <summary>Detects the client languages named by a question and the user messages before it.</summary>
