@@ -11,4 +11,5 @@ public class and_answering_broad_questions : Specification
     [Fact] public void should_ask_for_a_best_supported_partial_answer() => SystemPrompt.Text.ShouldContain("best-supported");
     [Fact] public void should_not_send_the_user_to_read_pages() => SystemPrompt.Text.ShouldContain("Do not send the user to read pages");
     [Fact] public void should_ask_to_name_the_product_behind_each_point() => SystemPrompt.Text.ShouldContain("naming the specific Cratis product");
+    [Fact] public void should_ask_to_name_every_credited_product() => SystemPrompt.Text.ShouldContain("name each product they credit");
 }

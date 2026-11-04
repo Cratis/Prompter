@@ -105,16 +105,17 @@ public class Passages(
         var summaryPages = admittedSummaries.Where(passage => !passage.IsCurated).Select(passage => passage.Page.Value).Distinct().ToArray();
         if (summaryPages.Length > 0)
         {
-            passages.AddRange(await ExpandSummaries(questionEmbedding, summaryPages, false, cancellationToken));
+            passages.AddRange(await ExpandSummaries(questionEmbedding, summaryPages, cancellationToken));
         }
 
-        // A curated overview page is relevant because the question matched the overview intent, so its best body
-        // chunks are read without the similarity floor; the answering layer still applies the expansion and total caps.
+        // A curated overview page is relevant because the question matched the overview intent, so its lead is read by
+        // chunk order, not similarity, because the lead is where the page names the products; the answering layer still
+        // applies the expansion and total caps.
         var curatedPages = admittedSummaries.Where(passage => passage.IsCurated).Select(passage => passage.Page.Value)
             .Except(summaryPages, StringComparer.Ordinal).Distinct().ToArray();
         if (curatedPages.Length > 0)
         {
-            passages.AddRange(await ExpandSummaries(questionEmbedding, curatedPages, true, cancellationToken));
+            passages.AddRange(await CuratedLeads(questionEmbedding, curatedPages, cancellationToken));
         }
 
         var anchors = SectionAnchors(passages);
@@ -187,7 +188,38 @@ public class Passages(
         return summaries;
     }
 
-    async Task<List<Passage>> ExpandSummaries(Vector questionEmbedding, string[] pages, bool curated, CancellationToken cancellationToken)
+    async Task<List<Passage>> CuratedLeads(Vector questionEmbedding, string[] pages, CancellationToken cancellationToken)
+    {
+        // One row per page: the lowest-ordered non-summary chunk, chosen by chunk order rather than similarity and without
+        // the similarity floor. The similarity guard only skips a chunk with an invalid embedding.
+        await using var command = dataSource.CreateCommand(
+            """
+            SELECT DISTINCT ON (c.page_url) c.page_url, c.title, c.heading_path, c.content, 0.0::double precision AS score,
+                   1.0 - (c.embedding <=> $1) AS semantic_similarity,
+                   p.indexed_at, p.page_last_modified, p.product_version, false AS is_summary, c.id
+            FROM chunks c
+            LEFT JOIN documentation_pages p ON p.page_url = c.page_url
+            WHERE c.page_url = ANY($2::text[]) AND c.id <> c.page_url || '#summary'
+              AND 1.0 - (c.embedding <=> $1) >= -1
+              AND 1.0 - (c.embedding <=> $1) <= 1
+            ORDER BY c.page_url,
+                     COALESCE(substring(c.id from '#([0-9]+)(?:\.[0-9]+)?$')::int, 2147483647),
+                     COALESCE(substring(c.id from '#[0-9]+\.([0-9]+)$')::int, 0),
+                     c.id
+            """);
+        command.Parameters.AddWithValue(questionEmbedding);
+        command.Parameters.AddWithValue(pages);
+        var leads = new List<Passage>();
+        await using var reader = await command.ExecuteReaderAsync(cancellationToken);
+        while (await reader.ReadAsync(cancellationToken))
+        {
+            leads.Add(await ReadPassage(reader, cancellationToken) with { IsPageExpansion = true, IsCurated = true });
+        }
+
+        return [.. leads.OrderBy(lead => Array.IndexOf(pages, lead.Page.Value))];
+    }
+
+    async Task<List<Passage>> ExpandSummaries(Vector questionEmbedding, string[] pages, CancellationToken cancellationToken)
     {
         // Reuse the question embedding. Only the best two non-summary chunks from admitted pages
         // compete for reserved slots; the answering layer still enforces grounding and the total cap.
@@ -206,12 +238,12 @@ public class Passages(
             """);
         command.Parameters.AddWithValue(questionEmbedding);
         command.Parameters.AddWithValue(pages);
-        command.Parameters.AddWithValue(curated ? -1.0 : options.Value.Answering.MinSemanticSimilarity);
+        command.Parameters.AddWithValue(options.Value.Answering.MinSemanticSimilarity);
         var expansion = new List<Passage>();
         await using var reader = await command.ExecuteReaderAsync(cancellationToken);
         while (await reader.ReadAsync(cancellationToken))
         {
-            expansion.Add(await ReadPassage(reader, cancellationToken) with { IsPageExpansion = true, IsCurated = curated });
+            expansion.Add(await ReadPassage(reader, cancellationToken) with { IsPageExpansion = true });
         }
         return expansion;
     }

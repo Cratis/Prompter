@@ -30,6 +30,7 @@ public class Answers(
     ILogger<Answers> logger) : IAnswers
 {
     const int MaximumClarifiedQuestionLength = 1500;
+    const int MaximumPageExpansions = 2;
     const int MaximumSectionExpansionBytes = 8000;
     const int InputReserveBytes = 1024;
     const int FramingReserveBytes = 512;
@@ -164,11 +165,17 @@ public class Answers(
         var eligible = candidates.Where(passage => passage.ClearsFloor(answering.MinSemanticSimilarity)).ToArray();
         var qualified = eligible.Where(passage => !passage.IsPageExpansion).Take(answering.MaxPassages).ToList();
         var summaryPages = qualified.Where(passage => passage.IsSummary).Select(passage => passage.Page).ToHashSet();
-        var expansion = eligible.Where(passage => passage.IsPageExpansion && !passage.IsSummary && summaryPages.Contains(passage.Page))
-            .OrderByDescending(passage => passage.SemanticSimilarity)
+        var expansionCandidates = eligible.Where(passage => passage.IsPageExpansion && !passage.IsSummary && summaryPages.Contains(passage.Page))
+            .OrderByDescending(passage => passage.IsCurated)
+            .ThenByDescending(passage => passage.SemanticSimilarity)
             .DistinctBy(passage => (passage.Page, passage.HeadingPath, passage.Content))
             .Where(passage => !qualified.Exists(existing => existing.Page == passage.Page && existing.HeadingPath == passage.HeadingPath && existing.Content == passage.Content))
-            .Take(Math.Min(2, answering.MaxPassages - qualified.Count(passage => passage.IsSummary))).ToArray();
+            .ToArray();
+
+        // Curated leads come from the overview intent, one per curated page, so they take priority and may exceed the
+        // ordinary two-slot reservation, still within MaxPassages.
+        var expansion = expansionCandidates
+            .Take(Math.Min(Math.Max(MaximumPageExpansions, expansionCandidates.Count(passage => passage.IsCurated)), answering.MaxPassages - qualified.Count(passage => passage.IsSummary))).ToArray();
         while (qualified.Count + expansion.Length > answering.MaxPassages)
         {
             qualified.RemoveAt(qualified.FindLastIndex(passage => !passage.IsSummary));
