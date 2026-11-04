@@ -36,6 +36,9 @@ public class Passages(
     /// <summary>Keeps every candidate when no prefix is given, otherwise only pages under one of the prefixes.</summary>
     const string ScopeFilter = "(cardinality($4::text[]) = 0 OR EXISTS (SELECT 1 FROM unnest($4::text[]) AS prefix WHERE starts_with(page_url, prefix)))";
 
+    /// <summary>Keeps out pages under any of the excluded client-language prefixes; an empty array excludes nothing.</summary>
+    const string LanguageFilter = "NOT EXISTS (SELECT 1 FROM unnest($6::text[]) AS prefix WHERE starts_with(page_url, prefix))";
+
     /// <summary>A curated docs overview set: the canonical answer to broad Cratis questions per the system prompt's source rule.</summary>
     static readonly string[] _overviewPaths = ["index.md", "why-cratis.md", "cratis-stack.md"];
 
@@ -45,53 +48,14 @@ public class Passages(
         var generated = await embeddings.GenerateAsync([question.Value], cancellationToken: cancellationToken);
         var questionEmbedding = new Vector(generated[0].Vector);
 
-        await using var command = dataSource.CreateCommand(
-            $"""
-            WITH semantic AS (
-                SELECT id, RANK() OVER (ORDER BY embedding <=> $1) AS rank
-                FROM chunks
-                WHERE {ScopeFilter}
-                ORDER BY embedding <=> $1
-                LIMIT {CandidatesPerMethod}
-            ),
-            lexical AS (
-                SELECT id, ROW_NUMBER() OVER (
-                           ORDER BY (tsv @@ websearch_to_tsquery('english', $2)) DESC,
-                                    ts_rank_cd(tsv, websearch_to_tsquery('english', $2)) DESC,
-                                    ts_rank_cd(tsv, websearch_to_tsquery('english', $5), 1) DESC, id) AS rank
-                FROM chunks
-                WHERE (tsv @@ websearch_to_tsquery('english', $2) OR tsv @@ websearch_to_tsquery('english', $5)) AND {ScopeFilter}
-                ORDER BY rank
-                LIMIT {CandidatesPerMethod}
-            )
-            SELECT c.page_url, c.title, c.heading_path, c.content,
-                   COALESCE(1.0 / ({RrfConstant} + semantic.rank), 0) +
-                   COALESCE(1.0 / ({RrfConstant} + lexical.rank), 0) AS score,
-                   1.0 - (c.embedding <=> $1) AS semantic_similarity,
-                   p.indexed_at, p.page_last_modified, p.product_version, c.id = c.page_url || '#summary' AS is_summary, c.id
-            FROM chunks c
-            LEFT JOIN semantic ON c.id = semantic.id
-            LEFT JOIN lexical ON c.id = lexical.id
-            LEFT JOIN documentation_pages p ON p.page_url = c.page_url
-            WHERE semantic.id IS NOT NULL OR lexical.id IS NOT NULL
-            ORDER BY score DESC
-            LIMIT $3
-            """);
-
-        command.Parameters.AddWithValue(questionEmbedding);
-        command.Parameters.AddWithValue(question.Value);
-        command.Parameters.AddWithValue(limit);
-        command.Parameters.AddWithValue(ScopePrefixes(question));
-        command.Parameters.AddWithValue(LexicalQuery.Lenient(question.Value));
-
-        var passages = new List<Passage>();
-        await using var reader = await command.ExecuteReaderAsync(cancellationToken);
-        while (await reader.ReadAsync(cancellationToken))
+        var excluded = ClientLanguages.ExcludedPrefixes(question.ClientLanguages, options.Value.DocsSiteUrl).ToArray();
+        var passages = await ReadCandidates(question, limit, questionEmbedding, excluded, cancellationToken);
+        if (excluded.Length > 0 && !passages.Exists(IsAdmissible))
         {
-            passages.Add(await ReadPassage(reader, cancellationToken));
+            // Nothing outside the secondary client-language pages qualifies, so search them too rather than refuse.
+            passages = await ReadCandidates(question, limit, questionEmbedding, [], cancellationToken);
         }
 
-        await reader.CloseAsync();
         if (question.Scope is null && OverviewQuestions.Matches(question.Value))
         {
             var overview = await OverviewSummaries(questionEmbedding, passages.Count > 0 ? passages[0].Score : 0.0, cancellationToken);
@@ -100,7 +64,7 @@ public class Passages(
         }
 
         var admittedSummaries = passages
-            .Where(passage => SourceHosts.IsCitable(passage.Page, options.Value) && passage.ClearsFloor(options.Value.Answering.MinSemanticSimilarity))
+            .Where(IsAdmissible)
             .Take(options.Value.Answering.MaxPassages).Where(passage => passage.IsSummary).ToArray();
         var summaryPages = admittedSummaries.Where(passage => !passage.IsCurated).Select(passage => passage.Page.Value).Distinct().ToArray();
         if (summaryPages.Length > 0)
@@ -314,6 +278,61 @@ public class Passages(
         return [.. rows.OrderBy(row => SectionAnchor.Rank(anchors, row)).ThenBy(row => SectionAnchor.Distance(anchors, row))
             .ThenBy(row => ChunkOrder.Of(row.ChunkId).Piece)];
     }
+
+    async Task<List<Passage>> ReadCandidates(Question question, int limit, Vector questionEmbedding, string[] excludedPrefixes, CancellationToken cancellationToken)
+    {
+        await using var command = dataSource.CreateCommand(
+            $"""
+            WITH semantic AS (
+                SELECT id, RANK() OVER (ORDER BY embedding <=> $1) AS rank
+                FROM chunks
+                WHERE {ScopeFilter} AND {LanguageFilter}
+                ORDER BY embedding <=> $1
+                LIMIT {CandidatesPerMethod}
+            ),
+            lexical AS (
+                SELECT id, ROW_NUMBER() OVER (
+                           ORDER BY (tsv @@ websearch_to_tsquery('english', $2)) DESC,
+                                    ts_rank_cd(tsv, websearch_to_tsquery('english', $2)) DESC,
+                                    ts_rank_cd(tsv, websearch_to_tsquery('english', $5), 1) DESC, id) AS rank
+                FROM chunks
+                WHERE (tsv @@ websearch_to_tsquery('english', $2) OR tsv @@ websearch_to_tsquery('english', $5)) AND {ScopeFilter} AND {LanguageFilter}
+                ORDER BY rank
+                LIMIT {CandidatesPerMethod}
+            )
+            SELECT c.page_url, c.title, c.heading_path, c.content,
+                   COALESCE(1.0 / ({RrfConstant} + semantic.rank), 0) +
+                   COALESCE(1.0 / ({RrfConstant} + lexical.rank), 0) AS score,
+                   1.0 - (c.embedding <=> $1) AS semantic_similarity,
+                   p.indexed_at, p.page_last_modified, p.product_version, c.id = c.page_url || '#summary' AS is_summary, c.id
+            FROM chunks c
+            LEFT JOIN semantic ON c.id = semantic.id
+            LEFT JOIN lexical ON c.id = lexical.id
+            LEFT JOIN documentation_pages p ON p.page_url = c.page_url
+            WHERE semantic.id IS NOT NULL OR lexical.id IS NOT NULL
+            ORDER BY score DESC
+            LIMIT $3
+            """);
+
+        command.Parameters.AddWithValue(questionEmbedding);
+        command.Parameters.AddWithValue(question.Value);
+        command.Parameters.AddWithValue(limit);
+        command.Parameters.AddWithValue(ScopePrefixes(question));
+        command.Parameters.AddWithValue(LexicalQuery.Lenient(question.Value));
+        command.Parameters.AddWithValue(excludedPrefixes);
+
+        var passages = new List<Passage>();
+        await using var reader = await command.ExecuteReaderAsync(cancellationToken);
+        while (await reader.ReadAsync(cancellationToken))
+        {
+            passages.Add(await ReadPassage(reader, cancellationToken));
+        }
+
+        await reader.CloseAsync();
+        return passages;
+    }
+
+    bool IsAdmissible(Passage passage) => SourceHosts.IsCitable(passage.Page, options.Value) && passage.ClearsFloor(options.Value.Answering.MinSemanticSimilarity);
 
     string[] ScopePrefixes(Question question) => question.Scope is { } product
         ? [.. ProductScope.PrefixesFor(product, options.Value.DocsSiteUrl)]

@@ -22,6 +22,10 @@ public record Question(string Value) : ConceptAs<string>(Value)
     [System.Text.Json.Serialization.JsonIgnore]
     public InteractionProduct? Scope { get; init; }
 
+    /// <summary>Gets the client languages the asker named; retrieval-only, the only thing derived from the conversation that reaches search.</summary>
+    [System.Text.Json.Serialization.JsonIgnore]
+    public Retrieval.ClientLanguage ClientLanguages { get; init; }
+
     /// <summary>Gets whether the interactive caller can resolve a product clarification.</summary>
     [System.Text.Json.Serialization.JsonIgnore]
     public bool AllowClarification { get; init; }
