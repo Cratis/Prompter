@@ -7,7 +7,7 @@ namespace Cratis.Prompter.Specs.for_Passages.given;
 
 /// <summary>
 /// A corpus where the why-cratis summary and its body both fall below the similarity threshold for the overview
-/// question, as a differently worded overview page does in production.
+/// question, as a differently worded overview page does in production, behind twenty-one closer chunks.
 /// </summary>
 public class a_corpus_with_a_weakly_similar_overview_page : a_disposable_documentation_corpus
 {
@@ -22,5 +22,13 @@ public class a_corpus_with_a_weakly_similar_overview_page : a_disposable_documen
         await Seed(
             new(new(OverviewBodyId), new("https://cratis.io/why-cratis.md"), "Why Cratis", "why-cratis > The pieces fit together", "Chronicle records the facts and Arc shapes the application.", new("synthetic")),
             Axes((4, 0.3f), (6, 0.954f)));
+
+        // Closer chunks fill both retrieval arms' candidate pools, so the body arrives only as a curated expansion.
+        for (var index = 0; index < 21; index++)
+        {
+            await Seed(
+                new(new($"distractor_{index}"), new($"https://cratis.io/distractor/{index}/"), "Distractor", "Entries", $"Quasar widgets entry {index}.", new("synthetic")),
+                Axes((4, 0.8f), (7, 0.6f)));
+        }
     }
 }

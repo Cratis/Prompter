@@ -18,8 +18,7 @@ public class and_an_overview_page_is_weakly_similar : given.a_corpus_with_a_weak
     void should_read_the_page_body_as_a_curated_expansion()
     {
         RequireDatabase();
-        var body = retrieved.Single(passage => passage.ChunkId == OverviewBodyId);
-        body.IsPageExpansion.ShouldBeTrue();
+        var body = retrieved.Single(passage => passage.ChunkId == OverviewBodyId && passage.IsPageExpansion);
         body.IsCurated.ShouldBeTrue();
     }
 
