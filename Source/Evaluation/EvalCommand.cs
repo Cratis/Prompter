@@ -15,6 +15,14 @@ public sealed class EvalCommand(PaidWork work, IAnswers answers)
 {
     static readonly JsonSerializerOptions _jsonOptions = new() { WriteIndented = true };
 
+    /// <summary>Selects the cases to run: one case by id, or the set in file order after skipping and limiting.</summary>
+    /// <param name="set">The curated set.</param>
+    /// <param name="arguments">The case, skip and limit selectors.</param>
+    /// <returns>The selected cases.</returns>
+    public static IEnumerable<EvalCase> Select(EvalSet set, EvalArguments arguments) => arguments.Case is null
+        ? set.Questions.Skip(arguments.Skip).Take(arguments.Limit ?? int.MaxValue)
+        : set.Questions.Where(item => item.Id == arguments.Case).Take(arguments.Limit ?? int.MaxValue);
+
     /// <summary>Runs a selected set, stopping between cases at the cost cap.</summary>
     /// <param name="set">The curated set.</param>
     /// <param name="arguments">The explicit paid opt-in and limits.</param>
@@ -22,8 +30,7 @@ public sealed class EvalCommand(PaidWork work, IAnswers answers)
     public async Task<EvalSummary> Run(EvalSet set, EvalArguments arguments)
     {
         if (!arguments.Paid) return EvalSummary.From([], arguments);
-        var selected = set.Questions.Where(item => arguments.Case is null || item.Id == arguments.Case)
-            .Take(arguments.Limit ?? int.MaxValue);
+        var selected = Select(set, arguments);
         var results = new List<EvalResult>();
         var stopped = false;
         foreach (var item in selected)

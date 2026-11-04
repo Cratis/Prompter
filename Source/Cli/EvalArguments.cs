@@ -15,15 +15,16 @@ namespace Cratis.Prompter.Cli;
 /// <param name="MinRefusalAccuracy">The required refusal accuracy.</param>
 /// <param name="MaxCost">The dollar cap, checked between cases.</param>
 /// <param name="Out">The optional JSON output path, or a single dash for one report line on standard output.</param>
+/// <param name="Skip">The number of cases to skip from the start of the set; ignored when a case is given.</param>
 public sealed record EvalArguments(bool Paid, string? Set = null, string? Case = null, int? Limit = null,
     double MinPassRate = 0.8, double MinRetrievalHitRate = 0.8, double MinRefusalAccuracy = 0.9,
-    decimal MaxCost = 2.00m, string? Out = null)
+    decimal MaxCost = 2.00m, string? Out = null, int Skip = 0)
 {
     /// <summary>Gets the highest per-run cost ceiling; production's daily cap makes more unreachable.</summary>
     public const decimal MaxCostCeiling = 5.00m;
 
     /// <summary>Gets usage without any user-supplied values.</summary>
-    public const string Usage = "Usage: eval --paid [--set path] [--case id] [--limit count] [--min-pass-rate 0..1] [--min-retrieval-hit-rate 0..1] [--min-refusal-accuracy 0..1] [--max-cost dollars<=5] [--out path|-]";
+    public const string Usage = "Usage: eval --paid [--set path] [--case id] [--skip count] [--limit count] [--min-pass-rate 0..1] [--min-retrieval-hit-rate 0..1] [--min-refusal-accuracy 0..1] [--max-cost dollars<=5] [--out path|-]";
 
     /// <summary>Parses only known flags; malformed input returns no arguments.</summary>
     /// <param name="tokens">Tokens after the mode.</param>
@@ -57,6 +58,7 @@ public sealed record EvalArguments(bool Paid, string? Set = null, string? Case =
         "--case" => result with { Case = value },
         "--out" => result with { Out = value },
         "--limit" => int.TryParse(value, out var count) && count > 0 ? result with { Limit = count } : null,
+        "--skip" => int.TryParse(value, NumberStyles.None, CultureInfo.InvariantCulture, out var skip) ? result with { Skip = skip } : null,
         "--max-cost" => Cost(value) is { } cost ? result with { MaxCost = cost } : null,
         _ => ApplyRate(result, flag, value)
     };

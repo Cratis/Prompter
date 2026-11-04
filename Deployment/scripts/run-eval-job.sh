@@ -15,13 +15,14 @@
 # The helper modes touch no cluster. Default mode requires KUBECONFIG and PROMPTER_EVAL_REPORT_DIR.
 # Prerequisites: bash, jq, kubectl (default mode only); namespace-scoped access to prompter.
 # Inputs: PROMPTER_EVAL_MAX_COST (default 2.00, at most 5), PROMPTER_EVAL_LIMIT (default 60, at most 60),
-# PROMPTER_EVAL_CASE (optional case id), PROMPTER_EVAL_TIMEOUT_SECONDS (default 1800, at most 1800).
+# PROMPTER_EVAL_SKIP (default 0, at most 999), PROMPTER_EVAL_CASE (optional case id), PROMPTER_EVAL_TIMEOUT_SECONDS (default 1800, at most 1800).
 set -euo pipefail
 # Never trace: tracing (for example from SHELLOPTS or bash -x) could expose credentials.
 { set +x; } 2> /dev/null
 
 max_cost="${PROMPTER_EVAL_MAX_COST-2.00}"
 limit="${PROMPTER_EVAL_LIMIT-60}"
+skip="${PROMPTER_EVAL_SKIP-0}"
 case_id="${PROMPTER_EVAL_CASE-}"
 timeout_seconds="${PROMPTER_EVAL_TIMEOUT_SECONDS-1800}"
 
@@ -34,6 +35,10 @@ if ! [[ "$limit" =~ ^[1-9][0-9]?$ ]] || (( limit > 60 )); then
     echo '::error::PROMPTER_EVAL_LIMIT must be an integer from 1 to 60.' >&2
     exit 1
 fi
+if ! [[ "$skip" =~ ^(0|[1-9][0-9]{0,2})$ ]]; then
+    echo '::error::PROMPTER_EVAL_SKIP must be an integer from 0 to 999.' >&2
+    exit 1
+fi
 if [[ -n "$case_id" ]] && ! [[ "$case_id" =~ ^[a-z]{2,12}-[0-9]{3}$ ]]; then
     echo '::error::PROMPTER_EVAL_CASE must be empty or a case id such as arc-001.' >&2
     exit 1
@@ -43,8 +48,9 @@ if ! [[ "$timeout_seconds" =~ ^[1-9][0-9]{0,3}$ ]] || (( timeout_seconds > 1800 
     exit 1
 fi
 
-eval_args="$(jq -cn --arg limit "$limit" --arg cost "$max_cost" --arg case_id "$case_id" \
+eval_args="$(jq -cn --arg limit "$limit" --arg skip "$skip" --arg cost "$max_cost" --arg case_id "$case_id" \
     '["eval", "--paid", "--set", "/app/Eval/golden-questions.yaml", "--limit", $limit, "--max-cost", $cost, "--out", "-"] +
+     (if ($skip | tonumber) > 0 then ["--skip", $skip] else [] end) +
      (if $case_id == "" then [] else ["--case", $case_id] end)')"
 
 if [[ "${1:-}" == '--print-manifest' && $# -eq 3 ]]; then

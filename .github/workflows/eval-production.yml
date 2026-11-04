@@ -17,6 +17,10 @@ on:
         description: Cases to run, at most 60
         type: string
         default: '60'
+      skip:
+        description: Cases to skip from the start of the golden set, for example 60 to run cases 61-88
+        type: string
+        default: '0'
       case:
         description: Optional single case id, for example arc-001
         type: string
@@ -53,6 +57,7 @@ jobs:
           KUBECONFIG_CONTENT: ${{ secrets.KUBECONFIG }}
           PROMPTER_EVAL_MAX_COST: ${{ inputs.max_cost }}
           PROMPTER_EVAL_LIMIT: ${{ inputs.limit }}
+          PROMPTER_EVAL_SKIP: ${{ inputs.skip }}
           PROMPTER_EVAL_CASE: ${{ inputs.case }}
           PROMPTER_EVAL_REPORT_DIR: ${{ runner.temp }}/eval-report
         run: |
