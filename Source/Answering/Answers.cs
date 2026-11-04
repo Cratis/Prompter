@@ -164,11 +164,13 @@ public class Answers(
         var eligible = candidates.Where(passage => passage.ClearsFloor(answering.MinSemanticSimilarity)).ToArray();
         var qualified = eligible.Where(passage => !passage.IsPageExpansion).Take(answering.MaxPassages).ToList();
         var summaryPages = qualified.Where(passage => passage.IsSummary).Select(passage => passage.Page).ToHashSet();
+        var expansionBudget = Math.Min(2 * summaryPages.Count, answering.MaxPassages - qualified.Count(passage => passage.IsSummary));
         var expansion = eligible.Where(passage => passage.IsPageExpansion && !passage.IsSummary && summaryPages.Contains(passage.Page))
             .OrderByDescending(passage => passage.SemanticSimilarity)
             .DistinctBy(passage => (passage.Page, passage.HeadingPath, passage.Content))
             .Where(passage => !qualified.Exists(existing => existing.Page == passage.Page && existing.HeadingPath == passage.HeadingPath && existing.Content == passage.Content))
-            .Take(Math.Min(2, answering.MaxPassages - qualified.Count(passage => passage.IsSummary))).ToArray();
+            .GroupBy(passage => passage.Page).SelectMany(group => group.Take(2))
+            .Take(expansionBudget).ToArray();
         while (qualified.Count + expansion.Length > answering.MaxPassages)
         {
             qualified.RemoveAt(qualified.FindLastIndex(passage => !passage.IsSummary));

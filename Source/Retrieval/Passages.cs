@@ -189,20 +189,28 @@ public class Passages(
 
     async Task<List<Passage>> ExpandSummaries(Vector questionEmbedding, string[] pages, bool curated, CancellationToken cancellationToken)
     {
-        // Reuse the question embedding. Only the best two non-summary chunks from admitted pages
-        // compete for reserved slots; the answering layer still enforces grounding and the total cap.
+        // Reuse the question embedding. The best two non-summary chunks from each admitted page
+        // compete for reserved slots - per page, so one overview page's best body text cannot starve
+        // another's when several admitted pages share this call; the answering layer still enforces
+        // grounding and the total cap.
         await using var command = dataSource.CreateCommand(
             """
-            SELECT c.page_url, c.title, c.heading_path, c.content, 0.0::double precision AS score,
-                   1.0 - (c.embedding <=> $1) AS semantic_similarity,
-                   p.indexed_at, p.page_last_modified, p.product_version, false AS is_summary, c.id
-            FROM chunks c
-            LEFT JOIN documentation_pages p ON p.page_url = c.page_url
-            WHERE c.page_url = ANY($2::text[]) AND c.id <> c.page_url || '#summary'
-              AND 1.0 - (c.embedding <=> $1) >= $3
-              AND 1.0 - (c.embedding <=> $1) <= 1
-            ORDER BY c.embedding <=> $1, c.id
-            LIMIT 2
+            WITH ranked AS (
+                SELECT c.page_url, c.title, c.heading_path, c.content, c.id,
+                       1.0 - (c.embedding <=> $1) AS semantic_similarity,
+                       ROW_NUMBER() OVER (PARTITION BY c.page_url ORDER BY c.embedding <=> $1, c.id) AS rank
+                FROM chunks c
+                WHERE c.page_url = ANY($2::text[]) AND c.id <> c.page_url || '#summary'
+                  AND 1.0 - (c.embedding <=> $1) >= $3
+                  AND 1.0 - (c.embedding <=> $1) <= 1
+            )
+            SELECT r.page_url, r.title, r.heading_path, r.content, 0.0::double precision AS score,
+                   r.semantic_similarity,
+                   p.indexed_at, p.page_last_modified, p.product_version, false AS is_summary, r.id
+            FROM ranked r
+            LEFT JOIN documentation_pages p ON p.page_url = r.page_url
+            WHERE r.rank <= 2
+            ORDER BY r.semantic_similarity DESC, r.id
             """);
         command.Parameters.AddWithValue(questionEmbedding);
         command.Parameters.AddWithValue(pages);
