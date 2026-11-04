@@ -36,6 +36,9 @@ public class Passages(
     /// <summary>Keeps every candidate when no prefix is given, otherwise only pages under one of the prefixes.</summary>
     const string ScopeFilter = "(cardinality($4::text[]) = 0 OR EXISTS (SELECT 1 FROM unnest($4::text[]) AS prefix WHERE starts_with(page_url, prefix)))";
 
+    /// <summary>A curated docs overview set: the canonical answer to broad Cratis questions per the system prompt's source rule.</summary>
+    static readonly string[] _overviewPaths = ["index.md", "why-cratis.md", "cratis-stack.md"];
+
     /// <inheritdoc/>
     public async Task<IEnumerable<Passage>> Search(Question question, int limit, CancellationToken cancellationToken = default)
     {
@@ -89,6 +92,13 @@ public class Passages(
         }
 
         await reader.CloseAsync();
+        if (question.Scope is null && OverviewQuestions.Matches(question.Value))
+        {
+            var overview = await OverviewSummaries(questionEmbedding, passages.Count > 0 ? passages[0].Score : 0.0, cancellationToken);
+            var overviewIds = overview.Select(passage => passage.ChunkId).ToHashSet(StringComparer.Ordinal);
+            passages = [.. overview, .. passages.Where(passage => !overviewIds.Contains(passage.ChunkId))];
+        }
+
         var summaryPages = passages
             .Where(passage => SourceHosts.IsCitable(passage.Page, options.Value) && double.IsFinite(passage.SemanticSimilarity) &&
                 passage.SemanticSimilarity is >= -1 and <= 1 && passage.SemanticSimilarity >= options.Value.Answering.MinSemanticSimilarity)
@@ -135,6 +145,39 @@ public class Passages(
     static async Task<T?> NullableField<T>(NpgsqlDataReader reader, int ordinal, CancellationToken cancellationToken)
         where T : struct =>
         await reader.IsDBNullAsync(ordinal, cancellationToken) ? null : await reader.GetFieldValueAsync<T>(ordinal, cancellationToken);
+
+    string[] OverviewSummaryIds()
+    {
+        var docs = new Uri(options.Value.DocsSiteUrl).Host;
+        var twin = docs.StartsWith("www.", StringComparison.OrdinalIgnoreCase) ? docs[4..] : $"www.{docs}";
+        return [.. new[] { docs, twin }.SelectMany(host => _overviewPaths.Select(path => $"https://{host}/{path}#summary"))];
+    }
+
+    async Task<List<Passage>> OverviewSummaries(Vector questionEmbedding, double score, CancellationToken cancellationToken)
+    {
+        // Reuse the question embedding; the answering layer still applies the similarity threshold and the cap.
+        await using var command = dataSource.CreateCommand(
+            """
+            SELECT c.page_url, c.title, c.heading_path, c.content, $3::double precision AS score,
+                   1.0 - (c.embedding <=> $1) AS semantic_similarity,
+                   p.indexed_at, p.page_last_modified, p.product_version, true AS is_summary, c.id
+            FROM chunks c
+            LEFT JOIN documentation_pages p ON p.page_url = c.page_url
+            WHERE c.id = ANY($2::text[])
+            ORDER BY c.embedding <=> $1, c.id
+            """);
+        command.Parameters.AddWithValue(questionEmbedding);
+        command.Parameters.AddWithValue(OverviewSummaryIds());
+        command.Parameters.AddWithValue(score);
+        var summaries = new List<Passage>();
+        await using var reader = await command.ExecuteReaderAsync(cancellationToken);
+        while (await reader.ReadAsync(cancellationToken))
+        {
+            summaries.Add(await ReadPassage(reader, cancellationToken));
+        }
+
+        return summaries;
+    }
 
     async Task<List<Passage>> ExpandSummaries(Vector questionEmbedding, string[] pages, CancellationToken cancellationToken)
     {

@@ -382,8 +382,11 @@ The **shared $5/UTC-day ceiling is durable**, including CLI indexing, retries an
 Each answer reserves its worst-case Anthropic input/output and Voyage retry exposure atomically,
 beneath both the global ceiling and provider `DailyUsd` sublimits. Anthropic SDK retries are disabled;
 Voyage attempts are charged inside the existing retry policy. A restart, timeout, missing usage or
-failed settlement never releases ambiguous exposure. Known plain chat usage is reconciled;
-cache-related/extra usage counters and embedding attempts conservatively retain their upper exposure.
+failed settlement never releases ambiguous exposure. Known chat usage is reconciled:
+cache-write tokens settle at `CacheWriteUsdPerMillion` and cache reads at `CacheReadUsdPerMillion`
+(else at the input price), and both are valid only at or below `InputUsdPerMillion`. An unset
+cache-write price, any other extra usage counter and embedding attempts conservatively retain their
+upper exposure; each rejected settlement logs a `SettlementRejected` warning with a structured reason.
 Spend tables contain only UTC days, anonymous reservation UUIDs, provider dollar amounts and settlement
 state — no Discord IDs or text. The additive `v1_3_0.sql` migration runs at normal schema initialization.
 Old binaries ignore these tables **and bypass the new ceiling**: stop old paid workers before rollout.
@@ -392,7 +395,8 @@ Before enabling paid work, explicitly configure **both** `Protection:Anthropic` 
 `Protection:Voyage`: `Model` (exact configured provider model), `InputUsdPerMillion`,
 `MaxInputTokens` (verified hard model ceiling), and `DailyUsd` (default $5 per provider beneath the
 shared ceiling). Anthropic also requires `OutputUsdPerMillion`. Use conservative current prices,
-including the highest applicable cache-write input price. Prices default to unverified, not guessed:
+including the highest applicable cache-write input price. Optionally set `CacheWriteUsdPerMillion`
+and `CacheReadUsdPerMillion` (each at most `InputUsdPerMillion`) so cache usage settles at a known cost. Prices default to unverified, not guessed:
 missing/mismatched pricing or an unavailable ledger refuses dispatch. Large indexing batches may
 need smaller existing indexing batch settings to fit the verified Voyage input bound and remaining spend.
 

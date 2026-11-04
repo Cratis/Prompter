@@ -312,8 +312,10 @@ questions:
     question: "How do I write my first command in Arc?"
     expected: answer
     expected_pages:
-      - https://cratis.io/arc/backend/getting-started/your-first-command/
-      - https://cratis.io/arc/backend/getting-started/
+      - https://cratis.io/arc/backend/csharp/getting-started/your-first-command/
+      - https://cratis.io/arc/backend/typescript/getting-started/your-first-command/
+      - https://cratis.io/arc/backend/csharp/getting-started/
+      - https://cratis.io/arc/backend/typescript/getting-started/
     tags: [csharp, commands, getting-started]
     rationale: "your-first-command.md shows the [Command] record with an embedded Handle() method."
 
@@ -334,7 +336,7 @@ questions:
     question: "I'm coming from MediatR and MVC controllers — how do those concepts map onto Arc?"
     expected: answer
     expected_pages:
-      - https://cratis.io/arc/coming-from-mediatr-and-mvc/
+      - https://cratis.io/arc/backend/csharp/coming-from-mediatr-and-mvc/
     tags: [migration, comparison]
     rationale: "Dedicated mapping page: IRequest/IRequestHandler -> single command record; controllers -> auto HTTP mapping."
 
@@ -355,8 +357,9 @@ questions:
     question: "how do I add validation to a command in Arc?"
     expected: answer
     expected_pages:
-      - https://cratis.io/arc/backend/commands/command-validation/
-      - https://cratis.io/arc/backend/commands/validation/
+      - https://cratis.io/arc/backend/csharp/commands/command-validation/
+      - https://cratis.io/arc/backend/csharp/commands/validation/
+      - https://cratis.io/arc/backend/typescript/commands/command-validation/
     tags: [csharp, commands, validation]
     rationale: "Arc discovers a CommandValidator<T> by convention; both command-validation and validation pages exist."
 
@@ -366,8 +369,10 @@ questions:
     question: "how do queries work in Arc — how do I return data from a read model without writing a controller?"
     expected: answer
     expected_pages:
-      - https://cratis.io/arc/backend/queries/
-      - https://cratis.io/arc/backend/queries/model-bound/
+      - https://cratis.io/arc/backend/csharp/queries/
+      - https://cratis.io/arc/backend/csharp/queries/model-bound/
+      - https://cratis.io/arc/backend/typescript/queries/
+      - https://cratis.io/arc/backend/typescript/queries/model-bound/
     tags: [csharp, queries, read-models]
     rationale: "model-bound.md documents [ReadModel] with static query methods and DI."
 
@@ -389,8 +394,9 @@ questions:
     question: "how does Arc keep my TypeScript frontend types in sync with the C# backend? what's this proxy generation thing?"
     expected: answer
     expected_pages:
-      - https://cratis.io/arc/backend/proxy-generation/
-      - https://cratis.io/arc/backend/proxy-generation/overview/
+      - https://cratis.io/arc/backend/csharp/proxy-generation/
+      - https://cratis.io/arc/backend/csharp/proxy-generation/getting-started/
+      - https://cratis.io/arc/backend/typescript/proxy-generation/
     tags: [proxy-generation, typescript]
     rationale: "proxy-generation/overview.md: MSBuild target generates TS from compiled assemblies for compile-time safety."
 
@@ -400,8 +406,10 @@ questions:
     question: "how do I lock down a command or query so only authorized users can run it?"
     expected: answer
     expected_pages:
-      - https://cratis.io/arc/backend/authorizing-commands-and-queries/
-      - https://cratis.io/arc/backend/commands/model-bound/authorization/
+      - https://cratis.io/arc/backend/csharp/authorizing-commands-and-queries/
+      - https://cratis.io/arc/backend/csharp/commands/model-bound/authorization/
+      - https://cratis.io/arc/backend/typescript/authorizing-commands-and-queries/
+      - https://cratis.io/arc/backend/typescript/commands/model-bound/authorization/
     tags: [authorization, security]
     rationale: "Dedicated authorizing-commands-and-queries page plus the model-bound authorization page."
 
@@ -422,8 +430,10 @@ questions:
     question: "how do I add event sourcing to an Arc slice — wire Chronicle into my command?"
     expected: answer
     expected_pages:
-      - https://cratis.io/arc/backend/chronicle/
-      - https://cratis.io/arc/backend/chronicle/add-event-sourcing/
+      - https://cratis.io/arc/backend/csharp/chronicle/
+      - https://cratis.io/arc/backend/csharp/chronicle/add-event-sourcing/
+      - https://cratis.io/arc/backend/typescript/chronicle/
+      - https://cratis.io/arc/backend/typescript/chronicle/add-event-sourcing/
     tags: [chronicle-integration, event-sourcing]
     rationale: "add-event-sourcing.md is the Arc+Chronicle integration onramp."
 
@@ -433,7 +443,7 @@ questions:
     question: "how do I make a query that pushes live updates to the client instead of a one-off fetch?"
     expected: answer
     expected_pages:
-      - https://cratis.io/arc/backend/queries/model-bound/observable-queries/
+      - https://cratis.io/arc/backend/csharp/queries/model-bound/observable-queries/
       - https://cratis.io/arc/frontend/react/queries/observable-queries/
     tags: [queries, real-time, observable]
     rationale: "Observable queries exist on both backend and React frontend sides."

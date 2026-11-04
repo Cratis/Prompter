@@ -3,6 +3,7 @@
 
 using Cratis.Prompter.Telemetry;
 using Microsoft.Extensions.AI;
+using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
 using Npgsql;
 
@@ -11,7 +12,8 @@ namespace Cratis.Prompter.Protection;
 /// <summary>Funds each attempt before transport; unknown or unpriced usage retains its entire bound.</summary>
 /// <param name="store">Transactional attempt persistence.</param>
 /// <param name="options">Verified prices and bounded task policies.</param>
-public sealed class ProviderAccounting(IProviderAttemptStore store, IOptions<PrompterOptions> options) : IProviderAccounting
+/// <param name="logger">Logs why a settlement was rejected.</param>
+public sealed class ProviderAccounting(IProviderAttemptStore store, IOptions<PrompterOptions> options, ILogger<ProviderAccounting> logger) : IProviderAccounting
 {
     /// <inheritdoc/>
     public async Task<bool> Reserve(ProviderDispatch dispatch, CancellationToken cancellationToken)
@@ -53,10 +55,19 @@ public sealed class ProviderAccounting(IProviderAttemptStore store, IOptions<Pro
         using var cleanup = new CancellationTokenSource(TimeSpan.FromSeconds(5));
         try
         {
-            var cost = KnownCost(dispatch, scope.InputCount, usage);
+            var (cost, rejection) = KnownCost(dispatch, scope.InputCount, usage);
+            if (rejection is { } reason)
+            {
+                logger.SettlementRejected(dispatch.Provider, dispatch.Task, dispatch.Attempt, reason);
+            }
+
             if (await store.Complete(dispatch, cost, cleanup.Token))
             {
                 scope.Completed(new(cost));
+                if (!scope.Prepaid)
+                {
+                    logger.SettledOutsideEnvelope(dispatch.Attempt, dispatch.Provider, dispatch.Task);
+                }
             }
         }
         catch (Exception error) when (error is NpgsqlException or TimeoutException or OperationCanceledException or OverflowException or WorkRefused)
@@ -65,36 +76,33 @@ public sealed class ProviderAccounting(IProviderAttemptStore store, IOptions<Pro
         }
     }
 
-    static bool SupportedUsage(UsageDetails? usage) =>
-        usage?.InputTokenCount is >= 0 && usage.AdditionalCounts?.Values.Any(value => value != 0) != true;
-
-    static bool WithinBounds(ProviderDispatch dispatch, UsageDetails usage, long inputCeiling)
+    (decimal? Cost, SettlementRejection? Rejection) KnownCost(ProviderDispatch dispatch, int count, UsageDetails? usage)
     {
-        var input = usage.InputTokenCount!.Value;
-        var output = usage.OutputTokenCount ?? (dispatch.Provider == "anthropic" ? -1 : 0);
-        var tokenBounds = input <= inputCeiling && output >= 0 && output <= dispatch.MaxOutputTokens;
-        var totalMatches = usage.TotalTokenCount is null || usage.TotalTokenCount == input + output;
-        return tokenBounds && totalMatches;
-    }
-
-    decimal? KnownCost(ProviderDispatch dispatch, int count, UsageDetails? usage)
-    {
-        var upper = ProviderAttemptPolicy.Upper(dispatch, count, options.Value);
-        if (!SupportedUsage(usage))
-        {
-            return null;
-        }
-
         var chat = dispatch.Provider == "anthropic";
         var budget = chat ? ChatPricing.ForTask(options.Value, dispatch.Task) : options.Value.Protection.Voyage;
-        var input = usage!.InputTokenCount!.Value;
-        var output = usage.OutputTokenCount ?? (chat ? -1 : 0);
-        if (!WithinBounds(dispatch, usage, (long)budget.MaxInputTokens * count))
+        var (cost, rejection) = UsagePrice.Of(budget, usage, chat);
+        if (cost is null)
         {
-            return null;
+            return (null, rejection);
         }
 
-        var cost = budget.Cost(input, output);
-        return cost <= upper ? cost : null;
+        var input = usage!.InputTokenCount!.Value;
+        var output = usage.OutputTokenCount ?? 0;
+        if (input > (long)budget.MaxInputTokens * count)
+        {
+            return (null, SettlementRejection.InputAboveCeiling);
+        }
+
+        if (output > dispatch.MaxOutputTokens)
+        {
+            return (null, SettlementRejection.OutputInvalid);
+        }
+
+        if (usage.TotalTokenCount is not null && usage.TotalTokenCount != input + output)
+        {
+            return (null, SettlementRejection.TotalMismatch);
+        }
+
+        return cost <= ProviderAttemptPolicy.Upper(dispatch, count, options.Value) ? (cost, null) : (null, SettlementRejection.CostAboveUpper);
     }
 }

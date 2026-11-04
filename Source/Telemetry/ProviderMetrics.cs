@@ -144,9 +144,10 @@ public static class ProviderMetrics
 
     static void RecordCost(ProviderDispatch dispatch, UsageDetails usage, ProviderBudget prices, TagList tags)
     {
-        if (prices.Covers(dispatch.Model, dispatch.Provider == "anthropic") && usage.AdditionalCounts?.Values.All(count => count == 0) != false)
+        if (prices.Covers(dispatch.Model, dispatch.Provider == "anthropic") &&
+            UsagePrice.Of(prices, usage, dispatch.Provider == "anthropic").Cost is { } cost)
         {
-            _cost.Add((double)prices.Cost(usage.InputTokenCount!.Value, usage.OutputTokenCount ?? 0), tags);
+            _cost.Add((double)cost, tags);
         }
     }
 

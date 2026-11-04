@@ -44,7 +44,9 @@ public class the_production_projection : Specification
     [Fact] void should_cover_hidden_thinking_in_the_output_bound() => _defaults.Protection.Anthropic.OutputUsdPerMillion.ShouldEqual(10m);
     [Fact] void should_price_the_default_answer_model_in_the_deployment() => _defaults.Protection.AnthropicAnswer.Covers(_defaults.Anthropic.Answer.Model!, true).ShouldBeTrue();
     [Fact] void should_cover_every_chat_task_in_the_deployment() => ChatPricing.Covered(_defaults).ShouldBeTrue();
-    [Fact] void should_reserve_the_worst_haiku_cache_write_rate() => _defaults.Protection.AnthropicAnswer.InputUsdPerMillion.ShouldEqual(0.2m);
+    [Fact] void should_reserve_the_worst_haiku_cache_write_rate() => _defaults.Protection.AnthropicAnswer.InputUsdPerMillion.ShouldEqual(0.25m);
+    [Fact] void should_price_haiku_cache_writes_at_the_reserved_rate() => _defaults.Protection.AnthropicAnswer.CacheWriteUsdPerMillion.ShouldEqual(0.25m);
+    [Fact] void should_price_haiku_cache_reads_at_the_discounted_rate() => _defaults.Protection.AnthropicAnswer.CacheReadUsdPerMillion.ShouldEqual(0.02m);
     [Fact] void should_price_the_answer_model_without_any_deployment_settings() => new PrompterOptions().Protection.AnthropicAnswer.Covers(new PrompterOptions().Anthropic.Answer.Model!, true).ShouldBeTrue();
     [Fact] void should_bind_the_short_answer_output_cap() => _defaults.Anthropic.Answer.MaxOutputTokens.ShouldEqual(3072);
     [Fact] void should_match_the_answer_generation_cap() => _defaults.Answering.MaxOutputTokens.ShouldEqual(3072);

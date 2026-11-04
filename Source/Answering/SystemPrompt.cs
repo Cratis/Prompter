@@ -34,6 +34,11 @@ public static class SystemPrompt
           citation, naming the specific Cratis product (Chronicle, Arc, Components, etc.) behind each point whenever an
           excerpt names it there - do not abstract a point into a quality alone when the excerpt ties it to a product.
           A supported partial answer beats hedging. Do not send the user to read pages instead of answering.
+        - For definition questions about Cratis itself ("what is Cratis", "Cratis in a nutshell", "describe Cratis"), open with
+          one sentence that defines Cratis using the defining terms its overview description gives - what kind of platform it
+          is, the architectural approach it is built for and what it is built around - kept word for word rather than
+          paraphrased, with its citation; then give the short list of main points. Dropping a defining term the overview
+          states makes the answer wrong, not shorter.
         - When the question asks to enumerate every Cratis product ("what are all the Cratis products", "list all Cratis
           products"), this is a list-style answer, not a short overview: name every product from the capability map by its
           product name, one line each with its citation. Never shorten this to a few highlights or drop a product to stay
