@@ -31,7 +31,7 @@ dotnet run --project Source -- eval --paid --limit 5 --max-cost 0.50 --out repor
 
 Without `--paid`, it exits 2 before constructing a host or external clients. Supply `--set`
 when running outside a source checkout; otherwise the command walks up to `Prompter.slnx`
-and uses `Eval/golden-questions.yaml`. Optional `--case` and `--limit` select cases.
+and uses `Eval/golden-questions.yaml`. Optional `--case`, `--skip` and `--limit` select cases; `--skip` drops the first cases in file order and does not apply with `--case`.
 Threshold defaults are `--min-pass-rate 0.8`, `--min-retrieval-hit-rate 0.8`,
 `--min-refusal-accuracy 0.9`; `--max-cost` defaults to $2.00. Invalid flags exit 2.
 

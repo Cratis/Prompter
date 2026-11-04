@@ -5,7 +5,7 @@ set -euo pipefail
 
 script="$(cd "$(dirname "$0")" && pwd)/run-eval-job.sh"
 # Offline specs must not inherit settings from the caller.
-unset PROMPTER_EVAL_MAX_COST PROMPTER_EVAL_LIMIT PROMPTER_EVAL_CASE PROMPTER_EVAL_TIMEOUT_SECONDS
+unset PROMPTER_EVAL_MAX_COST PROMPTER_EVAL_LIMIT PROMPTER_EVAL_SKIP PROMPTER_EVAL_CASE PROMPTER_EVAL_TIMEOUT_SECONDS
 
 secret() {
     printf '{"name":"%s","valueFrom":{"secretKeyRef":{"name":"prompter-secrets","key":"%s"}}}' "$1" "$1"
@@ -48,9 +48,15 @@ jq -e '.spec.template.spec.containers[0].env |
     any(.[]; .name == "DOTNET_ENVIRONMENT" and .value == "Production") and
     any(.[]; .name == "Cratis__Prompter__Protection__AnsweringEnabled" and .value == "true")' <<<"$manifest" >/dev/null
 
+skipped=$(PROMPTER_EVAL_SKIP=60 "$script" --print-manifest example.invalid/prompter:spec eval-spec <<<"$enabled_env")
+jq -e '.spec.template.spec.containers[0].args == ["eval","--paid","--set","/app/Eval/golden-questions.yaml","--limit","60","--max-cost","2.00","--out","-","--skip","60"]' <<<"$skipped" >/dev/null
+
 expect_rejection "$(fixture_env false)" "$script"
 expect_rejection "$enabled_env" env PROMPTER_EVAL_MAX_COST=5.01 "$script"
 expect_rejection "$enabled_env" env PROMPTER_EVAL_LIMIT=61 "$script"
+expect_rejection "$enabled_env" env PROMPTER_EVAL_SKIP=-1 "$script"
+expect_rejection "$enabled_env" env PROMPTER_EVAL_SKIP=1000 "$script"
+expect_rejection "$enabled_env" env PROMPTER_EVAL_SKIP=abc "$script"
 expect_rejection "$enabled_env" env PROMPTER_EVAL_CASE=../x "$script"
 expect_rejection "${enabled_env//Cratis__Prompter__Anthropic__ApiKey/Cratis__Prompter__Other}" "$script"
 

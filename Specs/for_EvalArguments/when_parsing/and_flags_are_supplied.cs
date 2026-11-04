@@ -11,6 +11,9 @@ public class and_flags_are_supplied : Specification
     [InlineData("--unknown", "value")]
     [InlineData("--limit", "0")]
     [InlineData("--limit", "no")]
+    [InlineData("--skip", "-1")]
+    [InlineData("--skip", "no")]
+    [InlineData("--skip", "")]
     [InlineData("--max-cost", "-1")]
     [InlineData("--max-cost", "5.01")]
     [InlineData("--max-cost", "100")]
@@ -22,6 +25,10 @@ public class and_flags_are_supplied : Specification
     void should_reject_invalid_values(string flag, string value) => (EvalArguments.Parse([flag, value]) is null).ShouldBeTrue();
 
     [Fact] void should_require_a_value() => (EvalArguments.Parse(["--limit"]) is null).ShouldBeTrue();
+    [Fact] void should_require_a_skip_value() => (EvalArguments.Parse(["--skip"]) is null).ShouldBeTrue();
+    [Fact] void should_default_to_no_skip() => EvalArguments.Parse([])!.Skip.ShouldEqual(0);
+    [Fact] void should_accept_zero_skip() => EvalArguments.Parse(["--skip", "0"])!.Skip.ShouldEqual(0);
+    [Fact] void should_parse_skip() => EvalArguments.Parse(["--skip", "60"])!.Skip.ShouldEqual(60);
     [Fact] void should_reject_repeated_flags() => (EvalArguments.Parse(["--paid", "--paid"]) is null).ShouldBeTrue();
     [Fact] void should_default_to_unpaid() => EvalArguments.Parse([])!.Paid.ShouldBeFalse();
     [Fact] void should_keep_the_default_cost_cap() => EvalArguments.Parse([])!.MaxCost.ShouldEqual(2m);
