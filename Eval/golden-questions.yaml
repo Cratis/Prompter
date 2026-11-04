@@ -1024,7 +1024,8 @@ questions:
     type: concept
     question: "is there a Chronicle client for Kotlin or Java?"
     expected: answer
-    expected_pages: ["https://github.com/Cratis/Chronicle.Kotlin/blob/main/README.md"]
+    # The Kotlin client docs page grounds client availability as well as the README.
+    expected_pages: ["https://github.com/Cratis/Chronicle.Kotlin/blob/main/README.md", "https://cratis.io/chronicle/clients/kotlin/", "https://cratis.io/chronicle-clients/"]
     must_mention: ["Kotlin"]
     rationale: "Grounds client language availability in a public repository README."
 

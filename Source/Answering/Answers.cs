@@ -74,8 +74,16 @@ public class Answers(
                 "I found relevant pages but couldn't compose an answer. These pages may help.",
                 InteractionCategory.Unknown,
                 InteractionProduct.OtherOrUnknown);
-            var (text, citations) = CitedPages(generated.Text, qualified);
-            answer = new(text, citations, confidence, IsRefusal: false, qualified) { Category = generated.Category, Product = generated.Product, CitationProvenance = Provenance(citations, qualified), Suggestions = Suggest(generated, question) };
+            if (generated.Category == InteractionCategory.OutOfScope)
+            {
+                logger.RefusingOutOfScope(qualified[0].SemanticSimilarity);
+                answer = Answer.OutOfScope(confidence, found, generated.Product);
+            }
+            else
+            {
+                var (text, citations) = CitedPages(generated.Text, qualified);
+                answer = new(text, citations, confidence, IsRefusal: false, qualified) { Category = generated.Category, Product = generated.Product, CitationProvenance = Provenance(citations, qualified), Suggestions = Suggest(generated, question) };
+            }
         }
 
         var interactionId = await interactionLog.Record(

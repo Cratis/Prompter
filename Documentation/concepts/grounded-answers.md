@@ -52,6 +52,9 @@ threshold, it refuses - *"I couldn't find anything in the Cratis documentation t
 confidence"* - rather than letting the model improvise. A wrong-but-confident code snippet costs you more
 than an honest "ask a human," so honesty wins by design.
 
+A second refusal path covers off-topic questions. If a question is not about Cratis at all, Prompter declines it
+without sources, even when a page happens to share a word with it.
+
 Refusals also have a second life: they are logged (see [Privacy](privacy.md) for what exactly is stored) and
 reviewed as *documentation gaps*. If Prompter keeps refusing a reasonable question, that's a page someone
 should write - and the community's 👎 reactions work the same way.
