@@ -99,13 +99,22 @@ public class Passages(
             passages = [.. overview, .. passages.Where(passage => !overviewIds.Contains(passage.ChunkId))];
         }
 
-        var summaryPages = passages
+        var admittedSummaries = passages
             .Where(passage => SourceHosts.IsCitable(passage.Page, options.Value) && passage.ClearsFloor(options.Value.Answering.MinSemanticSimilarity))
-            .Take(options.Value.Answering.MaxPassages).Where(passage => passage.IsSummary)
-            .Select(passage => passage.Page.Value).Distinct().ToArray();
+            .Take(options.Value.Answering.MaxPassages).Where(passage => passage.IsSummary).ToArray();
+        var summaryPages = admittedSummaries.Where(passage => !passage.IsCurated).Select(passage => passage.Page.Value).Distinct().ToArray();
         if (summaryPages.Length > 0)
         {
-            passages.AddRange(await ExpandSummaries(questionEmbedding, summaryPages, cancellationToken));
+            passages.AddRange(await ExpandSummaries(questionEmbedding, summaryPages, false, cancellationToken));
+        }
+
+        // A curated overview page is relevant because the question matched the overview intent, so its best body
+        // chunks are read without the similarity floor; the answering layer still applies the expansion and total caps.
+        var curatedPages = admittedSummaries.Where(passage => passage.IsCurated).Select(passage => passage.Page.Value)
+            .Except(summaryPages, StringComparer.Ordinal).Distinct().ToArray();
+        if (curatedPages.Length > 0)
+        {
+            passages.AddRange(await ExpandSummaries(questionEmbedding, curatedPages, true, cancellationToken));
         }
 
         var anchors = SectionAnchors(passages);
@@ -178,7 +187,7 @@ public class Passages(
         return summaries;
     }
 
-    async Task<List<Passage>> ExpandSummaries(Vector questionEmbedding, string[] pages, CancellationToken cancellationToken)
+    async Task<List<Passage>> ExpandSummaries(Vector questionEmbedding, string[] pages, bool curated, CancellationToken cancellationToken)
     {
         // Reuse the question embedding. Only the best two non-summary chunks from admitted pages
         // compete for reserved slots; the answering layer still enforces grounding and the total cap.
@@ -197,12 +206,12 @@ public class Passages(
             """);
         command.Parameters.AddWithValue(questionEmbedding);
         command.Parameters.AddWithValue(pages);
-        command.Parameters.AddWithValue(options.Value.Answering.MinSemanticSimilarity);
+        command.Parameters.AddWithValue(curated ? -1.0 : options.Value.Answering.MinSemanticSimilarity);
         var expansion = new List<Passage>();
         await using var reader = await command.ExecuteReaderAsync(cancellationToken);
         while (await reader.ReadAsync(cancellationToken))
         {
-            expansion.Add(await ReadPassage(reader, cancellationToken) with { IsPageExpansion = true });
+            expansion.Add(await ReadPassage(reader, cancellationToken) with { IsPageExpansion = true, IsCurated = curated });
         }
         return expansion;
     }
