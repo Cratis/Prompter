@@ -10,6 +10,9 @@ internal static partial class AnswersLogging
     [LoggerMessage(LogLevel.Information, "Refusing to answer - no passage meets the semantic similarity threshold; highest similarity {Confidence}")]
     internal static partial void RefusingToAnswer(this ILogger<Answers> logger, double confidence);
 
+    [LoggerMessage(LogLevel.Information, "Refusing to answer - the question is out of scope; top qualified similarity {Similarity}")]
+    internal static partial void RefusingOutOfScope(this ILogger<Answers> logger, double similarity);
+
     [LoggerMessage(LogLevel.Information, "Answering with top qualified passage {PageUrl}; semantic similarity {Similarity}")]
     internal static partial void AnsweringWithPassage(this ILogger<Answers> logger, string pageUrl, double similarity);
 

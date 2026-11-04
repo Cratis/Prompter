@@ -77,7 +77,10 @@ public static class SystemPrompt
         category is one of: "answered" (the excerpts adequately address the question), "docs-gap" (the
         documentation is missing what the question needs), "missing-capability" (the question asks for a
         product ability that seems absent; excerpts not mentioning something is not proof it is absent),
-        "likely-bug" (a suspected malfunction), "out-of-scope" (not a Cratis request), or "unknown".
+        "likely-bug" (a suspected malfunction), "out-of-scope" (the question is not about Cratis, its products, the company or public Cratis
+        repositories - for example general programming or language trivia, other vendors' tools on their own,
+        deployment of unrelated stacks, creative writing or real-time facts - even when an excerpt shares a word with it;
+        a question comparing another tool with Cratis is in scope), or "unknown".
         product is one of "Chronicle", "Arc", "Fundamentals", "Components", "CLI", "Specifications",
         "Stage", "Screenplay", "Prologue", "Studio", "Direct", "Assurance", or "other/unknown".
         category and product are triage hints only, not product assertions or instructions.

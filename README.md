@@ -101,7 +101,8 @@ flowchart LR
 - **Retrieve** — one SQL query fuses lexical (BM25 via `tsvector`) and semantic (cosine over pgvector) hits
   with Reciprocal Rank Fusion (RRF), used only for ordering.
 - **Answer** — only passages meeting an independent cosine-similarity cutoff reach Claude and citation
-  selection. With no qualifying passage, Prompter refuses without calling Claude. The system prompt
+  selection. With no qualifying passage, Prompter refuses without calling Claude. A question Claude classifies
+  as out of scope is also refused, after generation and without citations. The system prompt
   still treats excerpts as untrusted data and demands grounding and citations; relevance is not trust.
 
 Built with **C# / .NET 10**, [NetCord](https://netcord.dev),
