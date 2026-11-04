@@ -35,6 +35,7 @@ When the operator configured a maintainer channel, a refusal or documentation ga
 **This should be documented** button, and an answer that suggests the capability does not exist yet carries
 **Request this**. Only the person who asked can press either. Pressing it sends the text of your question,
 with a link to it, to the maintainers; it is labeled as a documentation gap or a feature request.
+A refusal because the question is off-topic does not carry **This should be documented**.
 
 ## Ask a question it can answer
 

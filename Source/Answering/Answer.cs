@@ -20,6 +20,11 @@ public record Answer(
     bool IsRefusal,
     IReadOnlyList<Passage> Passages)
 {
+    /// <summary>The text of an out-of-scope refusal.</summary>
+    public const string OutOfScopeText =
+        "That's outside what I can help with - I answer questions about Cratis, its products and its documentation. " +
+        "For anything else, a general search or the community is a better bet.";
+
     /// <summary>
     /// Gets the id of the interaction row this answer was recorded as, when it was recorded (Discord and
     /// CLI answers are; a fresh <see cref="Refusal"/> before recording is not). Feedback buttons carry this
@@ -64,4 +69,23 @@ public record Answer(
         confidence,
         IsRefusal: true,
         passages);
+
+    /// <summary>
+    /// Creates a refusal answer for a question the model classified as outside Cratis, its products and its documentation.
+    /// It carries no citations, because no page grounds a declined question.
+    /// </summary>
+    /// <param name="confidence">The top qualified passage's cosine similarity.</param>
+    /// <param name="passages">The retrieved passages the question happened to match.</param>
+    /// <param name="product">The product the model attributed the question to.</param>
+    /// <returns>The out-of-scope refusal <see cref="Answer"/>.</returns>
+    public static Answer OutOfScope(double confidence, IReadOnlyList<Passage> passages, InteractionProduct product) => new(
+        OutOfScopeText,
+        [],
+        confidence,
+        IsRefusal: true,
+        passages)
+    {
+        Category = InteractionCategory.OutOfScope,
+        Product = product
+    };
 }

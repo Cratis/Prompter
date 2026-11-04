@@ -43,7 +43,7 @@ public sealed record AnswerActions(QuestionLink? Question, bool OfferHuman, bool
     {
         var forwards = options.MaintainerChannelId is not null;
         var missing = reply.Answer.Category == InteractionCategory.MissingCapability;
-        var documented = reply.Answer.IsRefusal || reply.Answer.Category == InteractionCategory.DocsGap;
+        var documented = (reply.Answer.IsRefusal && reply.Answer.Category != InteractionCategory.OutOfScope) || reply.Answer.Category == InteractionCategory.DocsGap;
         return For(question, documented, options.MaintainerRoleId is not null, forwards, missing, ProductKey(reply.Answer.Product));
     }
 
