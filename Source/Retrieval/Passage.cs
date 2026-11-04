@@ -20,6 +20,13 @@ public record Passage(PageUrl Page, string Title, string HeadingPath, string Con
     /// <summary>Gets whether this passage was looked up to expand an admitted summary.</summary>
     public bool IsPageExpansion { get; init; }
 
+    /// <summary>
+    /// Gets whether this passage is a curated overview summary added because the question matched the broad-overview
+    /// intent. Its relevance comes from that match, so it is admitted without the semantic-similarity floor; it must
+    /// still be citable and its similarity valid, and it still counts toward the passage cap.
+    /// </summary>
+    public bool IsCurated { get; init; }
+
     /// <summary>Gets the id of the chunk the passage was read from, when known.</summary>
     public string? ChunkId { get; init; }
 
@@ -34,4 +41,10 @@ public record Passage(PageUrl Page, string Title, string HeadingPath, string Con
 
     /// <summary>Gets the explicit product version the page stated, without a leading <c language="text">v</c>, when it stated one.</summary>
     public string? ProductVersion { get; init; }
+
+    /// <summary>Checks whether the passage clears the grounding floor: a valid similarity at or above it, or a curated overview summary with a valid similarity.</summary>
+    /// <param name="floor">The minimum semantic similarity for ordinary passages.</param>
+    /// <returns><see langword="true"/> when the passage may ground an answer.</returns>
+    public bool ClearsFloor(double floor) =>
+        double.IsFinite(SemanticSimilarity) && SemanticSimilarity is >= -1 and <= 1 && (IsCurated || SemanticSimilarity >= floor);
 }

@@ -100,8 +100,7 @@ public class Passages(
         }
 
         var summaryPages = passages
-            .Where(passage => SourceHosts.IsCitable(passage.Page, options.Value) && double.IsFinite(passage.SemanticSimilarity) &&
-                passage.SemanticSimilarity is >= -1 and <= 1 && passage.SemanticSimilarity >= options.Value.Answering.MinSemanticSimilarity)
+            .Where(passage => SourceHosts.IsCitable(passage.Page, options.Value) && passage.ClearsFloor(options.Value.Answering.MinSemanticSimilarity))
             .Take(options.Value.Answering.MaxPassages).Where(passage => passage.IsSummary)
             .Select(passage => passage.Page.Value).Distinct().ToArray();
         if (summaryPages.Length > 0)
@@ -173,7 +172,7 @@ public class Passages(
         await using var reader = await command.ExecuteReaderAsync(cancellationToken);
         while (await reader.ReadAsync(cancellationToken))
         {
-            summaries.Add(await ReadPassage(reader, cancellationToken));
+            summaries.Add(await ReadPassage(reader, cancellationToken) with { IsCurated = true });
         }
 
         return summaries;
@@ -214,8 +213,7 @@ public class Passages(
     /// <param name="passages">The main search rows, best first.</param>
     /// <returns>The anchors, best first.</returns>
     SectionAnchor[] SectionAnchors(List<Passage> passages) => [.. passages
-        .Where(passage => SourceHosts.IsCitable(passage.Page, options.Value) && double.IsFinite(passage.SemanticSimilarity) &&
-            passage.SemanticSimilarity is >= -1 and <= 1 && passage.SemanticSimilarity >= options.Value.Answering.MinSemanticSimilarity)
+        .Where(passage => SourceHosts.IsCitable(passage.Page, options.Value) && passage.ClearsFloor(options.Value.Answering.MinSemanticSimilarity))
         .Take(options.Value.Answering.MaxPassages)
         .Where(passage => !passage.IsSummary && passage.ChunkId is not null)
         .Select(SectionAnchor.Of)
