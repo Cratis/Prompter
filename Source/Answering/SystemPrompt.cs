@@ -80,6 +80,8 @@ public static class SystemPrompt
         "likely-bug" (a suspected malfunction), "out-of-scope" (the question is not about Cratis, its products, the company or public Cratis
         repositories - for example general programming or language trivia, other vendors' tools on their own,
         deployment of unrelated stacks, creative writing or real-time facts - even when an excerpt shares a word with it;
+        a request to write generic code (such as a regex) or to set up or operate a non-Cratis tool (such as nginx,
+        Marten or EventStoreDB) is out of scope even when a Cratis product covers a related topic;
         a question comparing another tool with Cratis is in scope), or "unknown".
         product is one of "Chronicle", "Arc", "Fundamentals", "Components", "CLI", "Specifications",
         "Stage", "Screenplay", "Prologue", "Studio", "Direct", "Assurance", or "other/unknown".
