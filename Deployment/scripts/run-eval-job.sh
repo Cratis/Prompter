@@ -150,10 +150,15 @@ if [[ "${1:-}" == '--extract-report' && $# -eq 1 ]]; then
         def exact($want): (keys | sort) == ($want | sort);
         def page: type == "string" and length <= 300 and test("\\Ahttps://[A-Za-z0-9.-]+(/[A-Za-z0-9._~%/#-]*)?\\z");
         def term: type == "string" and test("\\A!?[A-Za-z0-9][A-Za-z0-9 .+#_-]{0,39}\\z");
+        def baseKeys: ["Id", "ExpectsAnswer", "RetrievalHit", "CitationHit", "RefusalCorrect", "MustMentionHit", "Passed", "Cost", "CitedPages", "Reason"];
         def result: type == "object" and
-            (exact(["Id", "ExpectsAnswer", "RetrievalHit", "CitationHit", "RefusalCorrect", "MustMentionHit", "Passed", "Cost", "CitedPages", "Reason"]) or
-                exact(["Id", "ExpectsAnswer", "RetrievalHit", "CitationHit", "RefusalCorrect", "MustMentionHit", "Passed", "Cost", "CitedPages", "Reason", "TermMisses"])) and
+            (exact(baseKeys) or
+                exact(baseKeys + ["TermMisses"]) or
+                exact(baseKeys + ["TermMisses", "AnswerText", "Category", "IsRefusal"])) and
             (.TermMisses == null or (.TermMisses | type == "array" and length <= 10 and all(.[]; term))) and
+            (.AnswerText == null or (.AnswerText | type == "string" and length <= 4000)) and
+            (.Category == null or (.Category | type == "string" and test("\\A[A-Za-z]{1,32}\\z"))) and
+            (.IsRefusal == null or (.IsRefusal | type == "boolean")) and
             (.Id | type == "string" and test("\\A[a-z]{2,12}-[0-9]{3}\\z")) and
             ([.ExpectsAnswer, .RetrievalHit, .CitationHit, .RefusalCorrect, .MustMentionHit, .Passed] | all(.[]; type == "boolean")) and
             (.Cost | type == "number" and . >= 0) and
@@ -186,7 +191,18 @@ if [[ "${1:-}" == '--render-markdown' && $# -eq 1 ]]; then
         "",
         "| Case | Passed | Retrieval | Citation | Refusal | Must mention | Term misses | Cost |",
         "| --- | --- | --- | --- | --- | --- | --- | --- |",
-        (.Results[] | "| \(.Id) | \(.Passed | yn) | \(.RetrievalHit | yn) | \(.CitationHit | yn) | \(.RefusalCorrect | yn) | \(.MustMentionHit | yn) | \((.TermMisses // []) | join(", ")) | $\((.Cost * 10000 | round) / 10000) |")'
+        (.Results[] | "| \(.Id) | \(.Passed | yn) | \(.RetrievalHit | yn) | \(.CitationHit | yn) | \(.RefusalCorrect | yn) | \(.MustMentionHit | yn) | \((.TermMisses // []) | join(", ")) | $\((.Cost * 10000 | round) / 10000) |"),
+        # Answer text of failing cases only, after the table so it cannot break it. The fence is longer
+        # than any backtick run in the text, so the text cannot close it.
+        (.Results[] | select((.Passed | not) and .AnswerText != null) |
+            ([.AnswerText | match("`+"; "g").length] | max // 0) as $run |
+            ("`" * ([3, $run + 1] | max)) as $fence |
+            "",
+            "### \(.Id) answer (category: \(.Category // "unknown"), refusal: \(if .IsRefusal then "yes" else "no" end))",
+            "",
+            $fence,
+            .AnswerText,
+            $fence)'
     exit 0
 fi
 
