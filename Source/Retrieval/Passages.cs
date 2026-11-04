@@ -96,7 +96,7 @@ public class Passages(
         {
             var overview = await OverviewSummaries(questionEmbedding, passages.Count > 0 ? passages[0].Score : 0.0, cancellationToken);
             var overviewIds = overview.Select(passage => passage.ChunkId).ToHashSet(StringComparer.Ordinal);
-            passages = [.. overview, .. passages.Where(passage => !overviewIds.Contains(passage.ChunkId))];
+            passages = [.. overview.Select(passage => passage with { IsOverviewBoost = true }), .. passages.Where(passage => !overviewIds.Contains(passage.ChunkId))];
         }
 
         var summaryPages = passages
@@ -155,7 +155,10 @@ public class Passages(
 
     async Task<List<Passage>> OverviewSummaries(Vector questionEmbedding, double score, CancellationToken cancellationToken)
     {
-        // Reuse the question embedding; the answering layer still applies the similarity threshold and the cap.
+        // Reuse the question embedding; the answering layer still applies the passage cap, but exempts
+        // these curated chunks from the similarity floor (Passage.IsOverviewBoost) - the system prompt
+        // already names them canonical for a question OverviewQuestions.Matches classified as broad, so a
+        // weak cosine score for one specific phrasing must not silently drop the one source it was told to use.
         await using var command = dataSource.CreateCommand(
             """
             SELECT c.page_url, c.title, c.heading_path, c.content, $3::double precision AS score,

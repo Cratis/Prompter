@@ -17,6 +17,12 @@ public record Passage(PageUrl Page, string Title, string HeadingPath, string Con
     /// <summary>Gets whether this is the page's frontmatter summary chunk.</summary>
     public bool IsSummary { get; init; }
 
+    /// <summary>
+    /// Gets whether this passage was injected by the curated overview boost for a broad Cratis question
+    /// (see <see cref="OverviewQuestions"/>), rather than competing for it through ordinary hybrid ranking.
+    /// </summary>
+    public bool IsOverviewBoost { get; init; }
+
     /// <summary>Gets whether this passage was looked up to expand an admitted summary.</summary>
     public bool IsPageExpansion { get; init; }
 
