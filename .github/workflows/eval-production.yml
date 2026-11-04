@@ -74,7 +74,7 @@ jobs:
         with:
           name: production-eval-report
           path: ${{ runner.temp }}/eval-report/
-          retention-days: 14
+          retention-days: 1
           if-no-files-found: warn
 
       - name: Remove kubeconfig

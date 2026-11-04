@@ -153,6 +153,61 @@ test('a report with term misses is accepted and rendered', () => {
     assert.equal(rendered.status, 0, rendered.stderr);
     assert.ok(rendered.stdout.includes('| Components, !excerpt, event sourcing |'));
 });
+const withAnswer = overrides => result({ TermMisses: [], AnswerText: 'An answer.', Category: 'Answered', IsRefusal: false, ...overrides });
+test('a result with answer text and category is accepted', () => {
+    const value = report({}, [withAnswer()]);
+    const outcome = extract(line(value));
+    assert.equal(outcome.status, 0, outcome.stderr);
+    assert.deepEqual(JSON.parse(outcome.stdout), value);
+});
+test('answer text is shown for failing cases only, in a fence a hostile answer cannot close', () => {
+    const hostile = 'before ```` and ``` | a|b |\n```\nafter';
+    const value = report({ ExitCode: 1 }, [
+        withAnswer({ Id: 'arc-001', AnswerText: 'passing answer text' }),
+        withAnswer({ Id: 'arc-002', Passed: false, AnswerText: hostile, Category: 'Unknown', IsRefusal: true })
+    ]);
+    const rendered = run(['--render-answers'], JSON.stringify(value));
+    assert.equal(rendered.status, 0, rendered.stderr);
+    assert.ok(!rendered.stdout.includes('passing answer text'));
+    assert.ok(rendered.stdout.includes('### arc-002 answer (category: Unknown, refusal: yes)'));
+    const lines = rendered.stdout.split('\n');
+    const open = lines.indexOf('`````');
+    assert.ok(open > 0, 'the fence is longer than the longest backtick run');
+    assert.equal(lines.lastIndexOf('`````') > open, true);
+    assert.ok(lines.slice(open + 1, lines.lastIndexOf('`````')).join('\n') === hostile);
+});
+test('the stdout tables never carry answer text, so it cannot run workflow commands', () => {
+    const value = report({ ExitCode: 1 }, [
+        withAnswer({ Id: 'arc-002', Passed: false, AnswerText: 'x\n::add-mask::diagnostic\n::error::forged' })
+    ]);
+    const rendered = run(['--render-markdown'], JSON.stringify(value));
+    assert.equal(rendered.status, 0, rendered.stderr);
+    assert.ok(!rendered.stdout.includes('::'));
+    assert.ok(!rendered.stdout.includes('forged'));
+});
+test('control characters are dropped before the fence is chosen', () => {
+    const value = report({ ExitCode: 1 }, [
+        withAnswer({ Id: 'arc-002', Passed: false, AnswerText: 'a``\u0000`b\u001b[31m\u0085c' })
+    ]);
+    const rendered = run(['--render-answers'], JSON.stringify(value));
+    assert.equal(rendered.status, 0, rendered.stderr);
+    assert.ok(!/[\u0000-\u0008\u000b-\u001f\u007f-\u009f]/.test(rendered.stdout));
+    const lines = rendered.stdout.split('\n');
+    const open = lines.indexOf('````');
+    assert.ok(open > 0, 'the fence is longer than the joined backtick run');
+    assert.equal(lines[open + 1], 'a```b[31mc');
+    assert.equal(lines[open + 2], '````');
+});
+for (const [label, overrides] of [
+    ['over-long answer text', { AnswerText: 'a'.repeat(4001) }],
+    ['non-string answer text', { AnswerText: 5 }],
+    ['a category with markup', { Category: 'A|b' }],
+    ['a non-boolean refusal', { IsRefusal: 'yes' }]
+]) {
+    test(`extraction fails closed for ${label}`, () => {
+        assert.equal(extract(line(report({}, [withAnswer(overrides)]))).status, 1);
+    });
+}
 test('null term misses are accepted', () => {
     assert.equal(extract(line(report({}, [result({ TermMisses: null })]))).status, 0);
 });

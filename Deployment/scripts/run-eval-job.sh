@@ -150,10 +150,15 @@ if [[ "${1:-}" == '--extract-report' && $# -eq 1 ]]; then
         def exact($want): (keys | sort) == ($want | sort);
         def page: type == "string" and length <= 300 and test("\\Ahttps://[A-Za-z0-9.-]+(/[A-Za-z0-9._~%/#-]*)?\\z");
         def term: type == "string" and test("\\A!?[A-Za-z0-9][A-Za-z0-9 .+#_-]{0,39}\\z");
+        def baseKeys: ["Id", "ExpectsAnswer", "RetrievalHit", "CitationHit", "RefusalCorrect", "MustMentionHit", "Passed", "Cost", "CitedPages", "Reason"];
         def result: type == "object" and
-            (exact(["Id", "ExpectsAnswer", "RetrievalHit", "CitationHit", "RefusalCorrect", "MustMentionHit", "Passed", "Cost", "CitedPages", "Reason"]) or
-                exact(["Id", "ExpectsAnswer", "RetrievalHit", "CitationHit", "RefusalCorrect", "MustMentionHit", "Passed", "Cost", "CitedPages", "Reason", "TermMisses"])) and
+            (exact(baseKeys) or
+                exact(baseKeys + ["TermMisses"]) or
+                exact(baseKeys + ["TermMisses", "AnswerText", "Category", "IsRefusal"])) and
             (.TermMisses == null or (.TermMisses | type == "array" and length <= 10 and all(.[]; term))) and
+            (.AnswerText == null or (.AnswerText | type == "string" and length <= 4000)) and
+            (.Category == null or (.Category | type == "string" and test("\\A[A-Za-z]{1,32}\\z"))) and
+            (.IsRefusal == null or (.IsRefusal | type == "boolean")) and
             (.Id | type == "string" and test("\\A[a-z]{2,12}-[0-9]{3}\\z")) and
             ([.ExpectsAnswer, .RetrievalHit, .CitationHit, .RefusalCorrect, .MustMentionHit, .Passed] | all(.[]; type == "boolean")) and
             (.Cost | type == "number" and . >= 0) and
@@ -190,8 +195,28 @@ if [[ "${1:-}" == '--render-markdown' && $# -eq 1 ]]; then
     exit 0
 fi
 
+# Answer text is untrusted model output. It goes only to files (report.md and the step summary), never to
+# stdout, where a line such as "::add-mask::" would run as a workflow command. Control characters are
+# dropped by code point (no regex), and the fence is longer than any backtick run, so the text cannot close it.
+if [[ "${1:-}" == '--render-answers' && $# -eq 1 ]]; then
+    jq -r '
+        def clean: explode | map(select(. == 9 or . == 10 or (. >= 32 and . != 127 and (. < 128 or . > 159)))) | implode;
+        def longest_backtick_run: reduce explode[] as $c ({run: 0, max: 0};
+            if $c == 96 then .run += 1 | .max = ([.max, .run] | max) else .run = 0 end) | .max;
+        .Results[] | select((.Passed | not) and .AnswerText != null) |
+            (.AnswerText | clean) as $text |
+            ("`" * ([3, ($text | longest_backtick_run) + 1] | max)) as $fence |
+            "",
+            "### \(.Id) answer (category: \(.Category // "unknown"), refusal: \(if .IsRefusal then "yes" else "no" end))",
+            "",
+            $fence,
+            $text,
+            $fence'
+    exit 0
+fi
+
 if [[ $# -ne 0 ]]; then
-    echo "Usage: $0 [--print-manifest <image> <job-name> | --extract-report | --render-markdown]" >&2
+    echo "Usage: $0 [--print-manifest <image> <job-name> | --extract-report | --render-markdown | --render-answers]" >&2
     exit 1
 fi
 : "${KUBECONFIG:?KUBECONFIG must be set}"
@@ -251,10 +276,11 @@ if report="$("$0" --extract-report <<<"$logs" 2>/dev/null)"; then
     mkdir -p "$report_dir"
     printf '%s\n' "$report" > "$report_dir/report.json"
     markdown="$("$0" --render-markdown <<<"$report")"
-    printf '%s\n' "$markdown" > "$report_dir/report.md"
+    answers="$("$0" --render-answers <<<"$report")"
+    printf '%s\n%s\n' "$markdown" "$answers" > "$report_dir/report.md"
     printf '%s\n' "$markdown"
     if [[ -n "${GITHUB_STEP_SUMMARY:-}" ]]; then
-        printf '%s\n' "$markdown" >> "$GITHUB_STEP_SUMMARY"
+        printf '%s\n%s\n' "$markdown" "$answers" >> "$GITHUB_STEP_SUMMARY"
     fi
     if [[ "$job_succeeded" == 'true' ]] && jq -e '.ExitCode == 0' <<<"$report" >/dev/null; then
         exit 0

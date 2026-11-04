@@ -2,6 +2,7 @@
 // Licensed under the MIT license. See LICENSE file in the project root for full license information.
 
 using System.Text.Json;
+using System.Text.RegularExpressions;
 
 namespace Cratis.Prompter.Answering;
 
@@ -25,12 +26,36 @@ static class TruncatedText
     /// <param name="envelope">The UTF-8 envelope.</param>
     /// <param name="start">The offset just after the property name of the text, or -1 when there is none.</param>
     /// <returns>The safe prefix followed by a shortened marker line, or <see langword="null"/> when nothing is safe.</returns>
-    public static string? Salvage(byte[] envelope, int start) => Decode(envelope, start) is { } partial ? SafePrefix(partial) : null;
+    public static string? Salvage(byte[] envelope, int start) => Salvage(envelope, start, ProseCitations.Numbers);
+
+    /// <summary>Recovers the safe prefix, giving up on salvage when finding its citations takes too long.</summary>
+    /// <param name="envelope">The UTF-8 envelope.</param>
+    /// <param name="start">The offset just after the property name of the text, or -1 when there is none.</param>
+    /// <param name="citations">Finds the citation numbers in a text.</param>
+    /// <returns>The safe prefix followed by a shortened marker line, or <see langword="null"/> when nothing is safe or the match timed out.</returns>
+    public static string? Salvage(byte[] envelope, int start, Func<string, IEnumerable<int>> citations)
+    {
+        try
+        {
+            return Decode(envelope, start) is { } partial ? SafePrefix(partial, citations) : null;
+        }
+        catch (RegexMatchTimeoutException)
+        {
+            // Salvage is best effort: a slow match means no salvage, never a failed answer.
+            return null;
+        }
+    }
 
     /// <summary>Keeps complete units of a cut text, outside any unclosed code fence, when they cite a passage.</summary>
     /// <param name="partial">The decoded text up to the cut. Its last line is unfinished by construction.</param>
     /// <returns>The safe prefix followed by a shortened marker line, or <see langword="null"/> when nothing is safe.</returns>
-    public static string? SafePrefix(string partial)
+    public static string? SafePrefix(string partial) => SafePrefix(partial, ProseCitations.Numbers);
+
+    /// <summary>Keeps complete units of a cut text, outside any unclosed code fence, when they cite a passage.</summary>
+    /// <param name="partial">The decoded text up to the cut. Its last line is unfinished by construction.</param>
+    /// <param name="citations">Finds the citation numbers in a text.</param>
+    /// <returns>The safe prefix followed by a shortened marker line, or <see langword="null"/> when nothing is safe.</returns>
+    public static string? SafePrefix(string partial, Func<string, IEnumerable<int>> citations)
     {
         var lines = partial.Split('\n');
         var safeEnd = 0;
@@ -46,7 +71,7 @@ static class TruncatedText
         }
 
         var prefix = partial[..safeEnd].TrimEnd();
-        return prefix.Length > 0 && ProseCitations.Numbers(prefix).Any() ? $"{prefix}\n{ShortenedMarker}" : null;
+        return prefix.Length > 0 && citations(prefix).Any() ? $"{prefix}\n{ShortenedMarker}" : null;
     }
 
     static bool ClosesUnit(bool insideFence, bool isFence, string line) => !insideFence && (isFence || EndsUnit(line));
