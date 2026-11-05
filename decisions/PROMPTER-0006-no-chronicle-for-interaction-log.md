@@ -1,7 +1,7 @@
 ---
 id: PROMPTER-0006
-title: Do not use Chronicle for the interaction log, for now
-status: accepted
+title: Use Chronicle for the interaction log
+status: rejected
 stage: none
 class: strategy
 reversibility: reversible

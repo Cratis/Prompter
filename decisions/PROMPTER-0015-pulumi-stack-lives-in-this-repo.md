@@ -15,13 +15,13 @@ review-trigger: "The cluster being replaced under a different name, or a proposa
 
 Historical decision D-15, originally open on 2026-08-06. Accepted on 2026-11-05 by woksin: the stack stays in the repository's `Deployment/` folder.
 
-Answers the open question left by [PROMPTER-0011](PROMPTER-0011-deploy-on-existing-upcloud-cluster.md) and reverses its recommendation (otherwise unchanged: UpCloud UKS `no-svg1`, Pulumi C#, Studio conventions). That record guessed Prompter should become a workload entry in Studio's `Deployment/` stack. Reading Studio's deployment code (`Studio` @ `4abb7ab7`) turned up three facts that point the other way.
+Answers the open question left by [PROMPTER-0011](PROMPTER-0011-deploy-on-existing-upcloud-cluster.md) and reverses its recommendation (otherwise unchanged: UpCloud UKS `no-svg1`, Pulumi C#, Studio conventions). That record guessed Prompter should become a workload entry in Studio's deployment stack. A review of how that stack is deployed turned up three facts that point the other way.
 
 ## Grounds
 
-1. **Studio's deploy workflow pins one version for the whole platform.** `deploy-production.yml` takes a single `version` input and loops it over `studioImage`/`studioAdminImage`/`studioLobbyImage`/`studioCatalogImage`/`llmImage`. There is no per-workload release path, so a `prompterImage` entry would still need its own workflow in Studio's repo plus a cross-repo dispatch (and a PAT) from Prompter's Publish. The "one place pins every image" benefit assumed earlier is not available to a repo with its own release cadence.
-2. **A shared stack means a shared blast radius.** `pulumi up` there re-evaluates the UKS cluster and node group, Percona MongoDB with its PBM backups, Chronicle, Core/Admin/Lobby/Catalog, two AuthProxies, the OAuth2 proxy, Vault, Loki/Grafana/Promtail/OTel and the ingresses. Releasing a Discord bot should not be able to move any of that, and a Studio release should not carry Prompter's database.
-3. **Nothing forces co-location.** Prompter needs no cluster-scoped resources: it looks the existing cluster up by name through the UpCloud provider's `GetKubernetesCluster` invoke (the same call Studio uses internally to get its kubeconfig) and creates only namespaced objects inside `prompter-production`. The shared pieces (NGINX ingress controller, the cert-manager `ClusterIssuer`, Promtail's all-namespace log shipping) stay owned by Studio and are consumed by reference, which is also how Prompter gets logs in Grafana for free.
+1. **Studio's deployment pins one version for the whole platform.** There is no per-workload release path, so a Prompter entry would still need its own workflow and a cross-repository trigger from Prompter's release. The "one place pins every image" benefit assumed earlier is not available to a repository with its own release cadence.
+2. **A shared stack means a shared blast radius.** Applying that stack re-evaluates the cluster and the platform's shared services. Releasing a Discord bot should not be able to move any of that, and a Studio release should not carry Prompter's database.
+3. **Nothing forces co-location.** Prompter needs no cluster-scoped resources: it looks the existing cluster up by name through the UpCloud provider and creates only namespaced objects in its own namespace. The shared pieces (ingress controller, certificate issuer, log shipping) stay owned by Studio's stack and are consumed by reference, which is also how Prompter's logs reach the shared dashboards.
 
 ## Decision
 
