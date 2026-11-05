@@ -1,6 +1,6 @@
 ---
 title: Deploy Prompter
-description: How Prompter runs in production and where to find the operational runbook.
+description: Plan a Prompter deployment with its container and database requirements, Cratis production hosting map, deployment guide and private operations runbook.
 ---
 
 Prompter runs in production on the shared Cratis UpCloud Kubernetes cluster, which Cratis/Infrastructure owns and Studio and Direct also use. This page is

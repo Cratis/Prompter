@@ -1,6 +1,6 @@
 ---
 title: FAQ
-description: Quick answers about Prompter - why it didn't answer, how fresh it is, and what to do about a bad answer.
+description: Find answers to common Prompter questions about missing replies, incorrect answers, index freshness, AI providers, channel access and self-hosting.
 ---
 
 ## Why didn't it answer me?

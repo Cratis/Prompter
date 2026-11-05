@@ -1,6 +1,6 @@
 ---
 title: Grounded answers
-description: Why every answer carries citations, why refusals are a feature, and how the knowledge stays current without retraining.
+description: Understand Prompter's citation contract, evidence-based refusals and documentation refresh process, and check what retrieved sources actually support.
 ---
 
 A Prompter answer gives you a place to check it: open the numbered source links and compare the answer
