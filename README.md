@@ -525,6 +525,8 @@ unbounded generation loops are enabled. Public references: [Sonnet overview](htt
 
 ## 🗺️ Start here (for contributors)
 
+Consult [`decisions/`](decisions/README.md) before making architectural changes; it holds the durable decision records.
+
 - [`Deployment/README.md`](Deployment/README.md) — the Pulumi stack that runs Prompter on the shared Cratis UpCloud cluster.
 - [`Documentation/concepts/architecture.md`](Documentation/concepts/architecture.md) — how ingestion, retrieval, and answering fit together.
 
