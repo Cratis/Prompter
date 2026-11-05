@@ -341,7 +341,7 @@ earlier ones.
 
 `Cratis:Prompter:Protection` applies before history, retrieval, model dispatch or GitHub drafting.
 Bot mode requires `AllowedGuilds`: the empty default refuses every guild and all DMs.
-Production must explicitly set `Cratis__Prompter__Protection__AllowedGuilds__0=1182595891576717413`.
+Production must explicitly set `Cratis__Prompter__Protection__ConfiguredAllowedGuilds=1182595891576717413`.
 Within an allowed guild, mentions still work in readable channels, alongside the configured ask
 channel and help forum. `DeniedChannels` optionally excludes channel/thread IDs.
 
