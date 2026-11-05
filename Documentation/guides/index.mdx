@@ -3,15 +3,31 @@ title: Guides
 description: Task-focused recipes for working with Prompter.
 ---
 
-import { CardGrid } from '@astrojs/starlight/components';
-import SimpleCard from '@components/SimpleCard.astro';
-
-Recipes for specific tasks. Each guide assumes you know what Prompter is - if you don't, start with
+Choose a guide for the task you have in mind. If you are asking your first question, start with
 [Getting started](/prompter/getting-started/).
 
-<CardGrid>
-  <SimpleCard title="Run Prompter locally" icon="laptop" link="/prompter/guides/running-locally/">
-    Bring the bot up on your own machine, index the documentation, and ask questions from the terminal or a
-    test Discord server.
-  </SimpleCard>
-</CardGrid>
+## Ask and report
+
+Use these guides for questions and reports in the Cratis Discord server:
+
+- [Use Prompter on Discord](/prompter/guides/using-prompter/) to ask questions, check citations, and
+  understand refusals.
+- [Report something with Prompter](/prompter/guides/reporting-issues/) to draft a report and review it
+  before filing, where issue filing is enabled.
+
+## Run and operate
+
+Local running and production deployment are alternative hosting paths, not stages you must work through
+in order. Before starting an answer-enabled host, explicitly set the scalar
+`Cratis__Prompter__Protection__ConfiguredAllowedGuilds=1182595891576717413`. Only the Cratis guild is
+allowed; local running and Development have no exemption. A token and channel settings alone are not
+enough. For Discord use, also prepare the application and token before starting the bot.
+
+- [Set up the Discord app](/prompter/guides/discord-setup/) to create the application and token, invite
+  the bot with minimal permissions, and configure the channels.
+- [Run Prompter locally](/prompter/guides/running-locally/) to bring the bot up on your own machine,
+  index the documentation, and ask questions from the terminal or the allowed Cratis Discord guild.
+- [Deploy Prompter](/prompter/guides/deploying/) for the production deployment map and the authoritative
+  runbook for the shared cluster.
+- [Monitor Prompter](/prompter/guides/monitoring/) to configure private metrics and optional alerts, or
+  find the checks for an operational problem.

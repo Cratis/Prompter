@@ -7,10 +7,10 @@ import { CardGrid } from '@astrojs/starlight/components';
 import SimpleCard from '@components/SimpleCard.astro';
 import TopicHero from '@components/TopicHero.astro';
 
-<TopicHero icon="discord" eyebrow="Prompter" title="The line you forgot, whispered from offstage">
-In theater, the prompter sits just offstage with the script and feeds the line to anyone who blanks mid-scene.
-Here, the script is the Cratis documentation and the stage is the community Discord - ask, and Prompter
-answers **with citations**, or says honestly that the docs don't cover it. [Ask your first question →](/prompter/getting-started/)
+<TopicHero icon="discord" eyebrow="Prompter" title="Ask a Cratis question. Check the sources.">
+Prompter helps you look up answers about Cratis on the community Discord. Ask about the product and task
+you are working on, then open the cited sources to check the reply. If it does not answer your question,
+you can narrow the question or ask the community for help. [Ask your first question →](/prompter/getting-started/)
 </TopicHero>
 
 ```text
@@ -24,42 +24,49 @@ you · #help
   Sources: cratis.io/arc/commands
 ```
 
-Without Prompter, a question waits for a human in the right timezone who happens to know the answer - even
-when that answer sits in the documentation the whole time. With Prompter, the documentation answers first, in
-seconds, with links - and humans spend their energy on the questions that genuinely need them.
+Start with one question about what you are trying to do. Naming the Cratis product, feature or error gives
+Prompter something specific to look up and gives other community members context if you need their help.
+A cited reply is a starting point: check that the linked page supports the part you intend to use before
+applying it to your project.
 
 ## Find your way in
 
 <CardGrid>
   <SimpleCard title="Getting started" icon="rocket" link="/prompter/getting-started/">
-    Ask your first question and learn every way to summon the bot.
+    Ask a question, check the reply and choose what to do next if you are still stuck.
   </SimpleCard>
   <SimpleCard title="Why Prompter" icon="open-book" link="/prompter/concepts/why-prompter/">
-    The problem it solves - and when a human is still the right answer.
+    Understand where a documentation assistant helps and where you may need a person.
   </SimpleCard>
   <SimpleCard title="Grounded answers" icon="approve-check" link="/prompter/concepts/grounded-answers/">
-    Why every answer carries citations and why refusals are a feature.
+    Learn how to check citations, interpret a refusal and understand source freshness.
   </SimpleCard>
   <SimpleCard title="Privacy" icon="seti:lock" link="/prompter/concepts/privacy/">
-    Exactly what it stores about you, for how long, and your rights.
+    Read what Prompter stores, how long it keeps it and what rights you have.
   </SimpleCard>
   <SimpleCard title="Run it locally" icon="laptop" link="/prompter/guides/running-locally/">
-    Bring the whole pipeline up on your own machine in minutes.
+    Set up your own instance. This is an operator task, not a prerequisite for asking a question.
   </SimpleCard>
   <SimpleCard title="Reference" icon="list-format" link="/prompter/reference/">
-    Every setting, the run modes, and quick answers about the bot.
+    Look up settings and run modes, or find help with an unexpected reply.
   </SimpleCard>
 </CardGrid>
 
 ## What it doesn't do
 
-It never answers from general knowledge, never interjects uninvited, and never pretends: when the
-documentation doesn't cover a question, it says so and hands you back to the community - and that miss is
-logged as a signal for documentation worth writing.
+Prompter is not a general-purpose chatbot or a substitute for checking a technical answer. It uses indexed
+Cratis material, including documentation and other configured sources, rather than treating a plausible
+reply as evidence. When it cannot find grounding, it can refuse; that does not establish that the feature
+you asked about does not exist.
+
+Where Prompter participates depends on the server configuration: some channels require a mention or a
+command, while configured ask channels and forums can receive automatic replies. If you need a person's
+judgment, ask the community rather than waiting for the bot to resolve the question for you.
 
 :::tip[Honesty is the feature]
-A confidently wrong code snippet costs you more than an honest "ask a human." Prompter is deliberately
-constrained to the documentation - that constraint is what makes its answers worth trusting.
+Open the cited page and compare it with the claim you plan to use. A source link gives you a way to check
+an answer, not a guarantee that the answer is correct. If the page does not support the claim, say what
+does not match and ask for help before relying on it.
 :::
 
 Prompter is [open source under the MIT license](https://github.com/Cratis/Prompter) - built with C#/.NET,

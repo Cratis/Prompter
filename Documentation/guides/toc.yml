@@ -2,11 +2,13 @@
   href: index.mdx
 - name: Use Prompter on Discord
   href: using-prompter.md
-- name: Run Prompter locally
-  href: running-locally.md
 - name: Report something with Prompter
   href: reporting-issues.md
+- name: Run Prompter locally
+  href: running-locally.md
 - name: Set up the Discord app
   href: discord-setup.md
 - name: Deploy Prompter
   href: deploying.md
+- name: Monitor Prompter
+  href: monitoring.md
