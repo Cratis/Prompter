@@ -59,7 +59,8 @@ To stop it commenting on a particular issue, label the issue `no-prompter`.
 
 ## What is not stored
 
-Prompter does not store what you write here. While the preview is open, the draft and the identifiers needed
-to deliver it (you, the server and the channel) are held in memory only, and are dropped when you confirm,
-cancel or let it expire. The interaction log keeps its usual [privacy](../concepts/privacy.md) posture: no
+Prompter does not persist what you write here. The draft and the identifiers needed to deliver it (you, the
+server and the channel) are held in memory only, never written to the database. They are removed when you
+confirm or cancel; an expired draft can no longer be filed and is cleared on later preview activity or when
+the bot restarts. The interaction log keeps its usual [privacy](../concepts/privacy.md) posture: no
 message content, nothing that identifies you. What becomes public is exactly what you approved in the preview.
