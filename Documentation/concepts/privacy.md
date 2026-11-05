@@ -1,6 +1,6 @@
 ---
 title: Privacy
-description: Exactly what Prompter stores when you ask it a question, for how long, and your rights.
+description: Review what Prompter stores, retention periods and privacy rights, distinguishing database records from Discord messages and model provider processing.
 ---
 
 Before asking Cratis Prompter, remove credentials and personal information from the text you post. A question,

@@ -1,6 +1,6 @@
 ---
 title: Why Prompter
-description: The problem Prompter solves for the Cratis community - and the situations where a human is still the right answer.
+description: See how Prompter helps the Cratis community find documented answers in Discord, why it cites sources and when a human remains the better choice.
 ---
 
 In theater, the prompter sits just offstage with the script and quietly feeds the line to anyone who blanks

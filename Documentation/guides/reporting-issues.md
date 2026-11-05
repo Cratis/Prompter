@@ -1,6 +1,6 @@
 ---
 title: Report something with Prompter
-description: Turn a Discord conversation into a GitHub issue on the right Cratis repository, without leaving the chat.
+description: Draft a Cratis GitHub issue from Discord with Prompter, review its repository and public contents, and confirm filing only where the feature is enabled.
 ---
 
 Use `/issue` to draft a GitHub issue from Discord, then review it before deciding whether to file it.

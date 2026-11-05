@@ -1,6 +1,6 @@
 ---
 title: Use Prompter on Discord
-description: How to ask Prompter a question, phrase questions it can answer, read the cited sources, and understand its refusals.
+description: Use Prompter on the Cratis Discord to ask focused questions, follow cited documentation, continue conversations and respond to refusals or incorrect answers.
 ---
 
 Use Cratis Prompter to look up a Cratis question on the [Cratis Discord](https://discord.gg/kt4AMpV8WV), then

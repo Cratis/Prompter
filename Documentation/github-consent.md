@@ -1,3 +1,7 @@
+---
+title: GitHub issue consent and App authentication
+description: Review Prompter's GitHub issue consent contract, immutable reporter previews and App authentication inputs before enabling issue filing in a deployment.
+---
 <!-- Copyright (c) Cratis. All rights reserved. -->
 <!-- Licensed under the MIT license. See LICENSE file in the project root for full license information. -->
 

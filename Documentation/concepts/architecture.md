@@ -1,6 +1,6 @@
 ---
 title: Architecture
-description: How Prompter ingests the documentation, retrieves passages, and generates grounded answers.
+description: Follow Prompter's retrieval-augmented pipeline from documentation ingestion and indexing through passage retrieval to cited, grounded Discord answers.
 ---
 
 Prompter is a single deployable with one database. It is a retrieval-augmented generation (RAG) pipeline: the

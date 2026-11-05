@@ -1,6 +1,6 @@
 ---
 title: Monitor Prompter
-description: Private aggregate metrics, dashboards, reindex failure delivery, and operator runbooks.
+description: Monitor Prompter with private aggregate OpenTelemetry metrics, dashboards and reindex failure alerts, and troubleshoot spend, indexing and provider errors.
 ---
 
 Prompter exports **only aggregate metrics** through Core's private OpenTelemetry collector to Prometheus.

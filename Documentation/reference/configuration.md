@@ -1,6 +1,6 @@
 ---
 title: Configuration
-description: Every Prompter setting, its environment variable, and its default - plus the run modes and HTTP endpoints.
+description: Reference Prompter configuration keys, environment variables and defaults, plus bot and indexing run modes and the HTTP endpoints available in bot mode.
 ---
 
 Configuration binds to the `Cratis:Prompter` section. Environment variables use `__` as the delimiter.
