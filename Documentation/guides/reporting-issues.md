@@ -24,8 +24,9 @@ before choosing; you have fifteen minutes:
 - **Cancel** - nothing happens, and the draft is discarded.
 - Neither - the draft expires by itself.
 
-Nothing reaches GitHub until you choose **Create issue**. That is deliberate: filing is always a person's decision,
-never an inference from something you typed.
+No issue is created until you choose **Create issue**. That is deliberate: filing is always a person's decision,
+never an inference from something you typed. Before showing the preview, Prompter does search GitHub for
+possibly related open issues, using keywords from the drafted title only.
 
 ## What Prompter fills in
 
@@ -58,6 +59,7 @@ To stop it commenting on a particular issue, label the issue `no-prompter`.
 
 ## What is not stored
 
-Nothing you write here is kept by Prompter. The draft lives in memory until you confirm or it expires, and the
-[privacy](../concepts/privacy.md) posture is unchanged: no message content, nothing that identifies you. What
-becomes public is exactly what you approved in the preview.
+Prompter does not store what you write here. While the preview is open, the draft and the identifiers needed
+to deliver it (you, the server and the channel) are held in memory only, and are dropped when you confirm,
+cancel or let it expire. The interaction log keeps its usual [privacy](../concepts/privacy.md) posture: no
+message content, nothing that identifies you. What becomes public is exactly what you approved in the preview.
