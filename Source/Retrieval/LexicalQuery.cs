@@ -17,7 +17,7 @@ public static partial class LexicalQuery
     /// Terms left out of the any-term query. "Cratis" occurs in nearly every chunk, so as an any-term match it ranks
     /// pages by brand density (llms.txt, organization READMEs) rather than by the question. The strict arm still uses it.
     /// </summary>
-    static readonly HashSet<string> _ubiquitous = new(["or", "cratis"], StringComparer.OrdinalIgnoreCase);
+    static readonly HashSet<string> _ubiquitous = [with(StringComparer.OrdinalIgnoreCase), "or", "cratis"];
 
     [GeneratedRegex(@"[\p{L}\p{N}]+", RegexOptions.CultureInvariant, RegexLimits.TimeoutMilliseconds)]
     private static partial Regex Word { get; }

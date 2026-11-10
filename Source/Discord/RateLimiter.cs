@@ -13,7 +13,7 @@ namespace Cratis.Prompter.Discord;
 /// <param name="options">The Prompter options carrying the Discord rate-limit configuration.</param>
 public class RateLimiter(IOptions<PrompterOptions> options)
 {
-    readonly Dictionary<string, Bucket> _buckets = new(StringComparer.Ordinal);
+    readonly Dictionary<string, Bucket> _buckets = [with(StringComparer.Ordinal)];
     readonly Lock _lock = new();
     readonly RateLimitOptions _limit = options.Value.Discord.RateLimit;
 
