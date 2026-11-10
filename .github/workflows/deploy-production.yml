@@ -65,7 +65,7 @@ jobs:
           ref: ${{ github.sha }}
       - name: Install Pulumi CLI
         if: runner.environment != 'self-hosted'
-        uses: pulumi/actions@8e5e406f4007fca908480587cb9893c07090f58d # v7.0.0
+        uses: pulumi/actions@96c7761824268174e0d2a4e8c7d75671eebd24a7 # v7.1.0
       - name: Cancel the interrupted update and release its lock
         working-directory: Deployment
         run: pulumi cancel --yes --non-interactive --stack production
@@ -96,7 +96,7 @@ jobs:
           fetch-depth: 0
       - name: Install Pulumi CLI
         if: runner.environment != 'self-hosted'
-        uses: pulumi/actions@8e5e406f4007fca908480587cb9893c07090f58d # v7.0.0
+        uses: pulumi/actions@96c7761824268174e0d2a4e8c7d75671eebd24a7 # v7.1.0
       - name: Create the stack
         working-directory: Deployment
         run: |
@@ -169,13 +169,13 @@ jobs:
 
       - name: Setup .NET (hosted fallback only)
         if: runner.environment != 'self-hosted'
-        uses: actions/setup-dotnet@a98b56852c35b8e3190ac28c8c2271da59106c68 # v6.0.0
+        uses: actions/setup-dotnet@0f4a354dd5547a28c70b7853dbd95d5b67886e73 # v6.1.0
         with:
           dotnet-version: "11.0.x"
 
       - name: Install Pulumi CLI (hosted fallback only)
         if: runner.environment != 'self-hosted'
-        uses: pulumi/actions@8e5e406f4007fca908480587cb9893c07090f58d # v7.0.0
+        uses: pulumi/actions@96c7761824268174e0d2a4e8c7d75671eebd24a7 # v7.1.0
 
       - name: Pin existing image version
         working-directory: Deployment
@@ -192,7 +192,7 @@ jobs:
           pulumi config set --stack production "prompter-deployment:prompterImage" "docker.io/cratis/prompter:${VERSION}"
 
       - name: Deploy Prompter stack
-        uses: pulumi/actions@8e5e406f4007fca908480587cb9893c07090f58d # v7.0.0
+        uses: pulumi/actions@96c7761824268174e0d2a4e8c7d75671eebd24a7 # v7.1.0
         with:
           command: up
           stack-name: production
