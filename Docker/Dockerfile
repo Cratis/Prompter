@@ -7,7 +7,7 @@
 # The build stage always runs natively on the builder's platform and cross-compiles for the target
 # architecture, so the linux/arm64 image never runs the SDK under QEMU emulation. The output stays
 # framework-dependent, as before; `-a` only selects the target architecture.
-FROM --platform=$BUILDPLATFORM mcr.microsoft.com/dotnet/sdk:11.0.100-resolute AS build
+FROM --platform=$BUILDPLATFORM mcr.microsoft.com/dotnet/sdk:11.0.100-resolute@sha256:65f3c7c6a25a239ab3e6719f2896147e7b68242ff2d8818dd70498bde6ef8bea AS build
 ARG CONFIGURATION=Release
 ARG VERSION=0.0.0
 # Set by BuildKit to the Docker architecture name of the target platform (amd64, arm64).
@@ -44,7 +44,7 @@ RUN case "${TARGETARCH}" in \
 # Bot mode hosts Kestrel (health probe + re-index webhook), so the runtime needs the ASP.NET Core
 # shared framework. EXPOSE 8080 is Kestrel's default container port for the /healthz and /reindex routes.
 # .NET 11 GA images use the resolute line; noble tags are not available for .NET 11.
-FROM mcr.microsoft.com/dotnet/aspnet:11.0-resolute
+FROM mcr.microsoft.com/dotnet/aspnet:11.0.0-resolute@sha256:bc0d6653979efba491ab3d6f589d691f96c309c3c3ef81325efa6978e7b7f242
 
 WORKDIR /app
 COPY --from=build /app/publish .
