@@ -7,7 +7,7 @@ Run the full pipeline - ingestion, retrieval, answering, and optionally the Disc
 
 ## Prerequisites
 
-- .NET SDK 10.0.301 or later
+- .NET SDK 11.0.100 or later
 - Docker (for Postgres with pgvector)
 - A [Voyage AI](https://www.voyageai.com) API key (free tier, required for indexing)
 - An [Anthropic](https://www.anthropic.com) API key (required for answering)

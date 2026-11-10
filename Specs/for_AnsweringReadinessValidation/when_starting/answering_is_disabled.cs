@@ -18,7 +18,7 @@ public class answering_is_disabled : given.configured_answering
         Configuration["Cratis:Prompter:Anthropic:SecondaryApiKey"] = null;
         Configuration["Cratis:Prompter:Protection:AllowedGuilds:0"] = "111";
         using var host = Build();
-        _failure = Catch.Exception(() => host.Services.GetRequiredService<IStartupValidator>().Validate());
+        _failure = Catch.Exception(() => host.Services.GetRequiredService<IAsyncStartupValidator>().ValidateAsync(CancellationToken.None).GetAwaiter().GetResult());
         _options = host.Services.GetRequiredService<IOptions<PrompterOptions>>().Value;
     }
 

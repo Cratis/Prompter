@@ -26,15 +26,15 @@ jobs:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
       - uses: actions/setup-dotnet@a98b56852c35b8e3190ac28c8c2271da59106c68 # v6.0.0
         with:
-          dotnet-version: '10.0.x'
+          dotnet-version: '11.0.x'
       - name: Build offline specs
         run: dotnet build Specs/Prompter.Specs.csproj --configuration Release --no-incremental
       - name: Run specs executable
-        run: dotnet Specs/bin/Release/net10.0/Prompter.Specs.dll
+        run: dotnet Specs/bin/Release/net11.0/Prompter.Specs.dll
       - name: Check baseline rejection rules
         run: node --test Eval/tests/check-baseline.test.mjs
       - name: Run synthetic evaluation
-        run: dotnet Eval/bin/Release/net10.0/Cratis.Prompter.Eval.dll --offline --revision "$GITHUB_SHA" --out Eval/results/offline
+        run: dotnet Eval/bin/Release/net11.0/Cratis.Prompter.Eval.dll --offline --revision "$GITHUB_SHA" --out Eval/results/offline
       - name: Check synthetic evidence only
         run: node Eval/check-baseline.mjs --synthetic --report Eval/results/offline/report-offline.json --baseline Eval/offline-baseline.json
       - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2

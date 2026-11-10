@@ -14,7 +14,7 @@ public class approved_secondary_answering : given.configured_answering
     void Because()
     {
         using var host = Build();
-        _failure = Catch.Exception(() => host.Services.GetRequiredService<IStartupValidator>().Validate());
+        _failure = Catch.Exception(() => host.Services.GetRequiredService<IAsyncStartupValidator>().ValidateAsync(CancellationToken.None).GetAwaiter().GetResult());
         _options = host.Services.GetRequiredService<IOptions<PrompterOptions>>().Value;
     }
 

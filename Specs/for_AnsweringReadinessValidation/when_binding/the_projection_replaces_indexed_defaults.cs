@@ -26,7 +26,7 @@ public class the_projection_replaces_indexed_defaults : given.configured_answeri
             AllowedGuilds = [AnsweringReadinessValidation.ApprovedGuild]
         });
         using var host = Build(_projection);
-        host.Services.GetRequiredService<IStartupValidator>().Validate();
+        host.Services.GetRequiredService<IAsyncStartupValidator>().ValidateAsync(CancellationToken.None).GetAwaiter().GetResult();
         _options = host.Services.GetRequiredService<IOptions<PrompterOptions>>().Value;
         _indexedEntries = host.Services.GetRequiredService<IConfiguration>().GetSection("Cratis:Prompter:Protection:AllowedGuilds").GetChildren().Count();
     }
