@@ -44,7 +44,7 @@ public class an_invalid_configuration : given.configured_answering
     {
         Configuration["Cratis:Prompter:" + key] = value;
         using var host = Build();
-        var failure = Catch.Exception(() => host.Services.GetRequiredService<IStartupValidator>().Validate());
+        var failure = Catch.Exception(() => host.Services.GetRequiredService<IAsyncStartupValidator>().ValidateAsync(CancellationToken.None).GetAwaiter().GetResult());
         failure.ShouldBeOfExactType<OptionsValidationException>();
         failure!.Message.Contains("synthetic-secondary-key", StringComparison.Ordinal).ShouldBeFalse();
     }
