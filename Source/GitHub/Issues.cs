@@ -3,7 +3,6 @@
 
 using System.Collections.Immutable;
 using System.Globalization;
-using System.Net.Http.Json;
 using System.Text.Json;
 using Cratis.Prompter.GitHub.Authentication;
 using Microsoft.Extensions.Logging;
