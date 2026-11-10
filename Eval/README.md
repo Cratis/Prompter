@@ -6,9 +6,9 @@ no host, database, embedding client, answer client or judge client.
 
 ```sh
 dotnet build Specs/Prompter.Specs.csproj --configuration Release --no-incremental
-dotnet Specs/bin/Release/net10.0/Prompter.Specs.dll
+dotnet Specs/bin/Release/net11.0/Prompter.Specs.dll
 node --test Eval/tests/check-baseline.test.mjs
-dotnet Eval/bin/Release/net10.0/Cratis.Prompter.Eval.dll --offline --revision <git-revision> --out Eval/results/offline
+dotnet Eval/bin/Release/net11.0/Cratis.Prompter.Eval.dll --offline --revision <git-revision> --out Eval/results/offline
 node Eval/check-baseline.mjs --synthetic --report Eval/results/offline/report-offline.json --baseline Eval/offline-baseline.json
 ```
 

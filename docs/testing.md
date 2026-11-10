@@ -7,7 +7,7 @@ Build the full solution in Release (warnings are errors), then run the executabl
 
 ```bash
 dotnet build --configuration Release
-./Specs/bin/Release/net10.0/Prompter.Specs -trait- "Category=Integration"
+./Specs/bin/Release/net11.0/Prompter.Specs -trait- "Category=Integration"
 ```
 
 The focused regression is under `for_Answers/when_applying_the_retrieval_gate`. It covers a

@@ -7,7 +7,7 @@
 # The build stage always runs natively on the builder's platform and cross-compiles for the target
 # architecture, so the linux/arm64 image never runs the SDK under QEMU emulation. The output stays
 # framework-dependent, as before; `-a` only selects the target architecture.
-FROM --platform=$BUILDPLATFORM mcr.microsoft.com/dotnet/sdk:10.0.403 AS build
+FROM --platform=$BUILDPLATFORM mcr.microsoft.com/dotnet/sdk:11.0.100-resolute AS build
 ARG CONFIGURATION=Release
 ARG VERSION=0.0.0
 # Set by BuildKit to the Docker architecture name of the target platform (amd64, arm64).
@@ -43,9 +43,8 @@ RUN case "${TARGETARCH}" in \
 ####################################
 # Bot mode hosts Kestrel (health probe + re-index webhook), so the runtime needs the ASP.NET Core
 # shared framework. EXPOSE 8080 is Kestrel's default container port for the /healthz and /reindex routes.
-# 10.0-noble is the tag Studio's services run on; the bookworm-slim variant this used to name does not
-# exist for .NET 10 (Debian slim images stop at 9.0), which is why the first publish failed to pull.
-FROM mcr.microsoft.com/dotnet/aspnet:10.0.14-noble
+# .NET 11 GA images use the resolute line; noble tags are not available for .NET 11.
+FROM mcr.microsoft.com/dotnet/aspnet:11.0-resolute
 
 WORKDIR /app
 COPY --from=build /app/publish .

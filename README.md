@@ -105,7 +105,7 @@ flowchart LR
   as out of scope is also refused, after generation and without citations. The system prompt
   still treats excerpts as untrusted data and demands grounding and citations; relevance is not trust.
 
-Built with **C# / .NET 10**, [NetCord](https://netcord.dev),
+Built with **C# / .NET 11**, [NetCord](https://netcord.dev),
 [Microsoft.Extensions.AI](https://learn.microsoft.com/en-us/dotnet/ai/), **Claude** (Anthropic), **Voyage AI**
 embeddings, and **Postgres + pgvector**.
 
@@ -456,7 +456,7 @@ drops all capabilities and denies privilege escalation. Its root filesystem is r
 unrelated existing mounts are retained. The standalone CLI uses the same nonroot image identity.
 
 For isolated ledger specs, supply only the loopback port of a disposable, trust-authenticated
-Postgres instance in `PROMPTER_LEDGER_TEST_PORT` and run `./Specs/bin/Release/net10.0/Prompter.Specs`.
+Postgres instance in `PROMPTER_LEDGER_TEST_PORT` and run `./Specs/bin/Release/net11.0/Prompter.Specs`.
 Without that opt-in, the spend and issue-delivery Postgres integration specs are explicitly skipped;
 all other protection specs are offline. Never point this probe at a live database: it creates and drops a random test schema.
 
@@ -534,7 +534,7 @@ Consult [`decisions/`](decisions/index.md) before making architectural changes; 
 
 ```bash
 dotnet build --configuration Release          # zero warnings, zero errors (warnings are errors in Release)
-./Specs/bin/Release/net10.0/Prompter.Specs    # all specs green (xUnit v3 executable, not dotnet test)
+./Specs/bin/Release/net11.0/Prompter.Specs    # all specs green (xUnit v3 executable, not dotnet test)
 ```
 
 And one more gate that's unusual for a bot: **answer quality is measured, not vibed.** A golden-question eval
