@@ -11,5 +11,5 @@ public class and_the_parent_is_allowed_for_drafting : given.an_issue_interaction
 
     [Fact] void should_draft_the_description() => Drafting.Received(1).Draft("A reproducible problem", null, Arg.Any<CancellationToken>());
     [Fact] void should_search_the_routed_repository() => Issues.Received(1).FindSimilar("Chronicle", "Title", Arg.Any<CancellationToken>());
-    [Fact] void should_not_file_without_confirmation() => Issues.DidNotReceive().File(Arg.Any<Cratis.Prompter.GitHub.PendingIssue>(), Arg.Any<CancellationToken>());
+    [Fact] void should_not_file_without_confirmation() => Issues.DidNotReceive().File(Arg.Any<GitHub.PendingIssue>(), Arg.Any<CancellationToken>());
 }

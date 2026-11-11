@@ -166,7 +166,7 @@ Environment.ExitCode = await BotFailure.Run(
         // lives only in the bot process and fails startup fast on an empty token instead of surfacing later as an
         // opaque gateway authentication failure.
         webBuilder.Services
-            .AddOptions<Cratis.Prompter.PrompterOptions>()
+            .AddOptions<PrompterOptions>()
             .Validate(
                 options => options.Discord.TokenIsPresent,
                 "Cratis:Prompter:Discord:Token must be set in bot mode; an empty token fails late at the Discord gateway rather than at startup.")

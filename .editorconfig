@@ -120,6 +120,9 @@ dotnet_diagnostic.CA1515.severity = none
 dotnet_diagnostic.IDE0008.severity = none
 dotnet_diagnostic.IDE0022.severity = none
 dotnet_diagnostic.IDE0055.severity = none
+# JSON002 is an editor-only JSON-detection hint, not JSON validation. The bulk
+# analyzer warning setting promotes it in format, but the build does not enforce it.
+dotnet_diagnostic.JSON002.severity = none
 
 # prefere brace indentation when creating objects etc
 csharp_indent_braces = false
@@ -203,3 +206,15 @@ dotnet_diagnostic.MA0097.severity = none
 dotnet_diagnostic.MA0132.severity = none
 dotnet_diagnostic.MA0134.severity = none
 dotnet_diagnostic.ORLEANS0010.severity = none
+
+[{Specs/*.cs,Specs/**/*.cs}]
+# Specs/Prompter.Specs.csproj disables XML documentation; the *.Specs glob above
+# does not match this directory. Mirror that intent for format's documentation checks.
+dotnet_diagnostic.SA1600.severity = none
+dotnet_diagnostic.SA1611.severity = none
+dotnet_diagnostic.SA1615.severity = none
+dotnet_diagnostic.RCS1141.severity = none
+dotnet_diagnostic.MA0219.severity = none
+# IDE0005 is not enforced by the build without GenerateDocumentationFile; match
+# the specs project's existing setting rather than requiring documentation output.
+dotnet_diagnostic.IDE0005.severity = none
