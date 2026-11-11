@@ -185,20 +185,7 @@ public static class DiscordAnswers
 
         Flush(segments, current);
 
-        var paragraphs = new List<string>();
-        foreach (var segment in segments)
-        {
-            if (segment.Length <= MaxMessageLength)
-            {
-                paragraphs.Add(segment);
-            }
-            else
-            {
-                paragraphs.AddRange(HardSplit(segment));
-            }
-        }
-
-        return paragraphs;
+        return [.. segments.SelectMany(segment => segment.Length <= MaxMessageLength ? [segment] : HardSplit(segment))];
     }
 
     static void AppendFenceLine(List<string> segments, StringBuilder current, string line, bool inFence)
@@ -258,20 +245,20 @@ public static class DiscordAnswers
         var contentEnd = lines.Length > 1 && IsFenceDelimiter(lines[^1]) ? lines.Length - 1 : lines.Length;
         var budget = MaxMessageLength - open.Length - CodeFence.Length - 2;
 
-        if (budget <= 0)
-        {
-            foreach (var piece in HardSplitText(paragraph))
-            {
-                yield return piece;
-            }
+        return budget <= 0
+            ? HardSplitText(paragraph)
+            : PackCodeLines(lines.Skip(1).Take(contentEnd - 1).SelectMany(line => WrapLine(line, budget)), open, budget);
+    }
 
-            yield break;
-        }
-
-        // Pack whole code lines, keeping each outgoing message a self-contained fenced block that
-        // closes with ``` and reopens with the same language hint on the next message.
+    /// <summary>Packs whole code lines into self-contained fenced blocks with the same language hint.</summary>
+    /// <param name="segments">The wrapped code lines.</param>
+    /// <param name="open">The opening fence and language hint.</param>
+    /// <param name="budget">The space available inside each fence.</param>
+    /// <returns>The fenced message chunks.</returns>
+    static IEnumerable<string> PackCodeLines(IEnumerable<string> segments, string open, int budget)
+    {
         var current = new StringBuilder();
-        foreach (var segment in lines.Skip(1).Take(contentEnd - 1).SelectMany(line => WrapLine(line, budget)))
+        foreach (var segment in segments)
         {
             if (current.Length == 0)
             {
