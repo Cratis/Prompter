@@ -11,18 +11,23 @@ public class reported_usage : Specification
     readonly ProviderBudget _budget = new() { InputUsdPerMillion = 4, OutputUsdPerMillion = 8, CacheWriteUsdPerMillion = 2, CacheReadUsdPerMillion = 1 };
 
     [Theory]
-    [InlineData(null, null, 0, 0, true, SettlementRejection.NoUsage)]
-    [InlineData(-1L, 0L, 0, 0, true, SettlementRejection.NoUsage)]
-    [InlineData(10L, 0L, -1, 0, true, SettlementRejection.CacheCountsInvalid)]
-    [InlineData(10L, 0L, 0, -1, true, SettlementRejection.CacheCountsInvalid)]
-    [InlineData(10L, 0L, 11, 0, true, SettlementRejection.CacheCountsInvalid)]
-    [InlineData(10L, 0L, 6, 5, true, SettlementRejection.CacheCountsInvalid)]
-    [InlineData(long.MaxValue, 0L, long.MaxValue, long.MaxValue, true, SettlementRejection.CacheCountsInvalid)]
-    [InlineData(10L, null, 0, 0, true, SettlementRejection.OutputInvalid)]
-    [InlineData(10L, -1L, 0, 0, false, SettlementRejection.OutputInvalid)]
-    [InlineData(10L, 0L, 1, 0, false, SettlementRejection.UnknownUsageCounter)]
-    void should_reject_unpriceable_counts(long? input, long? output, long write, long read, bool chat, SettlementRejection rejection) =>
-        UsagePrice.Of(_budget, new() { InputTokenCount = input, OutputTokenCount = output, CachedInputTokenCount = read, AdditionalCounts = new() { ["CacheCreationInputTokens"] = write } }, chat).ShouldEqual((null, rejection));
+    [InlineData(null, null)]
+    [InlineData(-1L, 0L)]
+    void should_reject_missing_or_negative_input(long? input, long? output) =>
+        UsagePrice.Of(_budget, new() { InputTokenCount = input, OutputTokenCount = output }, true).ShouldEqual((null, SettlementRejection.NoUsage));
+
+    [Theory]
+    [InlineData(10, -1, 0)]
+    [InlineData(10, 0, -1)]
+    [InlineData(10, 11, 0)]
+    [InlineData(10, 6, 5)]
+    [InlineData(long.MaxValue, long.MaxValue, long.MaxValue)]
+    void should_reject_invalid_cache_counts(long input, long write, long read) =>
+        UsagePrice.Of(_budget, new() { InputTokenCount = input, OutputTokenCount = 0, CachedInputTokenCount = read, AdditionalCounts = new() { ["CacheCreationInputTokens"] = write } }, true).ShouldEqual((null, SettlementRejection.CacheCountsInvalid));
+
+    [Fact] void should_reject_chat_usage_without_output() => UsagePrice.Of(_budget, new() { InputTokenCount = 10 }, true).ShouldEqual((null, SettlementRejection.OutputInvalid));
+    [Fact] void should_reject_negative_embedding_output() => UsagePrice.Of(_budget, new() { InputTokenCount = 10, OutputTokenCount = -1 }, false).ShouldEqual((null, SettlementRejection.OutputInvalid));
+    [Fact] void should_reject_embedding_cache_writes() => UsagePrice.Of(_budget, new() { InputTokenCount = 10, OutputTokenCount = 0, AdditionalCounts = new() { ["CacheCreationInputTokens"] = 1 } }, false).ShouldEqual((null, SettlementRejection.UnknownUsageCounter));
 
     [Fact] void should_reject_absent_usage() => UsagePrice.Of(_budget, null, true).Rejection.ShouldEqual(SettlementRejection.NoUsage);
     [Fact] void should_allow_zero_unknown_counters() => UsagePrice.Of(_budget, new() { InputTokenCount = 10, OutputTokenCount = 0, AdditionalCounts = new() { ["unknown"] = 0 } }, true).Cost.ShouldEqual(0.00004m);
