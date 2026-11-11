@@ -56,7 +56,7 @@ public class Passages(
             passages = await ReadCandidates(question, limit, questionEmbedding, [], cancellationToken);
         }
 
-        if (question.Scope is null && OverviewQuestions.Matches(question.Value))
+        if (IsOverview(question))
         {
             var overview = await OverviewSummaries(questionEmbedding, passages.Count > 0 ? passages[0].Score : 0.0, cancellationToken);
             var overviewIds = overview.Select(passage => passage.ChunkId).ToHashSet(StringComparer.Ordinal);
@@ -90,6 +90,8 @@ public class Passages(
 
         return passages;
     }
+
+    static bool IsOverview(Question question) => question.Scope is null && OverviewQuestions.Matches(question.Value);
 
     static async Task<Passage> ReadPassage(NpgsqlDataReader reader, CancellationToken cancellationToken) => new(
         new PageUrl(reader.GetString(0)),
