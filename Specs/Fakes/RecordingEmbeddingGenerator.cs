@@ -27,7 +27,7 @@ public sealed class RecordingEmbeddingGenerator : IEmbeddingGenerator<string, Em
     {
         var inputs = values as IReadOnlyList<string> ?? [.. values];
         _batchSizes.Add(inputs.Count);
-        _tasks.Add(options?.AdditionalProperties?.TryGetValue(Cratis.Prompter.Embeddings.EmbeddingRetry.TaskKey, out var task) == true ? task as string : null);
+        _tasks.Add(options?.AdditionalProperties?.TryGetValue(Embeddings.EmbeddingRetry.TaskKey, out var task) == true ? task as string : null);
         BeforeGenerate?.Invoke(_batchSizes.Count);
 
         var generated = new GeneratedEmbeddings<Embedding<float>>(inputs.Select(_ => new Embedding<float>(new float[4])));
@@ -37,7 +37,7 @@ public sealed class RecordingEmbeddingGenerator : IEmbeddingGenerator<string, Em
             generated.Usage = new() { InputTokenCount = usage, TotalTokenCount = usage };
         }
 
-        if (Attempts is not null) generated.AdditionalProperties = new() { [Cratis.Prompter.Embeddings.EmbeddingRetry.AttemptsKey] = Attempts.Value };
+        if (Attempts is not null) generated.AdditionalProperties = new() { [Embeddings.EmbeddingRetry.AttemptsKey] = Attempts.Value };
         return Task.FromResult(generated);
     }
 

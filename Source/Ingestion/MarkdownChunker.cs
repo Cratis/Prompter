@@ -55,7 +55,7 @@ public static class MarkdownChunker
                         title,
                         section.HeadingPath,
                         text,
-                        ContentHash.For(global::Cratis.Prompter.Ingestion.Chunk.EmbeddingInputFor(title, section.HeadingPath, text)));
+                        ContentHash.For(Ingestion.Chunk.EmbeddingInputFor(title, section.HeadingPath, text)));
                     piece++;
                 }
 

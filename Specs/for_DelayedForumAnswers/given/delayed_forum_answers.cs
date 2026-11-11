@@ -22,7 +22,7 @@ public class delayed_forum_answers : Specification
     protected PrompterOptions Options { get; private set; } = null!;
     protected ControlledTime Clock { get; private set; } = null!;
     protected DelayedForumAnswers Sweeper { get; private set; } = null!;
-    protected AnsweringSwitch Answering { get; } = Fakes.Switch.Running();
+    protected AnsweringSwitch Answering { get; } = Switch.Running();
     protected int Answered { get; set; }
 
     protected DelayedForumAnswers Create()

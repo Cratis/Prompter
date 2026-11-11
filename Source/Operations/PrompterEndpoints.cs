@@ -61,7 +61,7 @@ public static class PrompterEndpoints
 
         // The signature covers the exact bytes GitHub sent, so the body is read raw and verified before
         // anything parses it.
-        var payload = await Protection.BoundedBody.Read(request, options.Value.Protection.WebhookBytes, cancellationToken);
+        var payload = await BoundedBody.Read(request, options.Value.Protection.WebhookBytes, cancellationToken);
         if (payload is null)
         {
             return Results.StatusCode(StatusCodes.Status413PayloadTooLarge);
