@@ -17,6 +17,15 @@ internal sealed class GroundednessEvaluator : IEvaluator
     /// <summary>The name of the metric this evaluator produces.</summary>
     public const string MetricName = "Groundedness";
 
+    static readonly IReadOnlyDictionary<double, EvaluationRating> _ratings = new Dictionary<double, EvaluationRating>
+    {
+        [5.0] = EvaluationRating.Exceptional,
+        [4.0] = EvaluationRating.Good,
+        [3.0] = EvaluationRating.Average,
+        [2.0] = EvaluationRating.Poor,
+        [1.0] = EvaluationRating.Unacceptable,
+    };
+
     /// <inheritdoc/>
     public IReadOnlyCollection<string> EvaluationMetricNames => [MetricName];
 
@@ -92,15 +101,7 @@ internal sealed class GroundednessEvaluator : IEvaluator
         return new EvaluationMetricInterpretation(rating, failed: failed);
     }
 
-    static EvaluationRating Rating(NumericMetric metric) => (metric.Value ?? -1.0) switch
-    {
-        5.0 => EvaluationRating.Exceptional,
-        4.0 => EvaluationRating.Good,
-        3.0 => EvaluationRating.Average,
-        2.0 => EvaluationRating.Poor,
-        1.0 => EvaluationRating.Unacceptable,
-        _ => EvaluationRating.Inconclusive,
-    };
+    static EvaluationRating Rating(NumericMetric metric) => _ratings.GetValueOrDefault(metric.Value ?? -1.0, EvaluationRating.Inconclusive);
 
     static string BuildPrompt(string question, string answer, string groundingContext) =>
         $$"""
