@@ -30,30 +30,42 @@ static class SectionMerger
     {
         for (var index = 0; index < sections.Count; index++)
         {
-            if (!Tiny(sections[index]))
+            if (Tiny(sections[index]) && TryMergeNeighbors(sections, index, maxChunkLength))
             {
-                continue;
-            }
-
-            foreach (var neighbor in new[] { index - 1, index + 1 })
-            {
-                if (neighbor < 0 || neighbor >= sections.Count || sections[neighbor].Root != sections[index].Root || HasFence(sections[neighbor]))
-                {
-                    continue;
-                }
-
-                var first = Math.Min(index, neighbor);
-                var combined = Combine(sections[first], sections[first + 1]);
-                if (combined.Content.Length <= maxChunkLength)
-                {
-                    sections[first] = combined;
-                    sections.RemoveAt(first + 1);
-                    return true;
-                }
+                return true;
             }
         }
 
         return false;
+    }
+
+    static bool TryMergeNeighbors(List<Section> sections, int index, int maxChunkLength)
+    {
+        foreach (var neighbor in new[] { index - 1, index + 1 })
+        {
+            if (CanMerge(sections, index, neighbor) && TryMergePair(sections, Math.Min(index, neighbor), maxChunkLength))
+            {
+                return true;
+            }
+        }
+
+        return false;
+    }
+
+    static bool CanMerge(List<Section> sections, int index, int neighbor) =>
+        neighbor >= 0 && neighbor < sections.Count && sections[neighbor].Root == sections[index].Root && !HasFence(sections[neighbor]);
+
+    static bool TryMergePair(List<Section> sections, int first, int maxChunkLength)
+    {
+        var combined = Combine(sections[first], sections[first + 1]);
+        if (combined.Content.Length > maxChunkLength)
+        {
+            return false;
+        }
+
+        sections[first] = combined;
+        sections.RemoveAt(first + 1);
+        return true;
     }
 
     static bool Tiny(Section section) => section.Content.Trim() is { Length: > 0 and < MinSectionLength } && !HasFence(section);
