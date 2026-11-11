@@ -69,12 +69,8 @@ public class Mentions(
             return (false, string.Empty);
         }
 
-        var userMention = $"<@{botId}>";
-        var nicknameMention = $"<@!{botId}>";
-
-        var mentioned =
-            content.Contains(userMention, StringComparison.Ordinal) ||
-            content.Contains(nicknameMention, StringComparison.Ordinal);
+        var mention = new QuestionMention(content, botId);
+        var mentioned = mention.IsPresent;
 
         var inAskChannel = askChannelId is { } ask && channelId == ask;
         var directed = mentioned || inAskChannel || addressed;
@@ -83,10 +79,7 @@ public class Mentions(
             return (false, string.Empty);
         }
 
-        var question = content
-            .Replace(nicknameMention, string.Empty, StringComparison.Ordinal)
-            .Replace(userMention, string.Empty, StringComparison.Ordinal)
-            .Trim();
+        var question = mention.Strip();
 
         return question.Length == 0 ? (false, string.Empty) : (true, question);
     }
@@ -134,7 +127,7 @@ public class Mentions(
             var decision = admission.TryEnter(new(message.GuildId, message.ChannelId, message.Author.Id, MaintainerRole.Holds(options.Value.Discord, message.Author)), question);
             if (!decision.Allowed)
             {
-                await Refuse(message, decision.Reply, decision.Text);
+                await Refuse(message, decision);
                 return;
             }
 
@@ -145,7 +138,7 @@ public class Mentions(
         }
         catch (WorkRefused)
         {
-            await Refuse(message, admission.MayReply(new(message.GuildId, message.ChannelId, message.Author.Id)));
+            await Refuse(message, new(false, admission.MayReply(new(message.GuildId, message.ChannelId, message.Author.Id))));
         }
         catch (Exception exception)
         {
@@ -154,8 +147,8 @@ public class Mentions(
         }
     }
 
-    static bool IsHelper(Message message, ulong ownerId) =>
-        !message.Author.IsBot && message.WebhookId is null && message.Author.Id != ownerId &&
+    static bool IsHelper(Message message, ForumThread forum) =>
+        !message.Author.IsBot && message.WebhookId is null && message.Author.Id != forum.OwnerId &&
         message.Type is MessageType.Default or MessageType.Reply;
 
     ForumThread? HelpForumThread(Message message) =>
@@ -196,7 +189,7 @@ public class Mentions(
             return "discord-ask-channel";
         }
 
-        if (MentionsBot(message.Content))
+        if (MentionsBot(message))
         {
             return "discord-mention";
         }
@@ -209,12 +202,12 @@ public class Mentions(
         return HelpForumThread(message) is not null ? "discord-forum-follow-up" : "discord-thread-follow-up";
     }
 
-    bool MentionsBot(string content) =>
-        content.Contains($"<@{client.Id}>", StringComparison.Ordinal) || content.Contains($"<@!{client.Id}>", StringComparison.Ordinal);
+    bool MentionsBot(Message message) =>
+        message.Content.Contains($"<@{client.Id}>", StringComparison.Ordinal) || message.Content.Contains($"<@!{client.Id}>", StringComparison.Ordinal);
 
     void HandOffToHelpers(Message message)
     {
-        if (FollowUpThread(message) is { IsStarter: false } forum && IsHelper(message, forum.OwnerId))
+        if (FollowUpThread(message) is { IsStarter: false } forum && IsHelper(message, forum))
         {
             followUps.HandOff(forum.Id);
         }
@@ -225,12 +218,12 @@ public class Mentions(
         message.Type is MessageType.Default or MessageType.Reply &&
         message.Content.Length <= Math.Min(options.Value.Protection.MaxQuestionCharacters, ConversationContextReader.MaximumCurrentCharacters);
 
-    async Task Refuse(Message message, bool reply, string? text = null)
+    async Task Refuse(Message message, AdmissionDecision decision)
     {
         logger.RateLimited();
-        if (reply)
+        if (decision.Reply)
         {
-            await message.ReplyAsync(text ?? options.Value.Discord.RateLimitedReply);
+            await message.ReplyAsync(decision.Text ?? options.Value.Discord.RateLimitedReply);
         }
     }
 
@@ -244,19 +237,21 @@ public class Mentions(
         var location = new ConversationLocation(guildId, message.ChannelId, message.Id, message.CreatedAt);
         if (asked.RepliesToBot && message.ReferencedMessage is { } referenced)
         {
-            var anchor = new HistoryMessage(
-                referenced.Id,
-                referenced.ChannelId,
-                referenced.CreatedAt,
-                referenced.Content,
-                referenced.Author.IsBot,
-                referenced.Author.IsBot && referenced.Author.Id == client.Id,
-                referenced.Type is not MessageType.Default and not MessageType.Reply);
+            var anchor = ReplyAnchor(referenced);
             return await context.For(asked.Question, location, anchor, cancellationToken);
         }
 
         return await context.For(asked.Question, location, cancellationToken);
     }
+
+    HistoryMessage ReplyAnchor(RestMessage referenced) => new(
+        referenced.Id,
+        referenced.ChannelId,
+        referenced.CreatedAt,
+        referenced.Content,
+        referenced.Author.IsBot,
+        referenced.Author.IsBot && referenced.Author.Id == client.Id,
+        referenced.Type is not MessageType.Default and not MessageType.Reply);
 
     async Task Reply(Message message, AskedQuestion asked, CancellationToken cancellationToken)
     {
@@ -287,6 +282,19 @@ public class Mentions(
             // do but record it — the handler still returns without throwing.
             logger.ApologyFailed(exception);
         }
+    }
+
+    sealed class QuestionMention(string content, ulong botId)
+    {
+        readonly string _user = $"<@{botId}>";
+        readonly string _nickname = $"<@!{botId}>";
+
+        internal bool IsPresent => content.Contains(_user, StringComparison.Ordinal) || content.Contains(_nickname, StringComparison.Ordinal);
+
+        internal string Strip() => content
+            .Replace(_nickname, string.Empty, StringComparison.Ordinal)
+            .Replace(_user, string.Empty, StringComparison.Ordinal)
+            .Trim();
     }
 
     sealed record AskedQuestion(string Question, string Source, bool RepliesToBot);
