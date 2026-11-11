@@ -87,20 +87,20 @@ internal sealed class GroundednessEvaluator : IEvaluator
     /// <returns>The interpretation of the score.</returns>
     internal static EvaluationMetricInterpretation Interpret(NumericMetric metric)
     {
-        var score = metric.Value ?? -1.0;
-        var rating = score switch
-        {
-            5.0 => EvaluationRating.Exceptional,
-            4.0 => EvaluationRating.Good,
-            3.0 => EvaluationRating.Average,
-            2.0 => EvaluationRating.Poor,
-            1.0 => EvaluationRating.Unacceptable,
-            _ => EvaluationRating.Inconclusive,
-        };
-
+        var rating = Rating(metric);
         var failed = rating is EvaluationRating.Inconclusive or EvaluationRating.Unacceptable or EvaluationRating.Poor;
         return new EvaluationMetricInterpretation(rating, failed: failed);
     }
+
+    static EvaluationRating Rating(NumericMetric metric) => (metric.Value ?? -1.0) switch
+    {
+        5.0 => EvaluationRating.Exceptional,
+        4.0 => EvaluationRating.Good,
+        3.0 => EvaluationRating.Average,
+        2.0 => EvaluationRating.Poor,
+        1.0 => EvaluationRating.Unacceptable,
+        _ => EvaluationRating.Inconclusive,
+    };
 
     static string BuildPrompt(string question, string answer, string groundingContext) =>
         $$"""

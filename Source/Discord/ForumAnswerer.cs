@@ -40,27 +40,10 @@ public class ForumAnswerer(
     {
         try
         {
-            if (included is not null && !HumanStarter(included))
+            if (!await TryAnswer(thread, forumId, included, delayed))
             {
                 return;
             }
-
-            // Even a missing starter must pass metadata, rates, concurrency and spend before the REST fallback.
-            var decision = admission.TryEnter(new(thread.GuildId, thread.Id, thread.OwnerId), included?.Content ?? $"forum-starter:{thread.Id}");
-            if (!decision.Allowed)
-            {
-                await Refuse(thread.Id, decision.Reply, decision.Text);
-                return;
-            }
-
-            await using var lease = await work.BeginInteractive();
-            lease.Activate();
-            if (!await AnswerThread(thread, forumId, included, delayed, lease.Token))
-            {
-                return;
-            }
-
-            TrackFollowUps(thread, delayed);
         }
         catch (WorkRefused)
         {
@@ -89,6 +72,32 @@ public class ForumAnswerer(
 
     static bool HumanStarter(RestMessage starter) =>
         !starter.Author.IsBot && starter.WebhookId is null && starter.Type is MessageType.Default or MessageType.Reply;
+
+    async Task<bool> TryAnswer(ForumThreadRef thread, ulong forumId, RestMessage? included, bool delayed)
+    {
+        if (included is not null && !HumanStarter(included))
+        {
+            return false;
+        }
+
+        // Even a missing starter must pass metadata, rates, concurrency and spend before the REST fallback.
+        var decision = admission.TryEnter(new(thread.GuildId, thread.Id, thread.OwnerId), included?.Content ?? $"forum-starter:{thread.Id}");
+        if (!decision.Allowed)
+        {
+            await Refuse(thread.Id, decision.Reply, decision.Text);
+            return false;
+        }
+
+        await using var lease = await work.BeginInteractive();
+        lease.Activate();
+        if (!await AnswerThread(thread, forumId, included, delayed, lease.Token))
+        {
+            return false;
+        }
+
+        TrackFollowUps(thread, delayed);
+        return true;
+    }
 
     void TrackFollowUps(ForumThreadRef thread, bool delayed)
     {
