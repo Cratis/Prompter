@@ -95,7 +95,7 @@ public class and_sources_share_one_run : Specification
         options.Ingestion.Readmes.Enabled = false;
     }
 
-    static CorpusSources Create(HttpClient client, Microsoft.Extensions.Options.IOptions<PrompterOptions> options) => new(
+    static CorpusSources Create(HttpClient client, IOptions<PrompterOptions> options) => new(
         new(client, options, NullLogger<DocsSite>.Instance),
         new(client, options, NullLogger<ReleaseNotes>.Instance),
         new(client, options, NullLogger<SampleFiles>.Instance),
