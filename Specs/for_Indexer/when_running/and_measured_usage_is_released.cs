@@ -18,7 +18,8 @@ public class and_measured_usage_is_released : given.an_indexer
 
     async Task Because() => await Indexer.Run();
 
-    [Fact] async Task should_release_each_successful_batch_surplus()
+    [Fact]
+    async Task should_release_each_successful_batch_surplus()
     {
         var chunks = MarkdownChunker.Chunk(new PageUrl("https://cratis.io/a.md"), "# A\n\nAlpha.")
             .Concat(MarkdownChunker.Chunk(new PageUrl("https://cratis.io/b.md"), "# B\n\nBeta."));

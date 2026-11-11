@@ -21,6 +21,7 @@ public class and_the_run_is_a_confirmed_full_run : Specification
 
     async Task Because() => await _meter.Reserve(_batch, CancellationToken.None);
 
-    [Fact] async Task should_record_the_confirmed_full_run_with_its_ceiling() =>
+    [Fact]
+    async Task should_record_the_confirmed_full_run_with_its_ceiling() =>
         await _lease.Received(1).Reserve(new(_batch, 1m, Scheduled: false, Full: true), CancellationToken.None);
 }

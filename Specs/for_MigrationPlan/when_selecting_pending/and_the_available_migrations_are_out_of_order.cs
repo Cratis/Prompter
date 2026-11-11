@@ -20,7 +20,8 @@ public class and_the_available_migrations_are_out_of_order : Specification
 
     void Because() => _pending = MigrationPlan.Pending(_available, new HashSet<MigrationVersion>());
 
-    [Fact] void should_order_by_semantic_version_not_lexically() =>
+    [Fact]
+    void should_order_by_semantic_version_not_lexically() =>
         string.Join(',', _pending.Select(migration => migration.Version.ToString()))
             .ShouldEqual("1.0.0,1.9.0,1.10.0,2.0.0");
 }

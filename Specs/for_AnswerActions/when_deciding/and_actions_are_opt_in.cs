@@ -12,7 +12,8 @@ public class and_actions_are_opt_in : Specification
     [Fact] void should_offer_documented_for_a_refusal() => AnswerActions.For(new(2, 3), true, false, true, false, "chronicle").OfferDocumented.ShouldBeTrue();
     [Fact] void should_not_offer_documented_for_an_answer() => AnswerActions.For(new(2, 3), false, false, true, false, "chronicle").OfferDocumented.ShouldBeFalse();
     [Fact] void should_not_forward_a_command() => AnswerActions.For(new(2, 0), true, true, true, true, "chronicle").OfferRequest.ShouldBeFalse();
-    [Fact] void should_offer_request_instead_of_documented()
+    [Fact]
+    void should_offer_request_instead_of_documented()
     {
         var actions = AnswerActions.For(new(2, 3), true, false, true, true, "chronicle");
         actions.RequestProduct.ShouldEqual("chronicle");

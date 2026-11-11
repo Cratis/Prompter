@@ -19,6 +19,7 @@ public class and_nothing_has_been_applied : Specification
     void Because() => _pending = MigrationPlan.Pending(_available, new HashSet<MigrationVersion>());
 
     [Fact] void should_return_every_migration() => _pending.Count.ShouldEqual(2);
-    [Fact] void should_order_them_ascending() =>
+    [Fact]
+    void should_order_them_ascending() =>
         string.Join(',', _pending.Select(migration => migration.Version.ToString())).ShouldEqual("1.0.0,1.1.0");
 }

@@ -25,7 +25,8 @@ public class and_usage_is_measured : Specification
         await _meter.Settle(_batch, IndexBudget.Used(68, 1, 2, _options));
     }
 
-    [Fact] void should_reserve_before_settling() => Received.InOrder(() =>
+    [Fact]
+    void should_reserve_before_settling() => Received.InOrder(() =>
     {
         _lease.Reserve(new(_batch, 2, Scheduled: false, Full: false), CancellationToken.None);
         _lease.Release(new(406, 0.000406m), Arg.Any<CancellationToken>());
