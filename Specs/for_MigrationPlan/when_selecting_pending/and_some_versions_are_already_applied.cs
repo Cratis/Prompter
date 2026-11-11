@@ -21,9 +21,11 @@ public class and_some_versions_are_already_applied : Specification
         _available,
         new HashSet<MigrationVersion> { new(1, 0, 0) });
 
-    [Fact] void should_skip_the_applied_migration() =>
+    [Fact]
+    void should_skip_the_applied_migration() =>
         _pending.Any(migration => migration.Version == new MigrationVersion(1, 0, 0)).ShouldBeFalse();
     [Fact] void should_return_only_the_pending_migrations() => _pending.Count.ShouldEqual(2);
-    [Fact] void should_order_the_pending_migrations_ascending() =>
+    [Fact]
+    void should_order_the_pending_migrations_ascending() =>
         string.Join(',', _pending.Select(migration => migration.Version.ToString())).ShouldEqual("1.1.0,2.0.0");
 }

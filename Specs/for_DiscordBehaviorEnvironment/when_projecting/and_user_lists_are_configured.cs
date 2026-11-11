@@ -18,7 +18,8 @@ public class and_user_lists_are_configured : Specification
         _badAllowed = Catch.Exception(() => DiscordBehaviorEnvironment.Values(null, null, null, null, "-1"));
     }
 
-    [Fact] void should_project_each_denied_user_by_index()
+    [Fact]
+    void should_project_each_denied_user_by_index()
     {
         _values["Cratis__Prompter__Protection__DeniedUsers__0"].ShouldEqual("10");
         _values["Cratis__Prompter__Protection__DeniedUsers__1"].ShouldEqual("20");

@@ -34,7 +34,8 @@ public class and_the_output_cap_cuts_a_product_list : given.a_grounded_answerer
         chat.GetResponseAsync(Arg.Any<IEnumerable<ChatMessage>>(), Arg.Any<ChatOptions>(), Arg.Any<CancellationToken>())
             .Returns(Task.FromResult(new ChatResponse(new ChatMessage(
                 ChatRole.Assistant,
-                "{\"text\":\"- Chronicle: event store [1]\\n- Components: React UI [3]\\n- Arc: CQRS [2]\\n- Fundamentals: shar")) { FinishReason = ChatFinishReason.Length }));
+                "{\"text\":\"- Chronicle: event store [1]\\n- Components: React UI [3]\\n- Arc: CQRS [2]\\n- Fundamentals: shar"))
+            { FinishReason = ChatFinishReason.Length }));
         _logger.IsEnabled(Arg.Any<LogLevel>()).Returns(true);
         _answerer = new(passages, chat, interactions, Options.Create(options), _logger);
         _listener = new()

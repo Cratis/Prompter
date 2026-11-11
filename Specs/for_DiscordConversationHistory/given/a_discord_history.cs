@@ -45,15 +45,26 @@ public class a_discord_history : Specification
             _json)!;
         var guild = new JsonGuild
         {
-            Id = 1, Name = "guild", Roles = [new() { Id = 1, Name = "@everyone", Permissions = permissions }],
-            Channels = [parent], ActiveThreads = [], Users = [], VoiceStates = [], Presences = [],
-            Emojis = [], Features = [], StageInstances = [], Stickers = [], ScheduledEvents = []
+            Id = 1,
+            Name = "guild",
+            Roles = [new() { Id = 1, Name = "@everyone", Permissions = permissions }],
+            Channels = [parent],
+            ActiveThreads = [],
+            Users = [],
+            VoiceStates = [],
+            Presences = [],
+            Emojis = [],
+            Features = [],
+            StageInstances = [],
+            Stickers = [],
+            ScheduledEvents = []
         };
         client = new(token, new()
         {
             CacheProvider = ImmutableGatewayClientCacheProvider.FromJson(new JsonGatewayClientCache
             {
-                User = new() { Id = 42, Username = "bot", IsBot = true }, Guilds = scope.IncludeGuild ? [guild] : []
+                User = new() { Id = 42, Username = "bot", IsBot = true },
+                Guilds = scope.IncludeGuild ? [guild] : []
             }),
             RestClientConfiguration = new() { RequestHandler = handler }
         });
