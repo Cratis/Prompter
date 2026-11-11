@@ -22,40 +22,58 @@ public class and_an_enabled_repository_is_incomplete : given.an_indexer
     [InlineData("failed-with-samples")]
     public async Task should_publish_healthy_sources_and_retain_failed_snapshots(string outcome)
     {
-        Options.Ingestion.ReleaseNotes.Repositories = ["Arc", "Chronicle"];
-        Options.Ingestion.Sites.Company.Enabled = false;
-        Options.Ingestion.Sites.Studio.Enabled = false;
-        Options.Ingestion.Sites.Direct.Enabled = false;
-        Options.Ingestion.Readmes.Enabled = false;
-        Options.Ingestion.Samples.Enabled = outcome.StartsWith("samples-", StringComparison.Ordinal) || outcome == "failed-with-samples";
-        Options.Ingestion.Samples.Repository = "Cratis/Samples";
-        var retained = new ChunkId(outcome.StartsWith("samples-", StringComparison.Ordinal)
+        Configure(outcome);
+        var retained = new ChunkId(IsSamples(outcome)
             ? "https://github.com/Cratis/Samples/blob/main/Old.md#0"
             : "https://github.com/Cratis/Chronicle/releases/tag/v0.1#0");
         var stale = new ChunkId("https://cratis.io/deleted/#0");
         Chunks.GetHashes(Arg.Any<CancellationToken>()).Returns(new Dictionary<ChunkId, ContentHash> { [retained] = new("previous"), [stale] = new("stale") });
         using var responses = new Responses(outcome);
         using var client = new HttpClient(responses) { BaseAddress = new("https://cratis.io/") };
-        var config = Microsoft.Extensions.Options.Options.Create(Options);
-        var source = new CorpusSources(new(client, config, NullLogger<DocsSite>.Instance), new(client, config, NullLogger<ReleaseNotes>.Instance), new(client, config, NullLogger<SampleFiles>.Instance), new(client, NullLogger<CratisSites>.Instance), new(client, config, NullLogger<RepositoryReadmes>.Instance), config);
-        Indexer = Create(source);
+        Indexer = Create(Sources(client));
         var error = await Catch.Exception(async () => await Indexer.Run(TestContext.Current.CancellationToken));
-        if (outcome == "complete" || outcome == "empty" || outcome == "skipped")
+        if (Succeeds(outcome))
         {
             // A valid response without publishable releases is an empty result for that repository, not a failure.
-            var expected = outcome == "complete" ? 3 : 2;
             error.ShouldBeNull();
-            await Lease.Received(1).CommitIndex(Arg.Any<IReadOnlyCollection<EmbeddedChunk>>(), Arg.Is<IReadOnlySet<ChunkId>>(ids => !ids.Contains(retained) && ids.Count == expected), Arg.Is<IReadOnlyCollection<DocumentationMetadata>>(pages => pages.Count == expected), Arg.Any<CancellationToken>());
+            await VerifyCommitted(retained, outcome == "complete" ? 3 : 2);
+            return;
         }
-        else
-        {
-            error.ShouldBeOfExactType<DegradedIndex>();
-            var degraded = (DegradedIndex)error!;
-            var expectedPages = outcome.StartsWith("samples-", StringComparison.Ordinal) ? 3 : 1;
-            if (outcome == "failed-with-samples") expectedPages = 2;
-            await VerifyRetention(retained, stale, degraded, expectedPages);
-        }
+
+        error.ShouldBeOfExactType<DegradedIndex>();
+        await VerifyRetention(retained, stale, (DegradedIndex)error!, ExpectedDegradedPages(outcome));
     }
+
+    static bool IsSamples(string outcome) => outcome.StartsWith("samples-", StringComparison.Ordinal);
+
+    static bool Succeeds(string outcome) => new[] { "complete", "empty", "skipped" }.Contains(outcome, StringComparer.Ordinal);
+
+    static int ExpectedDegradedPages(string outcome) => outcome switch
+    {
+        "failed-with-samples" => 2,
+        _ when IsSamples(outcome) => 3,
+        _ => 1
+    };
+
+    void Configure(string outcome)
+    {
+        Options.Ingestion.ReleaseNotes.Repositories = ["Arc", "Chronicle"];
+        Options.Ingestion.Sites.Company.Enabled = false;
+        Options.Ingestion.Sites.Studio.Enabled = false;
+        Options.Ingestion.Sites.Direct.Enabled = false;
+        Options.Ingestion.Readmes.Enabled = false;
+        Options.Ingestion.Samples.Enabled = IsSamples(outcome) || outcome == "failed-with-samples";
+        Options.Ingestion.Samples.Repository = "Cratis/Samples";
+    }
+
+    CorpusSources Sources(HttpClient client)
+    {
+        var config = Microsoft.Extensions.Options.Options.Create(Options);
+        return new(new(client, config, NullLogger<DocsSite>.Instance), new(client, config, NullLogger<ReleaseNotes>.Instance), new(client, config, NullLogger<SampleFiles>.Instance), new(client, NullLogger<CratisSites>.Instance), new(client, config, NullLogger<RepositoryReadmes>.Instance), config);
+    }
+
+    async Task VerifyCommitted(ChunkId retained, int expected) =>
+        await Lease.Received(1).CommitIndex(Arg.Any<IReadOnlyCollection<EmbeddedChunk>>(), Arg.Is<IReadOnlySet<ChunkId>>(ids => !ids.Contains(retained) && ids.Count == expected), Arg.Is<IReadOnlyCollection<DocumentationMetadata>>(pages => pages.Count == expected), Arg.Any<CancellationToken>());
 
     async Task VerifyRetention(ChunkId retained, ChunkId stale, DegradedIndex degraded, int expectedPages)
     {
