@@ -54,7 +54,7 @@ public static class PrompterEndpoints
         CancellationToken cancellationToken)
     {
         var logger = loggerFactory.CreateLogger(GitHubLogCategory);
-        if (!options.Value.Protection.AnsweringEnabled || answering.Paused || !options.Value.Protection.GitHubWritesEnabled)
+        if (GitHubWritesUnavailable(options.Value.Protection, answering))
         {
             return Results.StatusCode(StatusCodes.Status503ServiceUnavailable);
         }
@@ -100,6 +100,9 @@ public static class PrompterEndpoints
 
         return Results.Json(new { status = "accepted" }, statusCode: StatusCodes.Status202Accepted);
     }
+
+    static bool GitHubWritesUnavailable(ProtectionOptions protection, AnsweringSwitch answering) =>
+        !protection.AnsweringEnabled || answering.Paused || !protection.GitHubWritesEnabled;
 
     static async Task<IResult> CheckHealthAsync(
         NpgsqlDataSource dataSource,

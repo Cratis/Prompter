@@ -63,65 +63,7 @@ public sealed class PrompterDeployment
             },
             new CustomResourceOptions { Provider = args.Provider });
 
-        var env = new List<EnvVarArgs>
-        {
-            new() { Name = "DOTNET_ENVIRONMENT", Value = "Production" },
-        };
-
-        env.AddRange(DiscordChannels(args));
-
-        if (!string.IsNullOrWhiteSpace(args.IssueNotifyChannelId))
-        {
-            env.Add(new EnvVarArgs { Name = "Cratis__Prompter__GitHub__NotifyChannelId", Value = args.IssueNotifyChannelId });
-        }
-
-        // The allowlist binds as an indexed list, so each entry gets its own variable. An empty setting
-        // leaves the list empty, which means Prompter answers on no tracker at all.
-        var answering = (args.AnsweringRepositories ?? string.Empty)
-            .Split(',', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries);
-
-        for (var index = 0; index < answering.Length; index++)
-        {
-            env.Add(new EnvVarArgs
-            {
-                Name = $"Cratis__Prompter__GitHub__AnsweringRepositories__{index}",
-                Value = answering[index]
-            });
-        }
-
-        var container = new ContainerArgs
-        {
-            Name = Name,
-            Image = args.Image,
-            Ports = [new ContainerPortArgs { ContainerPortValue = Port, Name = "http" }],
-            Env = WithMetrics([.. env, .. AnsweringReadinessEnvironment.Create(args.Readiness)], args),
-            EnvFrom = [],
-
-            // Readiness uses /healthz, which checks the database *and* the gateway connection — exactly the
-            // question "should traffic reach this pod". Liveness deliberately does not: /healthz reports
-            // unhealthy during a Discord outage, and restarting the pod in a loop would neither fix Discord
-            // nor let the re-index endpoint keep working. A TCP check asks the only question liveness
-            // should ask — is the process still there.
-            ReadinessProbe = new ProbeArgs
-            {
-                HttpGet = new HTTPGetActionArgs { Path = "/healthz", Port = Port },
-                InitialDelaySeconds = 10,
-                PeriodSeconds = 15,
-                FailureThreshold = 3,
-            },
-            LivenessProbe = new ProbeArgs
-            {
-                TcpSocket = new TCPSocketActionArgs { Port = Port },
-                InitialDelaySeconds = 30,
-                PeriodSeconds = 30,
-                FailureThreshold = 3,
-            },
-            Resources = new ResourceRequirementsArgs
-            {
-                Requests = { ["cpu"] = "100m", ["memory"] = "256Mi" },
-                Limits = { ["cpu"] = "1", ["memory"] = "512Mi" },
-            },
-        };
+        var container = Container(args, EnvironmentVariables(args));
 
         var deployment = new K8sDeployment(
             $"{Name}-{args.Environment}",
@@ -178,6 +120,71 @@ public sealed class PrompterDeployment
     /// Gets the in-cluster ClusterIP Service.
     /// </summary>
     public Service Service { get; }
+
+    static List<EnvVarArgs> EnvironmentVariables(PrompterDeploymentArgs args)
+    {
+        var env = new List<EnvVarArgs>
+        {
+            new() { Name = "DOTNET_ENVIRONMENT", Value = "Production" },
+        };
+
+        env.AddRange(DiscordChannels(args));
+
+        if (!string.IsNullOrWhiteSpace(args.IssueNotifyChannelId))
+        {
+            env.Add(new EnvVarArgs { Name = "Cratis__Prompter__GitHub__NotifyChannelId", Value = args.IssueNotifyChannelId });
+        }
+
+        // The allowlist binds as an indexed list, so each entry gets its own variable. An empty setting
+        // leaves the list empty, which means Prompter answers on no tracker at all.
+        var answering = (args.AnsweringRepositories ?? string.Empty)
+            .Split(',', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries);
+
+        for (var index = 0; index < answering.Length; index++)
+        {
+            env.Add(new EnvVarArgs
+            {
+                Name = $"Cratis__Prompter__GitHub__AnsweringRepositories__{index}",
+                Value = answering[index]
+            });
+        }
+
+        return env;
+    }
+
+    static ContainerArgs Container(PrompterDeploymentArgs args, List<EnvVarArgs> env) => new()
+    {
+        Name = Name,
+        Image = args.Image,
+        Ports = [new ContainerPortArgs { ContainerPortValue = Port, Name = "http" }],
+        Env = WithMetrics([.. env, .. AnsweringReadinessEnvironment.Create(args.Readiness)], args),
+        EnvFrom = [],
+
+        // Readiness uses /healthz, which checks the database *and* the gateway connection — exactly the
+        // question "should traffic reach this pod". Liveness deliberately does not: /healthz reports
+        // unhealthy during a Discord outage, and restarting the pod in a loop would neither fix Discord
+        // nor let the re-index endpoint keep working. A TCP check asks the only question liveness
+        // should ask — is the process still there.
+        ReadinessProbe = new ProbeArgs
+        {
+            HttpGet = new HTTPGetActionArgs { Path = "/healthz", Port = Port },
+            InitialDelaySeconds = 10,
+            PeriodSeconds = 15,
+            FailureThreshold = 3,
+        },
+        LivenessProbe = new ProbeArgs
+        {
+            TcpSocket = new TCPSocketActionArgs { Port = Port },
+            InitialDelaySeconds = 30,
+            PeriodSeconds = 30,
+            FailureThreshold = 3,
+        },
+        Resources = new ResourceRequirementsArgs
+        {
+            Requests = { ["cpu"] = "100m", ["memory"] = "256Mi" },
+            Limits = { ["cpu"] = "1", ["memory"] = "512Mi" },
+        },
+    };
 
     static IEnumerable<EnvVarArgs> DiscordChannels(PrompterDeploymentArgs args)
     {

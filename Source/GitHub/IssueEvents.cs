@@ -36,9 +36,7 @@ public static class IssueEvents
             using var document = JsonDocument.Parse(payload);
             var root = document.RootElement;
 
-            if (root.ValueKind != JsonValueKind.Object ||
-                !root.TryGetProperty("action", out var action) ||
-                action.GetString() != OpenedAction ||
+            if (!IsOpened(root) ||
                 !root.TryGetProperty("issue", out var issue) ||
                 !root.TryGetProperty("repository", out var repository))
             {
@@ -52,24 +50,15 @@ public static class IssueEvents
                 return null;
             }
 
-            var labels = issue.TryGetProperty("labels", out var labelArray) && labelArray.ValueKind == JsonValueKind.Array
-                ? labelArray.EnumerateArray()
-                    .Select(label => label.TryGetProperty("name", out var name) ? name.GetString() : null)
-                    .Where(name => !string.IsNullOrEmpty(name))
-                    .Select(name => name!)
-                    .ToArray()
-                : [];
-
-            var openedByBot = issue.TryGetProperty("user", out var user) &&
-                user.TryGetProperty("type", out var userType) &&
-                string.Equals(userType.GetString(), "Bot", StringComparison.OrdinalIgnoreCase);
+            var labels = ReadLabels(issue);
+            var openedByBot = OpenedByBot(issue);
 
             return new OpenedIssue(
-                repository.TryGetProperty("full_name", out var fullName) ? fullName.GetString() ?? string.Empty : string.Empty,
+                ReadText(repository, "full_name"),
                 issue.TryGetProperty("number", out var number) ? number.GetInt32() : 0,
-                issue.TryGetProperty("title", out var title) ? title.GetString() ?? string.Empty : string.Empty,
-                issue.TryGetProperty("body", out var body) ? body.GetString() ?? string.Empty : string.Empty,
-                issue.TryGetProperty("html_url", out var url) ? url.GetString() ?? string.Empty : string.Empty,
+                ReadText(issue, "title"),
+                ReadText(issue, "body"),
+                ReadText(issue, "html_url"),
                 openedByBot,
                 labels);
         }
@@ -97,4 +86,26 @@ public static class IssueEvents
         !issue.OpenedByBot &&
         options.AnsweringRepositories.Any(allowed => string.Equals(allowed, issue.Repository, StringComparison.OrdinalIgnoreCase)) &&
         !issue.Labels.Any(label => string.Equals(label, options.OptOutLabel, StringComparison.OrdinalIgnoreCase));
+
+    static bool IsOpened(JsonElement root) =>
+        root.ValueKind == JsonValueKind.Object &&
+        root.TryGetProperty("action", out var action) &&
+        action.GetString() == OpenedAction;
+
+    static string[] ReadLabels(JsonElement issue) =>
+        issue.TryGetProperty("labels", out var labels) && labels.ValueKind == JsonValueKind.Array
+            ? labels.EnumerateArray()
+                .Select(label => label.TryGetProperty("name", out var name) ? name.GetString() : null)
+                .Where(name => !string.IsNullOrEmpty(name))
+                .Select(name => name!)
+                .ToArray()
+            : [];
+
+    static bool OpenedByBot(JsonElement issue) =>
+        issue.TryGetProperty("user", out var user) &&
+        user.TryGetProperty("type", out var userType) &&
+        string.Equals(userType.GetString(), "Bot", StringComparison.OrdinalIgnoreCase);
+
+    static string ReadText(JsonElement element, string property) =>
+        element.TryGetProperty(property, out var value) ? value.GetString() ?? string.Empty : string.Empty;
 }

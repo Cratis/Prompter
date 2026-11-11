@@ -71,9 +71,9 @@ public class RepositoryReadmes(HttpClient httpClient, IOptions<PrompterOptions> 
         for (var page = 1; inspected < maxRepositories; page++)
         {
             var listing = await List(page, cancellationToken);
-            foreach (var repository in listing.EnumerateArray())
+            foreach (var repository in listing.EnumerateArray().Take(maxRepositories - inspected))
             {
-                if (inspected++ >= maxRepositories) break;
+                inspected++;
                 yield return repository;
             }
             if (listing.GetArrayLength() < 100) break;

@@ -121,73 +121,11 @@ public sealed class PostgresDeployment
             },
             new CustomResourceOptions { Provider = args.Provider, DependsOn = [] });
 
-        var container = new ContainerArgs
-        {
-            Name = Name,
-            Image = args.Image,
-            Ports = [new ContainerPortArgs { ContainerPortValue = Port, Name = "postgres" }],
-            Env =
-            [
-                new EnvVarArgs { Name = "POSTGRES_DB", Value = DatabaseName },
-                new EnvVarArgs { Name = "POSTGRES_USER", Value = UserName },
-                new EnvVarArgs
-                {
-                    Name = "POSTGRES_PASSWORD",
-                    ValueFrom = new EnvVarSourceArgs
-                    {
-                        SecretKeyRef = new SecretKeySelectorArgs { Name = SecretName, Key = PasswordKey },
-                    },
-                },
-
-                // The volume is mounted at the data directory itself, which on a fresh UpCloud volume is
-                // non-empty (lost+found) and would make initdb refuse. A subdirectory sidesteps that.
-                new EnvVarArgs { Name = "PGDATA", Value = "/var/lib/postgresql/data/pgdata" },
-            ],
-            VolumeMounts = [new VolumeMountArgs { Name = "data", MountPath = "/var/lib/postgresql/data" }],
-            ReadinessProbe = new ProbeArgs
-            {
-                Exec = new ExecActionArgs { Command = ["pg_isready", "-U", UserName, "-d", DatabaseName] },
-                InitialDelaySeconds = 5,
-                PeriodSeconds = 10,
-            },
-            LivenessProbe = new ProbeArgs
-            {
-                Exec = new ExecActionArgs { Command = ["pg_isready", "-U", UserName, "-d", DatabaseName] },
-                InitialDelaySeconds = 30,
-                PeriodSeconds = 30,
-                FailureThreshold = 6,
-            },
-            Resources = new ResourceRequirementsArgs
-            {
-                Requests = { ["cpu"] = "100m", ["memory"] = "256Mi" },
-                Limits = { ["cpu"] = "1", ["memory"] = "1Gi" },
-            },
-        };
+        var container = Container(args);
 
         // Created ahead of the Deployment. A volume that binds only when its first consumer is scheduled
         // would otherwise leave Pulumi waiting on a claim that nothing is using yet.
-        var claim = new PersistentVolumeClaim(
-            $"{ClaimName}-{args.Environment}",
-            new PersistentVolumeClaimArgs
-            {
-                Metadata = new ObjectMetaArgs
-                {
-                    Name = ClaimName,
-                    Namespace = args.Namespace,
-                    Labels = labels,
-                    Annotations = { ["pulumi.com/skipAwait"] = "true" },
-                },
-                Spec = new PersistentVolumeClaimSpecArgs
-                {
-                    AccessModes = ["ReadWriteOnce"],
-                    StorageClassName = args.StorageClassName,
-                    Resources = new VolumeResourceRequirementsArgs
-                    {
-                        Requests = { ["storage"] = $"{args.StorageSizeGb}Gi" },
-                    },
-                },
-            },
-            new CustomResourceOptions { Provider = args.Provider });
+        var claim = Claim(args, labels);
 
         Resource = new K8sDeployment(
             $"{Name}-{args.Environment}",
@@ -236,4 +174,70 @@ public sealed class PostgresDeployment
     /// Gets the Npgsql connection string the bot connects with, using the restricted application role.
     /// </summary>
     public Output<string> ConnectionString { get; }
+
+    static PersistentVolumeClaim Claim(PostgresDeploymentArgs args, InputMap<string> labels) => new(
+        $"{ClaimName}-{args.Environment}",
+        new PersistentVolumeClaimArgs
+        {
+            Metadata = new ObjectMetaArgs
+            {
+                Name = ClaimName,
+                Namespace = args.Namespace,
+                Labels = labels,
+                Annotations = { ["pulumi.com/skipAwait"] = "true" },
+            },
+            Spec = new PersistentVolumeClaimSpecArgs
+            {
+                AccessModes = ["ReadWriteOnce"],
+                StorageClassName = args.StorageClassName,
+                Resources = new VolumeResourceRequirementsArgs
+                {
+                    Requests = { ["storage"] = $"{args.StorageSizeGb}Gi" },
+                },
+            },
+        },
+        new CustomResourceOptions { Provider = args.Provider });
+
+    static ContainerArgs Container(PostgresDeploymentArgs args) => new()
+    {
+        Name = Name,
+        Image = args.Image,
+        Ports = [new ContainerPortArgs { ContainerPortValue = Port, Name = "postgres" }],
+        Env =
+        [
+            new EnvVarArgs { Name = "POSTGRES_DB", Value = DatabaseName },
+            new EnvVarArgs { Name = "POSTGRES_USER", Value = UserName },
+            new EnvVarArgs
+            {
+                Name = "POSTGRES_PASSWORD",
+                ValueFrom = new EnvVarSourceArgs
+                {
+                    SecretKeyRef = new SecretKeySelectorArgs { Name = SecretName, Key = PasswordKey },
+                },
+            },
+
+            // The volume is mounted at the data directory itself, which on a fresh UpCloud volume is
+            // non-empty (lost+found) and would make initdb refuse. A subdirectory sidesteps that.
+            new EnvVarArgs { Name = "PGDATA", Value = "/var/lib/postgresql/data/pgdata" },
+        ],
+        VolumeMounts = [new VolumeMountArgs { Name = "data", MountPath = "/var/lib/postgresql/data" }],
+        ReadinessProbe = new ProbeArgs
+        {
+            Exec = new ExecActionArgs { Command = ["pg_isready", "-U", UserName, "-d", DatabaseName] },
+            InitialDelaySeconds = 5,
+            PeriodSeconds = 10,
+        },
+        LivenessProbe = new ProbeArgs
+        {
+            Exec = new ExecActionArgs { Command = ["pg_isready", "-U", UserName, "-d", DatabaseName] },
+            InitialDelaySeconds = 30,
+            PeriodSeconds = 30,
+            FailureThreshold = 6,
+        },
+        Resources = new ResourceRequirementsArgs
+        {
+            Requests = { ["cpu"] = "100m", ["memory"] = "256Mi" },
+            Limits = { ["cpu"] = "1", ["memory"] = "1Gi" },
+        },
+    };
 }

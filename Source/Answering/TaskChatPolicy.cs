@@ -96,13 +96,16 @@ public static class TaskChatPolicy
             return;
         }
 
-        var approvedTask = task == "answer" || (task == "issue-draft" && configuration.HaikuIssueDraftApproved);
+        var approvedTask = IsApprovedHaikuTask(configuration, task);
         var compatibleModel = model == "claude-haiku-5-5" && policy.Effort.Length == 0;
         if (!approvedTask || !compatibleModel)
         {
             throw new ProviderUnavailable("haiku_not_approved");
         }
     }
+
+    static bool IsApprovedHaikuTask(AnthropicOptions configuration, string task) =>
+        task == "answer" || (task == "issue-draft" && configuration.HaikuIssueDraftApproved);
 
     static void ValidateBounds(TaskModelOptions policy)
     {

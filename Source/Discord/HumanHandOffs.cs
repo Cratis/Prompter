@@ -61,7 +61,12 @@ public class HumanHandOffs(RestClient rest, Admission admission, ForumFollowUps 
         {
             return options.Value.Discord.RateLimitedReply;
         }
-        var found = await Find(action.Question, click.CommandAsker, cancellationToken);
+        return await RequestFound(click, action.Question, role, cancellationToken);
+    }
+
+    async Task<string> RequestFound(HandOffClick click, QuestionLink question, ulong role, CancellationToken cancellationToken)
+    {
+        var found = await Find(question, click.CommandAsker, cancellationToken);
         if (found is null || found.Asker is null)
         {
             return QuestionGoneReply;
@@ -74,8 +79,8 @@ public class HumanHandOffs(RestClient rest, Admission admission, ForumFollowUps 
         {
             return AlreadyRequestedReply;
         }
-        var link = action.Question.HasMessage ? action.Question : new(click.Actor.ChannelId, click.ClickedMessageId);
-        return await Post(click, role, found, link.JumpLink(click.Actor.GuildId.Value), cancellationToken);
+        var link = question.HasMessage ? question : new(click.Actor.ChannelId, click.ClickedMessageId);
+        return await Post(click, role, found, link.JumpLink(click.Actor.GuildId!.Value), cancellationToken);
     }
 
     async Task<Found?> Find(QuestionLink question, ulong? commandAsker, CancellationToken cancellationToken)

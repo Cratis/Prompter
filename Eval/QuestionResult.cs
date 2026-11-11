@@ -63,25 +63,25 @@ internal sealed record QuestionResult(
             return $"  [{Id}] {verdict}  error: {Error}";
         }
 
-        var citation = CitationHit switch
-        {
-            true => "cite=hit",
-            false => "cite=miss",
-            null => "cite=n/a",
-        };
-
-        var refusal = (ExpectedRefusal, ActualRefusal) switch
-        {
-            (true, true) => "refusal=ok",
-            (true, false) => "refusal=answered",
-            (false, true) => "refusal=refused",
-            (false, false) => "refusal=answered",
-        };
-
-        var grounded = Groundedness is double score
-            ? "grounded=" + score.ToString("0.#", CultureInfo.InvariantCulture)
-            : "grounded=n/a";
-
-        return $"  [{Id}] {verdict}  {citation} {refusal} {grounded}";
+        return $"  [{Id}] {verdict}  {CitationStatus()} {RefusalStatus()} {GroundednessStatus()}";
     }
+
+    string CitationStatus() => CitationHit switch
+    {
+        true => "cite=hit",
+        false => "cite=miss",
+        null => "cite=n/a",
+    };
+
+    string RefusalStatus() => (ExpectedRefusal, ActualRefusal) switch
+    {
+        (true, true) => "refusal=ok",
+        (true, false) => "refusal=answered",
+        (false, true) => "refusal=refused",
+        (false, false) => "refusal=answered",
+    };
+
+    string GroundednessStatus() => Groundedness is double score
+        ? "grounded=" + score.ToString("0.#", CultureInfo.InvariantCulture)
+        : "grounded=n/a";
 }
