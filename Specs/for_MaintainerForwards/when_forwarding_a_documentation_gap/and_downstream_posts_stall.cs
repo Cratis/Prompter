@@ -22,7 +22,7 @@ public class and_downstream_posts_stall : given.a_forward
         Options.Protection.ActionClicksPerUser = 10;
         var config = Microsoft.Extensions.Options.Options.Create(Options);
         var clock = new ManualClock(Clock.GetUtcNow());
-        var admission = new Protection.Admission(config, new RateLimiter(config), clock, Fakes.Switch.Running());
+        var admission = new Protection.Admission(config, new RateLimiter(config), clock, Switch.Running());
         var actions = new NonpaidActions(admission, config, clock);
         using var rest = Discord.Client();
         var forwards = new MaintainerForwards(rest, Channel, admission, config, clock, NullLogger<MaintainerForwards>.Instance);

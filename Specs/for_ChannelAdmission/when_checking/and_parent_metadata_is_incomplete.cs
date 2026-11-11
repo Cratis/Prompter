@@ -28,7 +28,7 @@ public class and_parent_metadata_is_incomplete : Specification
         var options = new PrompterOptions();
         options.Protection.AllowedGuilds = [1];
         var config = Microsoft.Extensions.Options.Options.Create(options);
-        var admission = new Admission(config, new RateLimiter(config), new ControlledTime(DateTimeOffset.UnixEpoch), Fakes.Switch.Running());
+        var admission = new Admission(config, new RateLimiter(config), new ControlledTime(DateTimeOffset.UnixEpoch), Switch.Running());
         var actor = new DiscordActor(1, 2, 3);
         ChannelType[] types = [ChannelType.PublicGuildThread, ChannelType.PrivateGuildThread, ChannelType.AnnouncementGuildThread];
         ulong?[] parents = [null, 0];
