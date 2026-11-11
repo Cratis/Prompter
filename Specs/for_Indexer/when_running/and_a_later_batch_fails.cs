@@ -22,7 +22,8 @@ public class and_a_later_batch_fails : given.an_indexer
 
     [Fact] void should_fail_instead_of_reporting_success() => Error.ShouldBeOfExactType<IndexBudgetExceeded>();
     [Fact] void should_not_publish_any_batch() => Lease.DidNotReceive().CommitIndex(Arg.Any<IReadOnlyCollection<EmbeddedChunk>>(), Arg.Any<IReadOnlySet<ChunkId>>(), Arg.Any<IReadOnlyCollection<DocumentationMetadata>>(), Arg.Any<CancellationToken>());
-    [Fact] async Task should_release_only_the_successful_batch()
+    [Fact]
+    async Task should_release_only_the_successful_batch()
     {
         var chunk = MarkdownChunker.Chunk(new PageUrl("https://cratis.io/a.md"), "# A\n\nAlpha.").Single();
         var reserved = IndexBudget.Batch([chunk.EmbeddingInput], Options);

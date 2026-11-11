@@ -12,7 +12,8 @@ public class and_both_are_configured : Specification
     void Because() => _values = DiscordBehaviorEnvironment.Values(" 77 ", "10, 20,,30");
 
     [Fact] void should_project_the_role() => _values["Cratis__Prompter__Discord__MaintainerRoleId"].ShouldEqual("77");
-    [Fact] void should_project_each_channel_by_index()
+    [Fact]
+    void should_project_each_channel_by_index()
     {
         _values["Cratis__Prompter__Discord__AnswerInThreadChannelIds__0"].ShouldEqual("10");
         _values["Cratis__Prompter__Discord__AnswerInThreadChannelIds__1"].ShouldEqual("20");

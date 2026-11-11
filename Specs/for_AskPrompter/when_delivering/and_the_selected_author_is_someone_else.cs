@@ -20,7 +20,8 @@ public class and_the_selected_author_is_someone_else : given.an_interaction
     async Task Because() => await Command.Handle();
 
     [Fact] void should_not_create_a_thread_on_the_selected_message() => Paths.Any(path => path.Contains("threads", StringComparison.Ordinal)).ShouldBeFalse();
-    [Fact] void should_answer_without_pinging_the_selected_author()
+    [Fact]
+    void should_answer_without_pinging_the_selected_author()
     {
         var messages = Payloads.Select(payload => JsonDocument.Parse(payload)).ToArray();
         try

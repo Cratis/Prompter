@@ -9,8 +9,12 @@ public class and_inputs_are_explicit
 {
     public static GitHubAppArgs Approved => new()
     {
-        AppId = "123", InstallationId = "456", Owner = "Cratis", Repositories = "Cratis/Arc",
-        ExternalSecretName = "approved-app-key", KeyReference = "signing.pem"
+        AppId = "123",
+        InstallationId = "456",
+        Owner = "Cratis",
+        Repositories = "Cratis/Arc",
+        ExternalSecretName = "approved-app-key",
+        KeyReference = "signing.pem"
     };
 
     [Fact] void should_accept_inert_defaults() => new GitHubAppArgs().IsValid.ShouldBeTrue();

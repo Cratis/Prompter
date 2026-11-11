@@ -68,14 +68,17 @@ public class and_all_button_factories_are_used : Specification
         }
     }
 
-    [Fact] void should_register_every_module_context() => _modules.ShouldEachConformTo(module =>
+    [Fact]
+    void should_register_every_module_context() => _modules.ShouldEachConformTo(module =>
         _provider.GetService(typeof(ComponentInteractionService<>).MakeGenericType(ModuleContext(module)!)) is not null);
 
-    [Fact] void should_cover_every_rendered_prefix_with_a_registered_module() => _prefixes.ShouldEachConformTo(prefix =>
+    [Fact]
+    void should_cover_every_rendered_prefix_with_a_registered_module() => _prefixes.ShouldEachConformTo(prefix =>
         _modules.Any(module => _provider.GetService(typeof(ComponentInteractionService<>).MakeGenericType(ModuleContext(module)!)) is not null &&
             module.GetMethods().Any(method => method.GetCustomAttribute<ComponentInteractionAttribute>()?.CustomId == prefix)));
 
-    [Fact] void should_resolve_one_service_that_knows_every_prefix()
+    [Fact]
+    void should_resolve_one_service_that_knows_every_prefix()
     {
         var service = _provider.GetRequiredService<ComponentInteractionService<ButtonInteractionContext>>();
         var registered = service.GetComponentInteractions().Keys.Select(key => key.ToString()).ToArray();
@@ -83,14 +86,17 @@ public class and_all_button_factories_are_used : Specification
         _provider.GetServices<IComponentInteractionService>().Count().ShouldEqual(1);
     }
 
-    [Fact] void should_gate_every_module_with_the_single_button_context() => _modules.ShouldEachConformTo(module =>
+    [Fact]
+    void should_gate_every_module_with_the_single_button_context() => _modules.ShouldEachConformTo(module =>
         ModuleContext(module) == typeof(ButtonInteractionContext) &&
         _provider.GetRequiredService<IOptions<ComponentInteractionServiceOptions<ButtonInteraction, ButtonInteractionContext>>>().Value.PreExecutionHandler is ButtonAdmission);
 
-    [Fact] void should_use_friendly_button_results() =>
+    [Fact]
+    void should_use_friendly_button_results() =>
         (_provider.GetRequiredService<IOptions<ComponentInteractionServiceOptions<ButtonInteraction, ButtonInteractionContext>>>().Value.ResultHandler is ButtonResults).ShouldBeTrue();
 
-    [Fact] void should_cover_every_attributed_method_with_the_gated_dispatcher()
+    [Fact]
+    void should_cover_every_attributed_method_with_the_gated_dispatcher()
     {
         var methods = typeof(Feedback).Assembly.GetTypes().SelectMany(type => type.GetMethods())
             .Where(method => Attribute.IsDefined(method, typeof(ComponentInteractionAttribute))).ToArray();

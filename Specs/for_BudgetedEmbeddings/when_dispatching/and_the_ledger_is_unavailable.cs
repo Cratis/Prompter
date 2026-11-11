@@ -26,6 +26,7 @@ public class and_the_ledger_is_unavailable : for_PaidWork.given.a_paid_work
     }
 
     [Fact] void should_fail_closed() => _error.ShouldBeOfExactType<WorkRefused>();
-    [Fact] void should_not_dispatch_to_voyage() =>
+    [Fact]
+    void should_not_dispatch_to_voyage() =>
         _provider.ReceivedCalls().Count(call => call.GetMethodInfo().Name == nameof(_provider.GenerateAsync)).ShouldEqual(0);
 }
