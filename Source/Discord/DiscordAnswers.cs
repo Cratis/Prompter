@@ -170,17 +170,7 @@ public static class DiscordAnswers
         {
             if (IsFenceDelimiter(line))
             {
-                if (inFence)
-                {
-                    AppendLine(current, line);
-                    Flush(segments, current);
-                }
-                else
-                {
-                    Flush(segments, current);
-                    AppendLine(current, line);
-                }
-
+                AppendFenceLine(segments, current, line, inFence);
                 inFence = !inFence;
             }
             else if (!inFence && line.Trim().Length == 0)
@@ -209,6 +199,20 @@ public static class DiscordAnswers
         }
 
         return paragraphs;
+    }
+
+    static void AppendFenceLine(List<string> segments, StringBuilder current, string line, bool inFence)
+    {
+        if (inFence)
+        {
+            AppendLine(current, line);
+            Flush(segments, current);
+        }
+        else
+        {
+            Flush(segments, current);
+            AppendLine(current, line);
+        }
     }
 
     static void AppendLine(StringBuilder builder, string line)
@@ -267,23 +271,20 @@ public static class DiscordAnswers
         // Pack whole code lines, keeping each outgoing message a self-contained fenced block that
         // closes with ``` and reopens with the same language hint on the next message.
         var current = new StringBuilder();
-        for (var index = 1; index < contentEnd; index++)
+        foreach (var segment in lines.Skip(1).Take(contentEnd - 1).SelectMany(line => WrapLine(line, budget)))
         {
-            foreach (var segment in WrapLine(lines[index], budget))
+            if (current.Length == 0)
             {
-                if (current.Length == 0)
-                {
-                    current.Append(segment);
-                }
-                else if (current.Length + 1 + segment.Length <= budget)
-                {
-                    current.Append('\n').Append(segment);
-                }
-                else
-                {
-                    yield return $"{open}\n{current}\n{CodeFence}";
-                    current.Clear().Append(segment);
-                }
+                current.Append(segment);
+            }
+            else if (current.Length + 1 + segment.Length <= budget)
+            {
+                current.Append('\n').Append(segment);
+            }
+            else
+            {
+                yield return $"{open}\n{current}\n{CodeFence}";
+                current.Clear().Append(segment);
             }
         }
 
