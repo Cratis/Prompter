@@ -86,7 +86,7 @@ public class a_button_dispatcher : for_ActionButtons.given.an_action_interaction
         services.ConfigureComponentInteractions<ButtonInteraction, ButtonInteractionContext>(options =>
         {
             var registered = options.ResultHandler!;
-            Results.ReturnsForAll<ValueTask>(call => registered.HandleResultAsync(call.Arg<IExecutionResult>(), call.Arg<ButtonInteractionContext>(), call.Arg<GatewayClient?>(), call.Arg<ILogger>(), call.Arg<IServiceProvider>()));
+            Results.ReturnsForAll(call => registered.HandleResultAsync(call.Arg<IExecutionResult>(), call.Arg<ButtonInteractionContext>(), call.Arg<GatewayClient?>(), call.Arg<ILogger>(), call.Arg<IServiceProvider>()));
             options.ResultHandler = Results;
         });
         _provider = services.BuildServiceProvider();

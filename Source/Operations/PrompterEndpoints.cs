@@ -54,14 +54,14 @@ public static class PrompterEndpoints
         CancellationToken cancellationToken)
     {
         var logger = loggerFactory.CreateLogger(GitHubLogCategory);
-        if (!options.Value.Protection.AnsweringEnabled || answering.Paused || !options.Value.Protection.GitHubWritesEnabled)
+        if (GitHubWritesUnavailable(options.Value.Protection, answering))
         {
             return Results.StatusCode(StatusCodes.Status503ServiceUnavailable);
         }
 
         // The signature covers the exact bytes GitHub sent, so the body is read raw and verified before
         // anything parses it.
-        var payload = await Protection.BoundedBody.Read(request, options.Value.Protection.WebhookBytes, cancellationToken);
+        var payload = await BoundedBody.Read(request, options.Value.Protection.WebhookBytes, cancellationToken);
         if (payload is null)
         {
             return Results.StatusCode(StatusCodes.Status413PayloadTooLarge);
@@ -100,6 +100,9 @@ public static class PrompterEndpoints
 
         return Results.Json(new { status = "accepted" }, statusCode: StatusCodes.Status202Accepted);
     }
+
+    static bool GitHubWritesUnavailable(ProtectionOptions protection, AnsweringSwitch answering) =>
+        !protection.AnsweringEnabled || answering.Paused || !protection.GitHubWritesEnabled;
 
     static async Task<IResult> CheckHealthAsync(
         NpgsqlDataSource dataSource,

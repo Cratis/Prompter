@@ -24,7 +24,8 @@ public class and_the_composed_crawl_is_at_the_limits : given.a_composed_indexer
     [Fact] void should_read_every_auxiliary_page_once() => AuxiliaryReads.ShouldEqual(3);
     [Fact] void should_count_documentation_and_auxiliary_pages_together() => _run.Pages.ShouldEqual(4);
     [Fact] void should_count_metadata_summary_chunks_in_the_output() => _run.Embedded.ShouldEqual(7);
-    [Fact] void should_publish_all_page_metadata() => Lease.Received(1).CommitIndex(
+    [Fact]
+    void should_publish_all_page_metadata() => Lease.Received(1).CommitIndex(
         Arg.Any<IReadOnlyCollection<EmbeddedChunk>>(),
         Arg.Any<IReadOnlySet<ChunkId>>(),
         Arg.Is<IReadOnlyCollection<DocumentationMetadata>>(metadata => metadata.Count == 4 && metadata.Count(page => page.ProductVersion == "1.2.3") == 3),

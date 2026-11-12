@@ -31,27 +31,9 @@ public static partial class ReadmeMarkdown
     {
         try
         {
-            var lines = new List<string>();
-            var fence = string.Empty;
             var sections = Fences.Split(markdown.Replace("\r\n", "\n", StringComparison.Ordinal));
             var cleaned = string.Concat(sections.Select((section, index) => index % 2 == 0 ? Comments.Replace(section, string.Empty) : section));
-            foreach (var line in cleaned.Split('\n'))
-            {
-                var trimmed = line.Trim();
-                if (trimmed.StartsWith("```", StringComparison.Ordinal) || trimmed.StartsWith("~~~", StringComparison.Ordinal))
-                {
-                    var marker = trimmed[..3];
-                    if (fence.Length == 0) fence = marker;
-                    else if (fence == marker) fence = string.Empty;
-                    lines.Add(line);
-                    continue;
-                }
-                if (fence.Length == 0 && Badge.IsMatch(line)) continue;
-                var text = fence.Length == 0 ? Tags.Replace(line, string.Empty).Trim() : line;
-                if (text.Length == 0 && (lines.Count == 0 || lines[^1].Length == 0)) continue;
-                lines.Add(text);
-            }
-            var body = string.Join('\n', lines).Trim();
+            var body = string.Join('\n', CleanLines(cleaned)).Trim();
             if (body.Length > maxChars)
             {
                 var end = body.LastIndexOf('\n', maxChars - 1);
@@ -66,5 +48,37 @@ public static partial class ReadmeMarkdown
         {
             throw new IncompleteCrawl();
         }
+    }
+
+    static List<string> CleanLines(string cleaned)
+    {
+        var lines = new List<string>();
+        var fence = string.Empty;
+        foreach (var line in cleaned.Split('\n'))
+        {
+            var trimmed = line.Trim();
+            if (trimmed.StartsWith("```", StringComparison.Ordinal) || trimmed.StartsWith("~~~", StringComparison.Ordinal))
+            {
+                fence = NextFence(fence, trimmed[..3]);
+                lines.Add(line);
+                continue;
+            }
+            if (fence.Length == 0 && Badge.IsMatch(line)) continue;
+            AddText(lines, line, fence);
+        }
+        return lines;
+    }
+
+    static string NextFence(string fence, string marker)
+    {
+        if (fence.Length == 0) return marker;
+        return fence == marker ? string.Empty : fence;
+    }
+
+    static void AddText(List<string> lines, string line, string fence)
+    {
+        var text = fence.Length == 0 ? Tags.Replace(line, string.Empty).Trim() : line;
+        if (text.Length == 0 && (lines.Count == 0 || lines[^1].Length == 0)) return;
+        lines.Add(text);
     }
 }

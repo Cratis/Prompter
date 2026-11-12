@@ -28,10 +28,12 @@ public class and_work_is_untrusted : Specification
     void should_reject_outside_scope(ulong? guild, ulong channel, string question) =>
         _admission.TryEnter(new(guild, channel, 1), question).Allowed.ShouldBeFalse();
 
-    [Fact] void should_reject_oversized_input() =>
+    [Fact]
+    void should_reject_oversized_input() =>
         _admission.TryEnter(new(123, 1, 1), new string('a', 4001)).Allowed.ShouldBeFalse();
 
-    [Fact] void should_honor_the_answering_switch()
+    [Fact]
+    void should_honor_the_answering_switch()
     {
         _options.Protection.AnsweringEnabled = false;
         _admission.TryEnter(new(123, 1, 1), "hello").Allowed.ShouldBeFalse();

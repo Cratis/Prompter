@@ -17,7 +17,8 @@ public class and_reading_from_the_source_assembly : Specification
     }
 
     [Fact] void should_discover_the_baseline_migration() => _baseline.ShouldNotBeNull();
-    [Fact] void should_carry_the_manifest_resource_name() =>
+    [Fact]
+    void should_carry_the_manifest_resource_name() =>
         _baseline.ResourceName.ShouldEqual("Cratis.Prompter.Storage.Migrations.v1_0_0.sql");
     [Fact] void should_include_the_chunks_table() => _baseline.Sql.ShouldContain("CREATE TABLE IF NOT EXISTS chunks");
     [Fact] void should_include_the_interactions_table() => _baseline.Sql.ShouldContain("CREATE TABLE IF NOT EXISTS interactions");

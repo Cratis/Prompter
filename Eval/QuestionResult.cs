@@ -1,8 +1,6 @@
 // Copyright (c) Cratis. All rights reserved.
 // Licensed under the MIT license. See LICENSE file in the project root for full license information.
 
-using System.Globalization;
-
 namespace Cratis.Prompter.Eval;
 
 /// <summary>
@@ -54,34 +52,5 @@ internal sealed record QuestionResult(
     /// Renders a compact one-line summary of this result for the console.
     /// </summary>
     /// <returns>The console line.</returns>
-    public string ConsoleLine()
-    {
-        var verdict = Passed ? "PASS" : "FAIL";
-
-        if (Error is not null)
-        {
-            return $"  [{Id}] {verdict}  error: {Error}";
-        }
-
-        var citation = CitationHit switch
-        {
-            true => "cite=hit",
-            false => "cite=miss",
-            null => "cite=n/a",
-        };
-
-        var refusal = (ExpectedRefusal, ActualRefusal) switch
-        {
-            (true, true) => "refusal=ok",
-            (true, false) => "refusal=answered",
-            (false, true) => "refusal=refused",
-            (false, false) => "refusal=answered",
-        };
-
-        var grounded = Groundedness is double score
-            ? "grounded=" + score.ToString("0.#", CultureInfo.InvariantCulture)
-            : "grounded=n/a";
-
-        return $"  [{Id}] {verdict}  {citation} {refusal} {grounded}";
-    }
+    public string ConsoleLine() => QuestionConsoleLine.Format(this);
 }

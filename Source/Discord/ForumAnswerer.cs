@@ -40,27 +40,10 @@ public class ForumAnswerer(
     {
         try
         {
-            if (included is not null && !HumanStarter(included))
+            if (!await TryAnswer(new(thread, forumId, included, delayed)))
             {
                 return;
             }
-
-            // Even a missing starter must pass metadata, rates, concurrency and spend before the REST fallback.
-            var decision = admission.TryEnter(new(thread.GuildId, thread.Id, thread.OwnerId), included?.Content ?? $"forum-starter:{thread.Id}");
-            if (!decision.Allowed)
-            {
-                await Refuse(thread.Id, decision.Reply, decision.Text);
-                return;
-            }
-
-            await using var lease = await work.BeginInteractive();
-            lease.Activate();
-            if (!await AnswerThread(thread, forumId, included, delayed, lease.Token))
-            {
-                return;
-            }
-
-            TrackFollowUps(thread, delayed);
         }
         catch (WorkRefused)
         {
@@ -90,6 +73,33 @@ public class ForumAnswerer(
     static bool HumanStarter(RestMessage starter) =>
         !starter.Author.IsBot && starter.WebhookId is null && starter.Type is MessageType.Default or MessageType.Reply;
 
+    async Task<bool> TryAnswer(ForumAnswerRequest request)
+    {
+        var thread = request.Thread;
+        if (request.Included is not null && !HumanStarter(request.Included))
+        {
+            return false;
+        }
+
+        // Even a missing starter must pass metadata, rates, concurrency and spend before the REST fallback.
+        var decision = admission.TryEnter(new(thread.GuildId, thread.Id, thread.OwnerId), request.Included?.Content ?? $"forum-starter:{thread.Id}");
+        if (!decision.Allowed)
+        {
+            await Refuse(thread.Id, decision.Reply, decision.Text);
+            return false;
+        }
+
+        await using var lease = await work.BeginInteractive();
+        lease.Activate();
+        if (!await AnswerThread(request, lease.Token))
+        {
+            return false;
+        }
+
+        TrackFollowUps(thread, request.Delayed);
+        return true;
+    }
+
     void TrackFollowUps(ForumThreadRef thread, bool delayed)
     {
         if (delayed)
@@ -110,23 +120,24 @@ public class ForumAnswerer(
         }
     }
 
-    async Task<bool> AnswerThread(ForumThreadRef thread, ulong forumId, RestMessage? included, bool delayed, CancellationToken cancellationToken)
+    async Task<bool> AnswerThread(ForumAnswerRequest answerRequest, CancellationToken cancellationToken)
     {
-        var starter = included ?? await rest.GetMessageAsync(thread.Id, thread.Id, cancellationToken: cancellationToken);
+        var thread = answerRequest.Thread;
+        var starter = answerRequest.Included ?? await rest.GetMessageAsync(thread.Id, thread.Id, cancellationToken: cancellationToken);
         if (!HumanStarter(starter) || starter.Content.Length > Math.Min(options.Value.Protection.MaxQuestionCharacters, ConversationContextReader.MaximumCurrentCharacters))
         {
             return false;
         }
 
         var question = starter.Content.Trim();
-        if (!HelpForum.ShouldAnswer(thread.ParentId, forumId, starter.Author.IsBot, question))
+        if (!HelpForum.ShouldAnswer(thread.ParentId, answerRequest.ForumId, starter.Author.IsBot, question))
         {
             return false;
         }
 
         logger.AnsweringForumThread(thread.Id);
         var request = await context.For(question, new(thread.GuildId, thread.Id, starter.Id, starter.CreatedAt), cancellationToken);
-        var reply = await assistance.For(request with { AllowClarification = true }, delayed ? "discord-forum-delayed" : "discord-forum", cancellationToken);
+        var reply = await assistance.For(request with { AllowClarification = true }, answerRequest.Delayed ? "discord-forum-delayed" : "discord-forum", cancellationToken);
         await SendAnswer(thread.Id, reply, new(thread.Id, starter.Id));
         var advice = DiscordAnswers.Advice(reply);
         if (advice.Length > 0)
@@ -161,4 +172,6 @@ public class ForumAnswerer(
             logger.ApologyFailed(exception, threadId);
         }
     }
+
+    readonly record struct ForumAnswerRequest(ForumThreadRef Thread, ulong ForumId, RestMessage? Included, bool Delayed);
 }

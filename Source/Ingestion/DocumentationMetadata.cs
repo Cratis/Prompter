@@ -16,16 +16,9 @@ namespace Cratis.Prompter.Ingestion;
 public partial record DocumentationMetadata(PageUrl Page, DateTimeOffset? PageLastModified, string? ProductVersion)
 {
     const int MaximumFrontmatterLength = 4096;
-    const int MaximumVersionLength = 64;
 
     [GeneratedRegex(@"^(?<key>[A-Za-z][A-Za-z0-9]*):[ \t]*(?<value>.*?)[ \t]*$", RegexOptions.ExplicitCapture, 1000)]
     private static partial Regex Scalar { get; }
-
-    [GeneratedRegex(@"^v?(?<version>\d{1,4}\.\d{1,4}\.\d{1,4}(?:-[0-9A-Za-z][0-9A-Za-z.\-]{0,30})?)$", RegexOptions.ExplicitCapture, 1000)]
-    private static partial Regex Semver { get; }
-
-    [GeneratedRegex(@"^#[ \t]+(?:Cratis[ \t]+)?(?:Chronicle|Arc|Fundamentals|Components|CLI)[ \t]+(?:v|version[ \t]+v?)(?<version>\d{1,4}\.\d{1,4}\.\d{1,4}(?:-[0-9A-Za-z][0-9A-Za-z.\-]{0,30})?)[ \t]*$", RegexOptions.ExplicitCapture | RegexOptions.IgnoreCase, 1000)]
-    private static partial Regex Heading { get; }
 
     [GeneratedRegex(@"^\d{4}-\d{2}-\d{2}(?:T\d{2}:\d{2}(?::\d{2}(?:\.\d{1,7})?)?(?:Z|[+-]\d{2}:\d{2})?)?$", RegexOptions.ExplicitCapture, 1000)]
     private static partial Regex IsoDate { get; }
@@ -43,14 +36,7 @@ public partial record DocumentationMetadata(PageUrl Page, DateTimeOffset? PageLa
     {
         var (frontmatter, body) = Split(markdown);
         var modified = Unique(frontmatter, "lastUpdated") is { } date ? ParseDate(date) : null;
-        var fromFrontmatter = Version(Unique(frontmatter, "productVersion"), Unique(frontmatter, "version"));
-        var fromHeading = HeadingVersion(body);
-        var version = (fromFrontmatter, fromHeading) switch
-        {
-            (null, var heading) => heading,
-            (var explicitVersion, null) => explicitVersion,
-            var (left, right) => left == right ? left : null
-        };
+        var version = DocumentationVersion.Resolve(Unique(frontmatter, "productVersion"), Unique(frontmatter, "version"), body);
         return new(page, modified, version);
     }
 
@@ -95,34 +81,4 @@ public partial record DocumentationMetadata(PageUrl Page, DateTimeOffset? PageLa
         IsoDate.IsMatch(value) && DateTimeOffset.TryParse(value, CultureInfo.InvariantCulture, DateTimeStyles.AssumeUniversal | DateTimeStyles.AdjustToUniversal, out var parsed)
             ? parsed
             : null;
-
-    static string? Version(string? product, string? generic)
-    {
-        var candidates = new[] { product, generic }.Where(value => value is not null).Select(value => Parse(value!)).ToArray();
-        return candidates.Length > 0 && candidates.All(value => value is not null) && candidates.Distinct().Count() == 1 ? candidates[0] : null;
-    }
-
-    static string? Parse(string value) =>
-        value.Length <= MaximumVersionLength && Semver.Match(value) is { Success: true } match ? match.Groups["version"].Value : null;
-
-    static string? HeadingVersion(string body)
-    {
-        var inFence = false;
-        foreach (var raw in body.Split('\n'))
-        {
-            var line = raw.TrimEnd('\r');
-            if (line.StartsWith("```", StringComparison.Ordinal) || line.StartsWith("~~~", StringComparison.Ordinal))
-            {
-                inFence = !inFence;
-                continue;
-            }
-
-            if (!inFence && line.StartsWith("# ", StringComparison.Ordinal))
-            {
-                return Heading.Match(line) is { Success: true } match ? match.Groups["version"].Value : null;
-            }
-        }
-
-        return null;
-    }
 }

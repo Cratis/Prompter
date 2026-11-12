@@ -13,7 +13,7 @@ public class the_real_router_retries : given.durable_accounting
     async Task Because()
     {
         Provider.GetResponseAsync(Arg.Any<IEnumerable<ChatMessage>>(), Arg.Any<ChatOptions?>(), Arg.Any<CancellationToken>())
-            .Returns<Task<ChatResponse>>(_ => throw new AnthropicCapacityFailure(TimeSpan.Zero), _ => Task.FromResult(new ChatResponse(new ChatMessage(ChatRole.Assistant, "answer"))));
+            .Returns(_ => throw new AnthropicCapacityFailure(TimeSpan.Zero), _ => Task.FromResult(new ChatResponse(new ChatMessage(ChatRole.Assistant, "answer"))));
         await using var lease = await Work.BeginInteractive();
         lease.Activate();
         using var router = new AnthropicAccounts(Chat, null, Options.Anthropic, Accounting, Options.Protection.Anthropic, Options.Protection.AnthropicAnswer);

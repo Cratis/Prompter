@@ -7,7 +7,7 @@ namespace Cratis.Prompter.Specs.for_ForumAnswerer.when_answering;
 
 public class and_the_ledger_refuses : given.a_forum_answerer
 {
-    void Establish() => Ledger.Reserve(Arg.Any<Cratis.Prompter.Protection.SpendExposure>(), Arg.Any<CancellationToken>()).Returns(_ => (Guid?)null);
+    void Establish() => Ledger.Reserve(Arg.Any<Protection.SpendExposure>(), Arg.Any<CancellationToken>()).Returns(_ => (Guid?)null);
 
     async Task Because() => await Answerer.Answer(Post, Forum, null, delayed: false);
 

@@ -49,7 +49,7 @@ public class a_forward : Specification
         Discord = new() { Author = 3, Content = "How do I <@123> configure the thing?" };
         _rest = Discord.Client();
         Channel = Substitute.For<IMaintainerChannel>();
-        var admission = new Admission(config, new RateLimiter(config), clock, Fakes.Switch.Running());
+        var admission = new Admission(config, new RateLimiter(config), clock, Switch.Running());
         Forwards = new(_rest, Channel, admission, config, clock, NullLogger<MaintainerForwards>.Instance);
         Actions = new(admission, config, clock);
         var question = new QuestionLink(2, 4);

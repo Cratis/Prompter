@@ -26,7 +26,7 @@ public class a_nonpaid_action : Specification
     protected void Create()
     {
         var config = Microsoft.Extensions.Options.Options.Create(Options);
-        Admission = new(config, new RateLimiter(config), Clock, Fakes.Switch.Running());
+        Admission = new(config, new RateLimiter(config), Clock, Switch.Running());
         Actions = new(Admission, config, Clock);
     }
 

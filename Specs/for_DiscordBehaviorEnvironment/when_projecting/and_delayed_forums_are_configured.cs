@@ -11,7 +11,8 @@ public class and_delayed_forums_are_configured : Specification
 
     void Because() => _values = DiscordBehaviorEnvironment.Values(null, null, "10, 20:45");
 
-    [Fact] void should_project_each_forum_by_index()
+    [Fact]
+    void should_project_each_forum_by_index()
     {
         _values["Cratis__Prompter__Discord__DelayedForums__0__ChannelId"].ShouldEqual("10");
         _values["Cratis__Prompter__Discord__DelayedForums__1__ChannelId"].ShouldEqual("20");

@@ -5,9 +5,9 @@ namespace Cratis.Prompter.Specs.for_Admission.when_checking;
 
 public class and_the_user_is_denied : given.an_admission
 {
-    Cratis.Prompter.Protection.AdmissionDecision _denied = null!;
-    Cratis.Prompter.Protection.AdmissionDecision _maintainer = null!;
-    Cratis.Prompter.Protection.AdmissionDecision _other = null!;
+    Protection.AdmissionDecision _denied = null!;
+    Protection.AdmissionDecision _maintainer = null!;
+    Protection.AdmissionDecision _other = null!;
     bool _permitsDenied;
 
     void Establish() => Options.Protection.DeniedUsers = [7];

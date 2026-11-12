@@ -170,17 +170,7 @@ public static class DiscordAnswers
         {
             if (IsFenceDelimiter(line))
             {
-                if (inFence)
-                {
-                    AppendLine(current, line);
-                    Flush(segments, current);
-                }
-                else
-                {
-                    Flush(segments, current);
-                    AppendLine(current, line);
-                }
-
+                AppendFenceLine(segments, current, line, inFence);
                 inFence = !inFence;
             }
             else if (!inFence && line.Trim().Length == 0)
@@ -195,20 +185,21 @@ public static class DiscordAnswers
 
         Flush(segments, current);
 
-        var paragraphs = new List<string>();
-        foreach (var segment in segments)
-        {
-            if (segment.Length <= MaxMessageLength)
-            {
-                paragraphs.Add(segment);
-            }
-            else
-            {
-                paragraphs.AddRange(HardSplit(segment));
-            }
-        }
+        return [.. segments.SelectMany(segment => segment.Length <= MaxMessageLength ? [segment] : HardSplit(segment))];
+    }
 
-        return paragraphs;
+    static void AppendFenceLine(List<string> segments, StringBuilder current, string line, bool inFence)
+    {
+        if (inFence)
+        {
+            AppendLine(current, line);
+            Flush(segments, current);
+        }
+        else
+        {
+            Flush(segments, current);
+            AppendLine(current, line);
+        }
     }
 
     static void AppendLine(StringBuilder builder, string line)
@@ -254,36 +245,33 @@ public static class DiscordAnswers
         var contentEnd = lines.Length > 1 && IsFenceDelimiter(lines[^1]) ? lines.Length - 1 : lines.Length;
         var budget = MaxMessageLength - open.Length - CodeFence.Length - 2;
 
-        if (budget <= 0)
-        {
-            foreach (var piece in HardSplitText(paragraph))
-            {
-                yield return piece;
-            }
+        return budget <= 0
+            ? HardSplitText(paragraph)
+            : PackCodeLines(lines.Skip(1).Take(contentEnd - 1).SelectMany(line => WrapLine(line, budget)), open, budget);
+    }
 
-            yield break;
-        }
-
-        // Pack whole code lines, keeping each outgoing message a self-contained fenced block that
-        // closes with ``` and reopens with the same language hint on the next message.
+    /// <summary>Packs whole code lines into self-contained fenced blocks with the same language hint.</summary>
+    /// <param name="segments">The wrapped code lines.</param>
+    /// <param name="open">The opening fence and language hint.</param>
+    /// <param name="budget">The space available inside each fence.</param>
+    /// <returns>The fenced message chunks.</returns>
+    static IEnumerable<string> PackCodeLines(IEnumerable<string> segments, string open, int budget)
+    {
         var current = new StringBuilder();
-        for (var index = 1; index < contentEnd; index++)
+        foreach (var segment in segments)
         {
-            foreach (var segment in WrapLine(lines[index], budget))
+            if (current.Length == 0)
             {
-                if (current.Length == 0)
-                {
-                    current.Append(segment);
-                }
-                else if (current.Length + 1 + segment.Length <= budget)
-                {
-                    current.Append('\n').Append(segment);
-                }
-                else
-                {
-                    yield return $"{open}\n{current}\n{CodeFence}";
-                    current.Clear().Append(segment);
-                }
+                current.Append(segment);
+            }
+            else if (current.Length + 1 + segment.Length <= budget)
+            {
+                current.Append('\n').Append(segment);
+            }
+            else
+            {
+                yield return $"{open}\n{current}\n{CodeFence}";
+                current.Clear().Append(segment);
             }
         }
 

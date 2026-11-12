@@ -15,8 +15,10 @@ public class and_the_answer_is_too_long : Specification
 
     [Fact] void should_bound_the_text() => _result.AnswerText!.Length.ShouldEqual(EvalScoring.MaxAnswerTextLength);
     [Fact] void should_end_with_the_marker() => _result.AnswerText!.EndsWith(EvalScoring.TruncationMarker, StringComparison.Ordinal).ShouldBeTrue();
-    [Fact] void should_keep_text_at_the_limit_whole() =>
+    [Fact]
+    void should_keep_text_at_the_limit_whole() =>
         EvalScoring.Score(_case, new(new string('a', EvalScoring.MaxAnswerTextLength), [new("https://cratis.io/")], 0.9, false, [])).AnswerText!.Length.ShouldEqual(EvalScoring.MaxAnswerTextLength);
-    [Fact] void should_not_split_a_surrogate_pair() =>
+    [Fact]
+    void should_not_split_a_surrogate_pair() =>
         char.IsHighSurrogate(EvalScoring.Score(_case, new(new string('a', EvalScoring.MaxAnswerTextLength - EvalScoring.TruncationMarker.Length - 1) + "😀" + new string('b', 100), [new("https://cratis.io/")], 0.9, false, [])).AnswerText![^(EvalScoring.TruncationMarker.Length + 1)]).ShouldBeFalse();
 }

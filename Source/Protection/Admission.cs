@@ -57,44 +57,7 @@ public sealed class Admission(IOptions<PrompterOptions> options, RateLimiter use
 
         lock (_lock)
         {
-            var now = clock.GetUtcNow();
-            var userKey = Hash(actor.UserId.ToString(CultureInfo.InvariantCulture));
-            var channelKey = Hash(actor.ChannelId.ToString(CultureInfo.InvariantCulture));
-            var limits = options.Value.Protection;
-            if (!actor.Maintainer && _escalations.Remaining(userKey.Value, now) is { } paused)
-            {
-                ProviderMetrics.Event("admission", "denied");
-                return Deny(userKey, channelKey, now, AdmissionLimit.Escalated, paused);
-            }
-
-            if (!TryNormalize(question, out var normalized))
-            {
-                ProviderMetrics.Event("admission", "denied");
-                return Deny(userKey, channelKey, now);
-            }
-
-            var duplicate = Hash($"{userKey.Value}:{channelKey.Value}:{normalized}");
-            if (Limit(duplicate, userKey, channelKey, actor.Maintainer, now) is var (limit, wait))
-            {
-                ProviderMetrics.Event("admission", "denied");
-                if (!actor.Maintainer && limit is AdmissionLimit.Duplicate or AdmissionLimit.Cooldown or AdmissionLimit.Daily or AdmissionLimit.Burst)
-                {
-                    _escalations.Strike(userKey.Value, now, limits);
-                }
-
-                return Deny(userKey, channelKey, now, limit, wait);
-            }
-
-            if (!actor.Maintainer)
-            {
-                _daily.Consume(userKey.Value, NextUtcMidnight(now) - now, now);
-                _cooldowns.Consume(userKey.Value, TimeSpan.FromSeconds(limits.UserAdmissionCooldownSeconds), now);
-            }
-
-            _duplicates.Consume(duplicate.Value, TimeSpan.FromSeconds(limits.DuplicateSeconds), now);
-            _windows.Consume("global", TimeSpan.FromHours(1), now);
-            _windows.Consume(channelKey.Value, TimeSpan.FromHours(1), now);
-            return new(true, false);
+            return Admit(actor, question);
         }
     }
 
@@ -105,7 +68,7 @@ public sealed class Admission(IOptions<PrompterOptions> options, RateLimiter use
     {
         lock (_lock)
         {
-            return Deny(Hash(actor.UserId.ToString(CultureInfo.InvariantCulture)), Hash(actor.ChannelId.ToString(CultureInfo.InvariantCulture)), clock.GetUtcNow()).Reply;
+            return Deny(new(Hash(actor.UserId.ToString(CultureInfo.InvariantCulture)), Hash(actor.ChannelId.ToString(CultureInfo.InvariantCulture))), clock.GetUtcNow()).Reply;
         }
     }
 
@@ -114,22 +77,70 @@ public sealed class Admission(IOptions<PrompterOptions> options, RateLimiter use
     static (AdmissionLimit Limit, TimeSpan Wait) Waiting(AdmissionLimit limit, DateTimeOffset? expires, DateTimeOffset now) =>
         expires is { } at ? (limit, at - now) : (AdmissionLimit.Unknown, TimeSpan.Zero);
 
+    static bool ShouldStrike(bool maintainer, AdmissionLimit limit) =>
+        !maintainer && limit is AdmissionLimit.Duplicate or AdmissionLimit.Cooldown or AdmissionLimit.Daily or AdmissionLimit.Burst;
+
+    AdmissionDecision Admit(DiscordActor actor, Question question)
+    {
+        var now = clock.GetUtcNow();
+        var userKey = Hash(actor.UserId.ToString(CultureInfo.InvariantCulture));
+        var channelKey = Hash(actor.ChannelId.ToString(CultureInfo.InvariantCulture));
+        var keys = new AdmissionKeys(userKey, channelKey, actor.Maintainer);
+        var limits = options.Value.Protection;
+        if (!actor.Maintainer && _escalations.Remaining(userKey.Value, now) is { } paused)
+        {
+            ProviderMetrics.Event("admission", "denied");
+            return Deny(keys, now, (AdmissionLimit.Escalated, paused));
+        }
+
+        if (!TryNormalize(question, out var normalized))
+        {
+            ProviderMetrics.Event("admission", "denied");
+            return Deny(keys, now);
+        }
+
+        var duplicate = Hash($"{userKey.Value}:{channelKey.Value}:{normalized}");
+        if (Limit(duplicate, keys, now) is var (limit, wait))
+        {
+            ProviderMetrics.Event("admission", "denied");
+            if (ShouldStrike(actor.Maintainer, limit))
+            {
+                _escalations.Strike(userKey.Value, now, limits);
+            }
+
+            return Deny(keys, now, (limit, wait));
+        }
+
+        if (!actor.Maintainer)
+        {
+            _daily.Consume(userKey.Value, NextUtcMidnight(now) - now, now);
+            _cooldowns.Consume(userKey.Value, TimeSpan.FromSeconds(limits.UserAdmissionCooldownSeconds), now);
+        }
+
+        _duplicates.Consume(duplicate.Value, TimeSpan.FromSeconds(limits.DuplicateSeconds), now);
+        _windows.Consume("global", TimeSpan.FromHours(1), now);
+        _windows.Consume(channelKey.Value, TimeSpan.FromHours(1), now);
+        return new(true, false);
+    }
+
     /// <summary>Finds the first failing limit and its wait. The user bucket is checked last because it spends a token on success.</summary>
     /// <remarks>Maintainers skip the per-user limits but keep duplicate, global and channel checks.</remarks>
-    (AdmissionLimit Limit, TimeSpan Wait)? Limit(AnonymousKey duplicate, AnonymousKey user, AnonymousKey channel, bool maintainer, DateTimeOffset now)
+    (AdmissionLimit Limit, TimeSpan Wait)? Limit(AnonymousKey duplicate, AdmissionKeys keys, DateTimeOffset now)
     {
+        var user = keys.User;
+        var channel = keys.Channel;
         var limits = options.Value.Protection;
         if (!_duplicates.Available(duplicate.Value, 1, now))
         {
             return Waiting(AdmissionLimit.Duplicate, _duplicates.ExpiresAt(duplicate.Value, now), now);
         }
 
-        if (!maintainer && !_daily.Available(user.Value, limits.UserAdmissionsPerDay, now))
+        if (!keys.Maintainer && !_daily.Available(user.Value, limits.UserAdmissionsPerDay, now))
         {
             return Waiting(AdmissionLimit.Daily, _daily.ExpiresAt(user.Value, now), now);
         }
 
-        if (!maintainer && !_cooldowns.Available(user.Value, 1, now))
+        if (!keys.Maintainer && !_cooldowns.Available(user.Value, 1, now))
         {
             return Waiting(AdmissionLimit.Cooldown, _cooldowns.ExpiresAt(user.Value, now), now);
         }
@@ -144,7 +155,7 @@ public sealed class Admission(IOptions<PrompterOptions> options, RateLimiter use
             return Waiting(AdmissionLimit.Busy, _windows.ExpiresAt(channel.Value, now), now);
         }
 
-        if (!maintainer && !users.TryConsume(user.Value, now))
+        if (!keys.Maintainer && !users.TryConsume(user.Value, now))
         {
             var retry = users.RetryAfter(user.Value, now);
             return retry > TimeSpan.Zero ? (AdmissionLimit.Burst, retry) : (AdmissionLimit.Unknown, TimeSpan.Zero);
@@ -153,8 +164,11 @@ public sealed class Admission(IOptions<PrompterOptions> options, RateLimiter use
         return null;
     }
 
-    AdmissionDecision Deny(AnonymousKey user, AnonymousKey channel, DateTimeOffset now, AdmissionLimit limit = AdmissionLimit.Unknown, TimeSpan wait = default)
+    AdmissionDecision Deny(AdmissionKeys keys, DateTimeOffset now, (AdmissionLimit Limit, TimeSpan Wait)? refusal = null)
     {
+        var (limit, wait) = refusal ?? (AdmissionLimit.Unknown, TimeSpan.Zero);
+        var user = keys.User;
+        var channel = keys.Channel;
         var limits = options.Value.Protection;
         var channelKey = $"channel:{channel.Value}";
         if (!_replies.Available(user.Value, 1, now) || !_replies.Available(channelKey, 1, now))
@@ -187,6 +201,8 @@ public sealed class Admission(IOptions<PrompterOptions> options, RateLimiter use
     }
 
     AnonymousKey Hash(string value) => new(Convert.ToHexString(HMACSHA256.HashData(_key, Encoding.UTF8.GetBytes(value))));
+
+    readonly record struct AdmissionKeys(AnonymousKey User, AnonymousKey Channel, bool Maintainer = false);
 
     sealed record AnonymousKey(string Value);
 }
