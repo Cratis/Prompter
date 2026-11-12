@@ -177,6 +177,18 @@ jobs:
         if: runner.environment != 'self-hosted'
         uses: pulumi/actions@96c7761824268174e0d2a4e8c7d75671eebd24a7 # v7.1.0
 
+      # The guarded action splits its arguments on whitespace, so the target must be one URN and nothing else.
+      - name: Check the recovery target
+        if: inputs.target != ''
+        env:
+          TARGET: ${{ inputs.target }}
+        run: |
+          set -euo pipefail
+          if ! [[ "$TARGET" =~ ^urn:pulumi:[^[:space:]]+$ ]]; then
+            echo "::error::target must be a single Pulumi resource URN (urn:pulumi:...) without whitespace"
+            exit 1
+          fi
+
       - name: Pin existing image version
         working-directory: Deployment
         env:
