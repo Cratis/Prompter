@@ -191,14 +191,14 @@ jobs:
           # The full Docker Hub reference: Prompter's image is public, so there is no registry to resolve against.
           pulumi config set --stack production "prompter-deployment:prompterImage" "docker.io/cratis/prompter:${VERSION}"
 
+      # The guarded action withholds the log when Pulumi output carries key, certificate or token material.
       - name: Deploy Prompter stack
-        uses: pulumi/actions@96c7761824268174e0d2a4e8c7d75671eebd24a7 # v7.1.0
+        uses: Cratis/Workflows/.github/actions/pulumi-guarded@bf2d12ebf8140b9eccf8982365ef2d0329092cbb # main
         with:
           command: up
           stack-name: production
           work-dir: Deployment
-          refresh: ${{ inputs.refresh }}
-          target: ${{ inputs.target }}
+          args: ${{ inputs.refresh && '--refresh' || '' }} ${{ inputs.target != '' && format('--target {0}', inputs.target) || '' }}
         env:
           PULUMI_CONFIG_PASSPHRASE: ${{ secrets.PULUMI_CONFIG_PASSPHRASE }}
           AWS_ACCESS_KEY_ID: ${{ secrets.STATE_BACKEND_ACCESS_KEY_ID }}
