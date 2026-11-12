@@ -182,12 +182,7 @@ jobs:
         if: inputs.target != ''
         env:
           TARGET: ${{ inputs.target }}
-        run: |
-          set -euo pipefail
-          if ! [[ "$TARGET" =~ ^urn:pulumi:[^[:space:]]+$ ]]; then
-            echo "::error::target must be a single Pulumi resource URN (urn:pulumi:...) without whitespace"
-            exit 1
-          fi
+        run: bash Deployment/scripts/check-pulumi-target.sh "$TARGET"
 
       - name: Pin existing image version
         working-directory: Deployment

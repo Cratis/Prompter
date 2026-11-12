@@ -72,6 +72,10 @@ jobs:
         run: bash Deployment/scripts/run-eval-job.spec.sh
       - name: Lint eval Job scripts
         run: shellcheck Deployment/scripts/run-eval-job.sh Deployment/scripts/run-eval-job.spec.sh
+      - name: Check the recovery deploy target guard
+        run: bash Deployment/scripts/check-pulumi-target.spec.sh
+      - name: Lint the recovery deploy target guard
+        run: shellcheck Deployment/scripts/check-pulumi-target.sh Deployment/scripts/check-pulumi-target.spec.sh
   dotnet-build:
     permissions:
       contents: read
