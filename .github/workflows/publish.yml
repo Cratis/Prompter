@@ -46,7 +46,7 @@ jobs:
 
       - name: Release
         id: release
-        uses: cratis/release-action@26976c4c37ac8c0454077c0f41abb31650e36405 # v1.5.1
+        uses: cratis/release-action@fefcf36b86e78ff5d4d116da7f472bacf2d3d3c1 # v1.5.2
         with:
           version: ${{ github.event.inputs.version }}
           release-notes: ${{ github.event.inputs.release-notes }}
@@ -66,7 +66,7 @@ jobs:
         uses: docker/setup-buildx-action@f87e5991a6d7451dcb8d9637bfbc97413f497069 # v4.4.1
 
       - name: Login to Docker Hub
-        uses: docker/login-action@81c6f93d4bc991e510b342a00b419b3bb4efc5c6 # v4.7.0
+        uses: docker/login-action@8aa5831fb8d48d8f76594c7ddde61ae58019f550 # v4.8.0
         with:
           username: ${{ secrets.DOCKER_USERNAME }}
           password: ${{ secrets.DOCKER_PASSWORD }}
@@ -210,13 +210,13 @@ jobs:
 
       - name: Setup .NET (hosted fallback only - baked into the shared runner image)
         if: runner.environment != 'self-hosted'
-        uses: actions/setup-dotnet@a98b56852c35b8e3190ac28c8c2271da59106c68 # v6.0.0
+        uses: actions/setup-dotnet@0f4a354dd5547a28c70b7853dbd95d5b67886e73 # v6.1.0
         with:
           dotnet-version: "11.0.x"
 
       - name: Install Pulumi CLI (hosted fallback only - baked into the shared runner image)
         if: runner.environment != 'self-hosted'
-        uses: pulumi/actions@8e5e406f4007fca908480587cb9893c07090f58d # v7.0.0
+        uses: pulumi/actions@96c7761824268174e0d2a4e8c7d75671eebd24a7 # v7.1.0
 
       # `pulumi config set` preserves the config file's comments/structure (a raw YAML edit would not).
       # State is self-managed on UpCloud Object Storage (S3-compatible); Deployment/Pulumi.yaml's backend.url
@@ -241,7 +241,7 @@ jobs:
       # resource that no longer exists in the cluster is planned as already correct and `up` reports success
       # while production stays down.
       - name: Deploy Prompter stack
-        uses: pulumi/actions@8e5e406f4007fca908480587cb9893c07090f58d # v7.0.0
+        uses: pulumi/actions@96c7761824268174e0d2a4e8c7d75671eebd24a7 # v7.1.0
         with:
           command: up
           refresh: true
