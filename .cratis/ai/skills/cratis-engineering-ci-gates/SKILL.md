@@ -60,6 +60,11 @@ before an external effect. A request to verify does not authorize a push.
 7. A change to a command, read model or query shape runs the repository's proxy
    and API regeneration checks; never hand-edit generated files. A package bump
    regenerates the checked-in snapshots that pin versions, in the same commit.
+   Arc TypeScript proxies are generated and committed by the client, never in CI:
+   CI, and local gates that mirror CI, pass `-p:CratisProxiesSkip=true -p:CratisProxiesOutputPath=`
+   (Skip needs Arc 22.185.1 or later; the empty path covers earlier Arc); only the
+   client's own Debug hook regenerates proxies. See the
+   **cratis-arc-command** proxy-generation reference.
 
 Use affected-project checks while coding and writing specifications. Build once
 at the end: run the full local gate when the work is believed complete, not after
@@ -72,6 +77,24 @@ Keep build, lint and test phases separate, each with a deadline. Stop on failure
 do not run dependent phases or hide a producer's exit status behind a filter.
 Report the exact command and result. Put verification and deferred coverage in
 reviewer comments, not the release-note description.
+
+## Local first, and resource-aware
+
+CI is the final confirmation before merge and deploy, never a feedback loop.
+Run build, specifications, lint and frontend gates locally until green, then
+push. Do not push to see whether something compiles or passes, and do not use
+a red run to discover the next failure.
+
+Several agents, worktrees or builds often share one machine. Keep it responsive:
+
+- Cap parallelism, for example `dotnet build -m:2`, built spec executables with their
+  runner-specific thread limit, and `vitest run --maxWorkers=2`. Do not pass MSBuild
+  `-m` to executables; `dotnet test <project> --no-build -m:2` is VSTest-only.
+- Run one heavy phase at a time (build, then specs, then frontend lint and
+  tests), never several at once.
+- Do not start a heavy phase while another agent's runs in the same machine's
+  checkout; wait or lower the cap, and do not retry a starved or timed-out phase
+  at full parallelism.
 
 ## Wait without polling
 
@@ -117,10 +140,20 @@ After the run completes with a failure:
 3. Fix all in-scope causes together. Report unrelated or unavailable causes as
    blockers rather than silently waiving them. Re-run the required local gate
    on the fixed state, then push once when the request authorizes it.
-4. Rerun a job only for a diagnosed flake, including a demonstrated transient
-   infrastructure failure, and only after the run completes. For example,
-   `gh run rerun <id> --repo OWNER/REPO --failed` retries failed jobs. Watch the
-   resulting attempt once. A deterministic failure needs a fix, not a retry.
+4. Flaky tests never hang a release. Classify within about 15 minutes from one
+   failed-log read and the test's history on main: real (in code the change
+   touched) or flaky. A flaky or pre-existing claim needs independent root-cause
+   validation; an unknown or repeating failure without a matching signature is
+   real and a blocker, not a quarantine candidate.
+   - Confirmed flake: after the run completes, rerun once, e.g.
+     `gh run rerun <id> --repo OWNER/REPO --failed`; a known flake with a
+     matching signature may go straight to quarantine. If it fails again,
+     quarantine the test in the same train via the repo's mechanism, open a
+     tracked "Flaky: <test>" issue with the evidence (label `flaky`), and push
+     once. Never quarantine silently or disable security or critical-path
+     coverage; if the security lens vetoes, evict the item or escalate.
+   - Real failure: fix in one round or evict the item. Never retry in loops; a
+     train waits at most one CI cycle on a flake.
 
 Never put a CI skip token in a title or commit. Do not spend a push on each
 individual fix or use CI to discover whether speculative fixes compile.
